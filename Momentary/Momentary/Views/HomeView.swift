@@ -281,11 +281,11 @@ struct HomeView: View {
     private var weeklyStats: WeeklyStatsResult {
         let calendar = Calendar.current
         let now = Date()
-        guard let weekStart = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now)) else {
+        guard let weekAgo = calendar.date(byAdding: .day, value: -7, to: now) else {
             return WeeklyStatsResult()
         }
 
-        let thisWeek = workoutManager.workoutStore.index.filter { $0.startedAt >= weekStart }
+        let thisWeek = workoutManager.workoutStore.index.filter { $0.startedAt >= weekAgo }
         var exerciseFrequency: [String: Int] = [:]
         var totalVolume: Double = 0
 

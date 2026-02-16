@@ -192,9 +192,12 @@ private struct SuggestedChip: View {
                 Text(text)
                     .font(.subheadline)
                     .fontWeight(.medium)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
             .foregroundColor(Theme.accent)
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity, minHeight: 44)
+            .padding(.horizontal, 12)
             .padding(.vertical, 12)
             .background(Theme.accentSubtle, in: RoundedRectangle(cornerRadius: Theme.radiusMedium))
         }
