@@ -25,10 +25,10 @@ Momentary is a wrist-first workout notebook. Start a strength training session o
 ┌──────────────────────────┐           ┌─────────────────────────────────┐
 │                          │  moments  │                                 │
 │  Start → Record → Send  ────────▶  │  Receive → Transcribe → Store  │
-│  workout   moments       │           │      WhisperKit (on-device)     │
+│  workout   moments       │           │      OpenAI Whisper API         │
 │                          │           │                                 │
 │  ◀──────────────────────────────────  │  End workout → AI processing   │
-│       transcription text │           │      OpenAI API → structured    │
+│       transcription text │           │      OpenAI GPT-4o → structured │
 │       + haptic feedback  │           │      log + content + insights   │
 └──────────────────────────┘           └─────────────────────────────────┘
 ```
@@ -39,13 +39,13 @@ Momentary is a wrist-first workout notebook. Start a strength training session o
 |---|---|---|
 | 💪 | **Workout Sessions** | Start/end strength training sessions with elapsed timer |
 | 🎙 | **Voice Moments** | Record short voice notes during your workout |
-| 🧠 | **On-Device Transcription** | WhisperKit runs locally — no internet required for recording |
+| 🧠 | **Cloud Transcription** | OpenAI Whisper API converts speech to text (internet required) |
 | 🤖 | **AI Workout Log** | OpenAI generates structured exercise logs from voice transcripts |
 | 📱 | **Social Content** | Auto-generate Instagram captions, tweet threads, reel scripts |
 | 💡 | **Training Insights** | Progress notes, form reminders, motivational stories |
 | ❤️ | **HealthKit** | Workouts sync to Apple Health as strength training |
 | ⌚ | **Watch-First UX** | Full workout lifecycle on Apple Watch with haptic feedback |
-| 🔒 | **Privacy** | Audio transcribed on-device; only workout text sent to OpenAI |
+| 🔒 | **Privacy** | Audio files sent to OpenAI for transcription; all AI processing via OpenAI API |
 
 ## Architecture
 
@@ -59,7 +59,7 @@ Momentary/
 ├── Momentary/                            # iOS target
 │   ├── MomentaryApp.swift
 │   ├── WorkoutManager.swift              # Central orchestrator
-│   ├── TranscriptionService.swift        # WhisperKit wrapper
+│   ├── TranscriptionService.swift        # OpenAI Whisper API client
 │   ├── PhoneConnectivityManager.swift    # WCSession delegate
 │   ├── PhoneAudioRecorderService.swift   # iPhone recording
 │   ├── AIProcessingService.swift         # OpenAI API + Keychain
@@ -103,18 +103,18 @@ open Momentary/Momentary.xcodeproj
 2. Select your signing team
 3. Build and run on your devices
 4. **OpenAI API Key**: Go to Settings (gear icon) in the app and enter your OpenAI API key
-   - Required for AI-generated workout logs, content, and insights
+   - Required for all audio transcription and AI processing
    - Key is stored securely in the iOS Keychain
-   - Without a key, workouts still record and transcribe — AI processing is skipped
+   - Without a key, the app includes a bundled key for basic functionality
 
-SPM pulls [WhisperKit](https://github.com/argmaxinc/WhisperKit) `>=0.9.0` automatically. The Whisper Tiny model is bundled — no download step.
+All transcription and AI processing requires an OpenAI API key. Enter your key in Settings after installation.
 
 ## Technical Details
 
 | Area | Implementation |
 |------|---------------|
 | **Audio** | Linear PCM, 16kHz, 16-bit, mono — optimized for Whisper |
-| **Transcription** | WhisperKit loaded async from bundle (`download: false`) |
+| **Transcription** | OpenAI Whisper API (whisper-1 model) via HTTPS |
 | **AI** | OpenAI GPT-4o with JSON response format |
 | **Storage** | Directory-per-workout: `Documents/workouts/<UUID>/session.json` |
 | **Offline** | AI processing queued to `pending_ai_queue.json`, processed when online |
@@ -123,7 +123,7 @@ SPM pulls [WhisperKit](https://github.com/argmaxinc/WhisperKit) `>=0.9.0` automa
 
 ## Privacy
 
-Audio is transcribed on-device using WhisperKit. Only workout transcript text is sent to OpenAI for AI processing (when you provide an API key). No analytics, no tracking. Microphone and HealthKit are the only permissions requested.
+Audio recordings are sent to OpenAI for transcription via their Whisper API. Transcript text is then processed by OpenAI's GPT-4o for workout logs, insights, and content generation. An OpenAI API key is required for all audio processing. No analytics, no tracking. Microphone and HealthKit are the only permissions requested.
 
 ## License
 

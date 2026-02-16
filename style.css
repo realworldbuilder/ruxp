@@ -1,16 +1,16 @@
 /* ===== CSS Variables ===== */
 :root {
-  --bg-primary: #1a1a1a;
-  --bg-secondary: #2a2a2a;
-  --accent-bright: #ffffff;
-  --accent-primary: #d0d0d0;
-  --accent-vivid: #ffffff;
-  --accent-deep: #a0a0a0;
+  --bg-primary: #000000;
+  --bg-secondary: #0a0a0f;
+  --accent-bright: #e74c3c;
+  --accent-primary: #c0392b;
+  --accent-vivid: #ff6b5a;
+  --accent-deep: #a93226;
   --text-high: rgba(255, 255, 255, 0.95);
   --text-mid: rgba(255, 255, 255, 0.6);
   --text-low: rgba(255, 255, 255, 0.4);
-  --card-bg: rgba(255, 255, 255, 0.04);
-  --card-border: rgba(255, 255, 255, 0.08);
+  --card-bg: rgba(255, 255, 255, 0.03);
+  --card-border: rgba(255, 255, 255, 0.07);
   --nav-height: 64px;
 }
 
@@ -26,7 +26,7 @@ html {
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   background: var(--bg-primary);
   color: var(--text-high);
   line-height: 1.6;
@@ -56,7 +56,7 @@ a:hover {
   align-items: center;
   justify-content: space-between;
   padding: 0 24px;
-  background: rgba(26, 26, 26, 0.8);
+  background: rgba(0, 0, 0, 0.8);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--card-border);
@@ -121,7 +121,7 @@ a:hover {
   width: 600px;
   height: 600px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.06) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(231, 76, 60, 0.08) 0%, transparent 70%);
   animation: heroGlow 4s ease-in-out infinite alternate;
   pointer-events: none;
 }
@@ -140,7 +140,7 @@ a:hover {
   width: 200px;
   height: 200px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(231, 76, 60, 0.15) 0%, transparent 70%);
   animation: logoGlow 3s ease-in-out infinite alternate;
   pointer-events: none;
 }
@@ -157,12 +157,7 @@ a:hover {
   font-size: 3.5rem;
   font-weight: 700;
   letter-spacing: -0.02em;
-  background: linear-gradient(135deg, var(--accent-bright), var(--accent-vivid), var(--accent-primary), var(--accent-bright));
-  background-size: 300% 300%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  animation: gradientShift 6s ease infinite;
+  color: #ffffff;
   margin-bottom: 16px;
 }
 
@@ -176,14 +171,14 @@ a:hover {
 .hero-subtitle {
   font-size: 1rem;
   color: var(--text-mid);
-  max-width: 440px;
+  max-width: 480px;
   margin-bottom: 40px;
 }
 
 .app-store-badge {
   display: inline-block;
   padding: 14px 32px;
-  background: linear-gradient(135deg, var(--accent-primary), var(--accent-deep));
+  background: var(--accent-bright);
   color: white;
   font-weight: 600;
   font-size: 1rem;
@@ -193,7 +188,7 @@ a:hover {
 
 .app-store-badge:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(255, 255, 255, 0.15);
+  box-shadow: 0 8px 24px rgba(231, 76, 60, 0.3);
   color: white;
 }
 
@@ -225,14 +220,12 @@ a:hover {
   padding: 32px 24px;
   text-align: center;
   transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
 }
 
 .feature-card:hover {
-  transform: translateY(-6px);
-  border-color: rgba(255, 255, 255, 0.15);
-  box-shadow: 0 12px 40px rgba(255, 255, 255, 0.05);
+  transform: translateY(-4px);
+  border-color: rgba(231, 76, 60, 0.2);
+  box-shadow: 0 12px 40px rgba(231, 76, 60, 0.06);
 }
 
 .feature-icon {
@@ -245,7 +238,7 @@ a:hover {
   font-size: 1.15rem;
   font-weight: 600;
   margin-bottom: 8px;
-  color: var(--accent-bright);
+  color: #ffffff;
 }
 
 .feature-card p {
@@ -266,15 +259,13 @@ a:hover {
   color: var(--text-mid);
   font-size: 0.95rem;
   line-height: 1.6;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
 }
 
 .status-banner strong {
-  color: var(--text-high);
+  color: var(--accent-bright);
 }
 
-/* ===== How It Works (Flow Steps) ===== */
+/* ===== How It Works ===== */
 .how-it-works {
   padding: 80px 24px;
   max-width: 640px;
@@ -306,14 +297,14 @@ a:hover {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: var(--card-bg);
-  border: 1px solid var(--card-border);
+  background: rgba(231, 76, 60, 0.1);
+  border: 1px solid rgba(231, 76, 60, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 700;
   font-size: 1rem;
-  color: var(--text-high);
+  color: var(--accent-bright);
 }
 
 .flow-step p {
@@ -349,8 +340,6 @@ a:hover {
   border: 1px solid var(--card-border);
   border-radius: 16px;
   padding: 28px 24px;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
 }
 
 .gameplan-card h3 {
@@ -385,18 +374,18 @@ a:hover {
 }
 
 .gameplan-card.done ul li::before {
-  background: #4ade80;
+  background: #34d399;
 }
 
 .gameplan-card.next ul li::before {
-  background: #facc15;
+  background: #fbbf24;
 }
 
 .gameplan-card.someday ul li::before {
   background: rgba(255, 255, 255, 0.2);
 }
 
-/* ===== Content Pages (Privacy, Support) ===== */
+/* ===== Content Pages ===== */
 .content-page {
   max-width: 720px;
   margin: 0 auto;
@@ -407,10 +396,7 @@ a:hover {
   font-size: 2.2rem;
   font-weight: 700;
   margin-bottom: 8px;
-  background: linear-gradient(135deg, var(--accent-bright), var(--accent-vivid));
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: #ffffff;
 }
 
 .content-page .effective-date {
@@ -475,10 +461,9 @@ a:hover {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--accent-primary);
+  background: var(--accent-bright);
 }
 
-/* Summary highlight box */
 .summary-box {
   background: var(--card-bg);
   border: 1px solid var(--card-border);
@@ -487,11 +472,6 @@ a:hover {
   margin-bottom: 32px;
 }
 
-.summary-box ul li::before {
-  background: var(--accent-bright);
-}
-
-/* FAQ styling */
 .faq-item {
   background: var(--card-bg);
   border: 1px solid var(--card-border);
@@ -501,7 +481,7 @@ a:hover {
 }
 
 .faq-item h3 {
-  color: var(--accent-bright);
+  color: #ffffff;
   margin-top: 0;
   margin-bottom: 10px;
   font-size: 1rem;
@@ -545,87 +525,26 @@ a:hover {
   50% { transform: translateY(-10px); }
 }
 
-@keyframes gradientShift {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
-
-/* ===== Reduced Motion ===== */
 @media (prefers-reduced-motion: reduce) {
-  .hero-glow,
-  .hero-logo-glow,
-  .hero-logo-wrapper,
-  .hero-title {
-    animation: none;
-  }
-  .feature-card {
-    transition: none;
-  }
-  .app-store-badge {
-    transition: none;
-  }
+  .hero-glow, .hero-logo-glow, .hero-logo-wrapper { animation: none; }
+  .feature-card, .app-store-badge { transition: none; }
 }
 
-/* ===== Responsive ===== */
 @media (max-width: 768px) {
-  .hero-title {
-    font-size: 2.5rem;
-  }
-
-  .hero-tagline {
-    font-size: 1.15rem;
-  }
-
-  .hero-logo {
-    width: 110px;
-    height: 110px;
-    border-radius: 24px;
-  }
-
-  .features-grid,
-  .gameplan-grid {
-    grid-template-columns: 1fr;
-    gap: 16px;
-  }
-
-  .feature-card {
-    padding: 24px 20px;
-  }
-
-  .nav-links {
-    gap: 16px;
-  }
-
-  .navbar {
-    padding: 0 16px;
-  }
+  .hero-title { font-size: 2.5rem; }
+  .hero-tagline { font-size: 1.15rem; }
+  .hero-logo { width: 110px; height: 110px; border-radius: 24px; }
+  .features-grid, .gameplan-grid { grid-template-columns: 1fr; gap: 16px; }
+  .feature-card { padding: 24px 20px; }
+  .nav-links { gap: 16px; }
+  .navbar { padding: 0 16px; }
 }
 
 @media (max-width: 480px) {
-  .hero-title {
-    font-size: 2rem;
-  }
-
-  .hero-tagline {
-    font-size: 1rem;
-  }
-
-  .hero-subtitle {
-    font-size: 0.9rem;
-  }
-
-  .hero-logo {
-    width: 90px;
-    height: 90px;
-    border-radius: 20px;
-  }
-
-  .nav-brand span {
-    display: none;
-  }
-
-  .content-page h1 {
-    font-size: 1.75rem;
-  }
+  .hero-title { font-size: 2rem; }
+  .hero-tagline { font-size: 1rem; }
+  .hero-subtitle { font-size: 0.9rem; }
+  .hero-logo { width: 90px; height: 90px; border-radius: 20px; }
+  .nav-brand span { display: none; }
+  .content-page h1 { font-size: 1.75rem; }
 }

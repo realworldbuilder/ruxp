@@ -5,7 +5,7 @@
 Forked from [WristAssist](https://github.com/realworldbuilder/wristassist) (a simple voice notes app). Transformed into a **wrist-first workout notebook** where you start a strength training session on Apple Watch, record short voice "Moments" during the workout, and get AI-generated structured logs, social content, and training insights when the workout ends.
 
 - **iOS 18 / watchOS 11** minimum (uses `@Observable`)
-- **WhisperKit** for on-device transcription (bundled Whisper tiny model)
+- **OpenAI Whisper API** for cloud-based transcription
 - **OpenAI GPT-4o** for AI processing (bundled API key via XOR obfuscation)
 
 ---
@@ -87,7 +87,7 @@ The full codebase has been written but has **not yet been compiled or tested**. 
 - Record 3+ voice moments
 - Verify audio files are created per-moment
 - Verify audio transfers to iPhone via WCSession
-- Verify WhisperKit transcribes audio on phone
+- Verify OpenAI Whisper API transcribes audio
 - Verify transcription text sent back to watch
 - End workout, verify summary screen
 
@@ -133,7 +133,7 @@ Momentary/
 │   └── HealthKitService.swift
 ├── Momentary/                           (13 files — iOS target)
 │   ├── MomentaryApp.swift
-│   ├── TranscriptionService.swift       (unchanged from WristAssist)
+│   ├── TranscriptionService.swift       (OpenAI Whisper API client)
 │   ├── PhoneConnectivityManager.swift
 │   ├── PhoneAudioRecorderService.swift  (unchanged from WristAssist)
 │   ├── WorkoutManager.swift

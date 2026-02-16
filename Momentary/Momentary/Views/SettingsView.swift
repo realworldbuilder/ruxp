@@ -117,7 +117,7 @@ struct SettingsView: View {
             Section("About") {
                 LabeledContent("Version", value: "\(appVersion) (\(buildNumber))")
                 LabeledContent("AI Model", value: "GPT-4o")
-                LabeledContent("Transcription", value: "WhisperKit")
+                LabeledContent("Transcription", value: "OpenAI Whisper API")
             }
         }
         .scrollContentBackground(.hidden)

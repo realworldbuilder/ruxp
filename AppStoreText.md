@@ -17,7 +17,7 @@ KEY FEATURES
 
 • Voice Moments — Tap to record a quick voice note after each set. "Just hit 225 for 5 on bench, felt smooth." That's all you need.
 
-• On-Device Transcription — Speech-to-text powered by WhisperKit runs entirely on your iPhone. No internet required to record and transcribe.
+• Cloud Transcription — Speech-to-text powered by OpenAI's Whisper API. Internet connection required for transcription.
 
 • AI Workout Log — When your workout ends, OpenAI analyzes your voice transcripts and generates a structured exercise log with exercises, sets, reps, and weights.
 
@@ -29,19 +29,19 @@ KEY FEATURES
 
 • Watch-First Experience — Full workout lifecycle on Apple Watch with haptic feedback when moments are logged. Always-on display shows your workout timer.
 
-• Offline Support — Record and transcribe without internet. AI processing queues up and completes when you're back online.
+• Offline Recording — Record voice moments without internet. All transcription and AI processing queues up and completes when you're back online.
 
 HOW IT WORKS
 
 1. Start a workout on your Apple Watch (or iPhone)
 2. After each set, tap to record a quick voice moment
-3. Your voice is transcribed on-device by WhisperKit
+3. Your voice is transcribed by OpenAI's Whisper API
 4. End your workout — AI processes your moments into a structured log
 5. Review your workout log, share content, and read insights
 
 PRIVACY
 
-Audio is transcribed on-device — your voice never leaves your phone. Only workout transcript text is sent to OpenAI for AI processing (requires your own API key). No accounts, no analytics, no tracking.
+Audio recordings are sent to OpenAI for transcription and AI processing (requires your own API key). No accounts, no analytics, no tracking beyond what's necessary for OpenAI API functionality.
 
 Requires iPhone running iOS 18+ and Apple Watch running watchOS 11+.
 
@@ -75,7 +75,7 @@ Productivity
 ## Notes for Review
 Momentary requires an Apple Watch paired with an iPhone to demonstrate the full watch workout workflow. However, the app also supports starting workouts and recording moments directly on iPhone — you can test this without an Apple Watch.
 
-On first launch, the app loads a local speech recognition model (WhisperKit). This may take a few seconds. Once loaded, recording and transcription work entirely offline.
+The app requires an internet connection for audio transcription via OpenAI's Whisper API. You can record voice moments offline, but they'll be transcribed when connectivity is restored.
 
 AI features (structured workout log, social content, training insights) require an OpenAI API key entered in Settings. Without a key, the app still functions as a voice-based workout logger — you just won't get AI-generated output.
 

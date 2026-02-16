@@ -37,7 +37,7 @@
       <ul>
         <li>Start strength training sessions on Apple Watch or iPhone.</li>
         <li>Record short voice moments after each set.</li>
-        <li>Transcribe speech to text on-device using WhisperKit.</li>
+        <li>Transcribe speech to text using OpenAI's Whisper API.</li>
         <li>AI generates structured workout logs with exercises, sets, reps, and weights.</li>
         <li>Generate social content — Instagram captions, tweet threads, reel scripts.</li>
         <li>Training insights and cross-workout analysis with Swift Charts.</li>
@@ -58,7 +58,7 @@
 
       <div class="faq-item">
         <h3>Do I need an internet connection?</h3>
-        <p>No — recording and transcription work entirely offline. An internet connection is only needed for AI features (structured logs, social content, insights) which use the OpenAI API.</p>
+        <p>You can record voice moments offline, but an internet connection is required for transcription and all AI processing via the OpenAI API.</p>
       </div>
 
       <div class="faq-item">
@@ -78,7 +78,7 @@
 
       <div class="faq-item">
         <h3>Does Momentary upload my voice recordings?</h3>
-        <p>No. Audio is transcribed on-device and never leaves your phone. Only transcript text is sent to OpenAI if you have an API key configured — and only for AI processing.</p>
+        <p>Yes. Audio recordings are sent to OpenAI for transcription via their Whisper API. Transcript text is then processed by OpenAI's GPT-4o for workout analysis. This requires an OpenAI API key.</p>
       </div>
 
       <div class="faq-item">
