@@ -21,7 +21,7 @@ struct ChatView: View {
                 inputBar
             }
             .background(Theme.background)
-            .navigationTitle("Chat")
+            .navigationTitle("Trainer")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -65,22 +65,23 @@ struct ChatView: View {
                 .font(.system(size: 48))
                 .foregroundColor(Theme.textTertiary)
 
-            Text("What would you like to know?")
+            Text("Your AI training coach. Ask about your workouts, plan your next session, or get form tips.")
                 .font(.title3)
                 .foregroundColor(Theme.textSecondary)
+                .multilineTextAlignment(.center)
 
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
-                SuggestedChip(text: "Start Workout", icon: "figure.strengthtraining.traditional") {
-                    sendMessage("Start a new workout")
+                SuggestedChip(text: "Plan my next workout", icon: "calendar.badge.plus") {
+                    sendMessage("Plan my next workout")
                 }
-                SuggestedChip(text: "Last Workout", icon: "clock.arrow.circlepath") {
-                    sendMessage("Show me my last workout")
+                SuggestedChip(text: "How's my progress?", icon: "chart.line.uptrend.xyaxis") {
+                    sendMessage("How's my progress?")
                 }
-                SuggestedChip(text: "Weekly Stats", icon: "chart.bar.fill") {
-                    sendMessage("How did I do this week?")
+                SuggestedChip(text: "Weekly summary", icon: "calendar.day.timeline.leading") {
+                    sendMessage("Give me a weekly summary")
                 }
-                SuggestedChip(text: "New PRs?", icon: "trophy.fill") {
-                    sendMessage("Did I hit any new PRs recently?")
+                SuggestedChip(text: "What should I focus on?", icon: "target") {
+                    sendMessage("What should I focus on?")
                 }
             }
             .padding(.horizontal, 24)
@@ -121,7 +122,7 @@ struct ChatView: View {
 
     private var inputBar: some View {
         HStack(spacing: 10) {
-            TextField("Ask about your workouts...", text: $inputText, axis: .vertical)
+            TextField("Ask your trainer...", text: $inputText, axis: .vertical)
                 .lineLimit(1...4)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)

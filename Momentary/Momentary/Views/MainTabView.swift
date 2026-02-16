@@ -14,9 +14,9 @@ struct MainTabView: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            ChatView()
+            HomeView()
                 .tabItem {
-                    Label("Chat", systemImage: "bubble.left.and.bubble.right.fill")
+                    Label("Home", systemImage: "house.fill")
                 }
                 .tag(0)
 
@@ -33,6 +33,12 @@ struct MainTabView: View {
                     Label("Insights", systemImage: "lightbulb.fill")
                 }
                 .tag(2)
+
+            ChatView()
+                .tabItem {
+                    Label("Trainer", systemImage: "bubble.left.and.text.bubble.right.fill")
+                }
+                .tag(3)
         }
         .tint(Theme.accent)
         .onChange(of: workoutManager.activeSession?.id) { oldVal, newVal in
