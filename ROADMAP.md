@@ -168,5 +168,5 @@ Momentary/
 - **Callback closures** on connectivity managers (not owning business logic)
 - **Offline AI queue** at `Documents/pending_ai_queue.json`
 - **XOR-obfuscated bundled API key** — Keychain override available in Settings
-- **Bundle IDs**: `com.momentary.app` (iOS), `com.momentary.app.watchkitapp` (watchOS)
+- **Bundle IDs**: `com.whussey.momentary` (iOS), `com.whussey.momentary.watchkitapp` (watchOS)
 - **Dev team**: `R2C4T4N7US`
