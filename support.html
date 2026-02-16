@@ -6,6 +6,9 @@
   <title>Support - Momentary</title>
   <meta name="description" content="Momentary support and frequently asked questions.">
   <link rel="icon" href="assets/logo.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -37,13 +40,13 @@
       <ul>
         <li>Start strength training sessions on Apple Watch or iPhone.</li>
         <li>Record short voice moments after each set.</li>
-        <li>Transcribe speech to text using OpenAI's Whisper API.</li>
-        <li>AI generates structured workout logs with exercises, sets, reps, and weights.</li>
+        <li>Audio is sent to OpenAI's Whisper API for fast, accurate transcription.</li>
+        <li>AI generates structured workout logs with exercises, sets, reps, and weights using GPT-4o.</li>
         <li>Generate social content — Instagram captions, tweet threads, reel scripts.</li>
         <li>Training insights and cross-workout analysis with Swift Charts.</li>
         <li>Live heart rate and calorie tracking via HealthKit.</li>
         <li>Edit your AI-generated workout log inline.</li>
-        <li>Offline queue auto-retries AI processing when back online.</li>
+        <li>Offline recording — AI processing queues and retries when back online.</li>
         <li>Sync workouts to Apple Health automatically.</li>
       </ul>
     </div>
@@ -58,12 +61,12 @@
 
       <div class="faq-item">
         <h3>Do I need an internet connection?</h3>
-        <p>You can record voice moments offline, but an internet connection is required for transcription and all AI processing via the OpenAI API.</p>
+        <p>You can record voice moments offline — they'll be stored locally. However, transcription and AI processing require an internet connection since they use OpenAI's APIs. Everything queues up and processes automatically when you're back online.</p>
       </div>
 
       <div class="faq-item">
         <h3>How do I set up AI features?</h3>
-        <p>Go to Settings in the iPhone app and enter your OpenAI API key. Once set, AI processing will run automatically when your workout ends.</p>
+        <p>Go to Settings in the iPhone app and enter your OpenAI API key. Once set, transcription and AI processing will run automatically when your workout ends.</p>
       </div>
 
       <div class="faq-item">
@@ -71,14 +74,15 @@
         <ul>
           <li>Make sure your Apple Watch is paired with your iPhone.</li>
           <li>Keep your iPhone nearby and open the app at least once.</li>
-          <li>Confirm Bluetooth and Wi-Fi are enabled on both devices.</li>
+          <li>Check that you have a valid OpenAI API key in Settings.</li>
+          <li>Confirm you have an internet connection for transcription.</li>
           <li>Try recording a longer moment with clear speech.</li>
         </ul>
       </div>
 
       <div class="faq-item">
-        <h3>Does Momentary upload my voice recordings?</h3>
-        <p>Yes. Audio recordings are sent to OpenAI for transcription via their Whisper API. Transcript text is then processed by OpenAI's GPT-4o for workout analysis. This requires an OpenAI API key.</p>
+        <h3>What data does Momentary send to the cloud?</h3>
+        <p>Audio recordings are sent to OpenAI's Whisper API for transcription. Transcript text is then sent to OpenAI's GPT-4o for workout log generation, content creation, and insights. No other data leaves your device. There are no analytics or tracking.</p>
       </div>
 
       <div class="faq-item">
