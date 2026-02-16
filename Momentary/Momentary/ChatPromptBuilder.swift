@@ -7,8 +7,12 @@ enum ChatPromptBuilder {
         let workoutContext = buildWorkoutContext(workoutStore: workoutStore)
         let weeklyStats = buildWeeklyStats(workoutStore: workoutStore)
 
+        let soul = TrainerSoul.load()
+
         return """
         You are a fitness AI assistant inside the Momentary workout app. Users ask you questions about their training data and you respond with rich, structured UI blocks.
+
+        \(soul.systemPromptFragment)
 
         CURRENT WORKOUT DATA:
         \(workoutContext)

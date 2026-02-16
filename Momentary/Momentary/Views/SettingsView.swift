@@ -12,6 +12,10 @@ struct SettingsView: View {
     @State private var showAPIKeyField = false
     @State private var apiKeySaved = false
 
+    // Trainer Soul
+    @State private var soul = TrainerSoul.load()
+    @State private var showSoulEditor = false
+
     private var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"
     }
@@ -26,6 +30,36 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
+            // MARK: - Trainer Soul
+            Section {
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(soul.fitnessGoal.rawValue)
+                            .font(.subheadline.weight(.semibold))
+                        Text("\(soul.experienceLevel.rawValue) · \(soul.trainingStyle.rawValue) · \(soul.coachingTone.rawValue)")
+                            .font(.caption)
+                            .foregroundStyle(Theme.textSecondary)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundStyle(Theme.textSecondary)
+                }
+                .contentShape(Rectangle())
+                .onTapGesture { showSoulEditor = true }
+
+                if !soul.customPrompt.isEmpty {
+                    Text(soul.customPrompt)
+                        .font(.caption)
+                        .foregroundStyle(Theme.textSecondary)
+                        .lineLimit(2)
+                }
+            } header: {
+                Text("Trainer Soul")
+            } footer: {
+                Text("Shapes how your AI trainer talks, what it focuses on, and how it coaches you.")
+            }
+
             // MARK: - Preferences
             Section("Preferences") {
                 Picker("Weight Unit", selection: $weightUnit) {
@@ -135,6 +169,9 @@ struct SettingsView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("This will permanently remove all workouts, transcripts, and AI-generated content from this device. This cannot be undone.")
+        }
+        .sheet(isPresented: $showSoulEditor) {
+            TrainerSoulEditor(soul: $soul)
         }
         .sheet(isPresented: $showExportSheet) {
             if let data = exportData {

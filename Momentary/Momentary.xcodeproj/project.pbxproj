@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		A1000001 /* MomentaryApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000001 /* MomentaryApp.swift */; };
+		E6C79CAC9B32429DA84CFBF4 /* TrainerSoulEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD351910FDA64E408F948152 /* TrainerSoulEditor.swift */; };
+		40533A7B62684C9486E76BA4 /* TrainerSoul.swift in Sources */ = {isa = PBXBuildFile; fileRef = E978F0CC76B8482FBC4A79C7 /* TrainerSoul.swift */; };
 		A1000003 /* TranscriptionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000003 /* TranscriptionService.swift */; };
 		A1000004 /* PhoneConnectivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000004 /* PhoneConnectivityManager.swift */; };
 		A1000005 /* ConnectivityConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000010 /* ConnectivityConstants.swift */; };
@@ -83,6 +85,8 @@
 
 /* Begin PBXFileReference section */
 		B1000001 /* MomentaryApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MomentaryApp.swift; sourceTree = "<group>"; };
+		AD351910FDA64E408F948152 /* TrainerSoulEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainerSoulEditor.swift; sourceTree = "<group>"; };
+		E978F0CC76B8482FBC4A79C7 /* TrainerSoul.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainerSoul.swift; sourceTree = "<group>"; };
 		B1000003 /* TranscriptionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionService.swift; sourceTree = "<group>"; };
 		B1000004 /* PhoneConnectivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneConnectivityManager.swift; sourceTree = "<group>"; };
 		B1000010 /* ConnectivityConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectivityConstants.swift; sourceTree = "<group>"; };
@@ -187,7 +191,8 @@
 				B1000033 /* ChatService.swift */,
 				F2000002 /* Views */,
 				B1000007 /* Assets.xcassets */,
-			);
+			
+				E978F0CC76B8482FBC4A79C7 /* TrainerSoul.swift */,);
 			path = Momentary;
 			sourceTree = "<group>";
 		};
@@ -207,7 +212,8 @@
 				B1000034 /* ChatView.swift */,
 				B1000035 /* ChatMessageView.swift */,
 				B1000036 /* ChatBlockView.swift */,
-			);
+			
+				AD351910FDA64E408F948152 /* TrainerSoulEditor.swift */,);
 			path = Views;
 			sourceTree = "<group>";
 		};
@@ -377,7 +383,9 @@
 				A1000034 /* ChatView.swift in Sources */,
 				A1000035 /* ChatMessageView.swift in Sources */,
 				A1000036 /* ChatBlockView.swift in Sources */,
-			);
+			
+				40533A7B62684C9486E76BA4 /* TrainerSoul.swift in Sources */,
+				E6C79CAC9B32429DA84CFBF4 /* TrainerSoulEditor.swift in Sources */,);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		S2000001 /* Sources */ = {

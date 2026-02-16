@@ -3,8 +3,12 @@ import Foundation
 enum AIPromptBuilder {
 
     static func buildSystemPrompt() -> String {
-        """
+        let soul = TrainerSoul.load()
+
+        return """
         You are a fitness AI assistant that processes voice-recorded workout moments into structured data.
+
+        \(soul.systemPromptFragment)
 
         Your job is to analyze voice transcripts from a strength training session and produce:
         1. A structured workout log (exercises, sets, reps, weights)
