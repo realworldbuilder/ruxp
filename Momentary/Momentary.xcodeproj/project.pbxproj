@@ -555,6 +555,7 @@
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Momentary reads your workout data to provide training insights.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Momentary saves your strength training workouts to Apple Health.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Microphone access is needed to record workout voice moments.";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -592,6 +593,7 @@
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Momentary reads your workout data to provide training insights.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Momentary saves your strength training workouts to Apple Health.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Microphone access is needed to record workout voice moments.";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
