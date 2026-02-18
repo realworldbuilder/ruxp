@@ -3,34 +3,45 @@ import SwiftUI
 @main
 struct MomentaryApp: App {
     @State private var workoutManager: WorkoutManager
-    @State private var aiPipeline: AIProcessingPipeline
-    @State private var insightsService: InsightsService
-    @State private var chatService: ChatService
+    @State private var workoutProcessor: WorkoutProcessor
+    @State private var insightsEngine: InsightsEngine
+    @State private var chatEngine: ChatEngine
 
     init() {
-        let manager = WorkoutManager()
-        let pipeline = AIProcessingPipeline(workoutStore: manager.workoutStore)
-        let insights = InsightsService(workoutStore: manager.workoutStore)
-        let chat = ChatService(workoutStore: manager.workoutStore, insightsService: insights)
-        manager.setAIPipeline(pipeline)
-        pipeline.insightsService = insights
+        let store = WorkoutStore()
+        let aiService = AIService()
+        let transcription = TranscriptionService()
+        let connectivity = ConnectivityService()
+        let healthKit = HealthKitService()
+        let processor = WorkoutProcessor(aiService: aiService, workoutStore: store)
+        let insights = InsightsEngine(workoutStore: store, aiService: aiService)
+        let chat = ChatEngine(workoutStore: store, insightsEngine: insights, aiService: aiService)
+        let manager = WorkoutManager(
+            workoutStore: store,
+            connectivity: connectivity,
+            transcription: transcription,
+            healthKit: healthKit,
+            processor: processor
+        )
+        processor.insightsEngine = insights
+
         _workoutManager = State(initialValue: manager)
-        _aiPipeline = State(initialValue: pipeline)
-        _insightsService = State(initialValue: insights)
-        _chatService = State(initialValue: chat)
+        _workoutProcessor = State(initialValue: processor)
+        _insightsEngine = State(initialValue: insights)
+        _chatEngine = State(initialValue: chat)
     }
 
     var body: some Scene {
         WindowGroup {
             MainTabView()
                 .environment(workoutManager)
-                .environment(aiPipeline)
-                .environment(insightsService)
-                .environment(chatService)
+                .environment(workoutProcessor)
+                .environment(insightsEngine)
+                .environment(chatEngine)
                 .preferredColorScheme(.dark)
                 .task {
-                    await aiPipeline.processPendingQueue()
-                    await insightsService.generateInsights()
+                    await workoutProcessor.processPendingQueue()
+                    await insightsEngine.generateInsights()
                 }
         }
     }

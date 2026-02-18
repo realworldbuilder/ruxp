@@ -11,11 +11,8 @@ struct ActiveWorkoutTab: View {
         NavigationStack {
             VStack(spacing: 0) {
                 timerHeader
-
                 momentsFeed
-
                 Spacer()
-
                 bottomControls
             }
             .background(Theme.background)
@@ -33,17 +30,13 @@ struct ActiveWorkoutTab: View {
                 Text("Please enable microphone access to record moments.")
             }
             .alert("End Workout?", isPresented: $showEndConfirmation) {
-                Button("End", role: .destructive) {
-                    workoutManager.endWorkout()
-                }
+                Button("End", role: .destructive) { workoutManager.endWorkout() }
                 Button("Cancel", role: .cancel) {}
             } message: {
                 Text("This will end the current workout and begin AI processing.")
             }
         }
     }
-
-    // MARK: - Timer Header
 
     private var timerHeader: some View {
         VStack(spacing: 8) {
@@ -52,20 +45,13 @@ struct ActiveWorkoutTab: View {
                 .foregroundStyle(.primary)
 
             HStack(spacing: 16) {
-                Label(
-                    "\(workoutManager.activeSession?.moments.count ?? 0) moments",
-                    systemImage: "waveform"
-                )
-                .font(.subheadline)
-                .foregroundStyle(Theme.textSecondary)
+                Label("\(workoutManager.activeSession?.moments.count ?? 0) moments", systemImage: "waveform")
+                    .font(.subheadline).foregroundStyle(Theme.textSecondary)
 
                 if workoutManager.isProcessingMoment {
                     HStack(spacing: 4) {
-                        ProgressView()
-                            .controlSize(.small)
-                        Text("Transcribing...")
-                            .font(.caption)
-                            .foregroundStyle(Theme.textSecondary)
+                        ProgressView().controlSize(.small)
+                        Text("Transcribing...").font(.caption).foregroundStyle(Theme.textSecondary)
                     }
                 }
             }
@@ -75,8 +61,6 @@ struct ActiveWorkoutTab: View {
         .background(Theme.cardBackground)
     }
 
-    // MARK: - Moments Feed
-
     private var momentsFeed: some View {
         Group {
             if let session = workoutManager.activeSession, !session.moments.isEmpty {
@@ -84,21 +68,15 @@ struct ActiveWorkoutTab: View {
                     LazyVStack(spacing: 1) {
                         ForEach(session.moments.reversed()) { moment in
                             VStack(alignment: .leading, spacing: 4) {
-                                Text(moment.transcript)
-                                    .font(.body)
+                                Text(moment.transcript).font(.body)
                                 HStack {
-                                    Text(moment.timestamp, style: .time)
-                                        .font(.caption)
-                                        .foregroundStyle(Theme.textSecondary)
+                                    Text(moment.timestamp, style: .time).font(.caption).foregroundStyle(Theme.textSecondary)
                                     if moment.source == .watch {
-                                        Image(systemName: "applewatch")
-                                            .font(.caption2)
-                                            .foregroundStyle(Theme.textSecondary)
+                                        Image(systemName: "applewatch").font(.caption2).foregroundStyle(Theme.textSecondary)
                                     }
                                 }
                             }
-                            .padding(.horizontal)
-                            .padding(.vertical, 10)
+                            .padding(.horizontal).padding(.vertical, 10)
                             .frame(maxWidth: .infinity, alignment: .leading)
                         }
                     }
@@ -113,35 +91,23 @@ struct ActiveWorkoutTab: View {
         }
     }
 
-    // MARK: - Bottom Controls
-
     private var bottomControls: some View {
         VStack(spacing: 12) {
-            if recorder.isRecording {
-                recordingOverlay
-            }
+            if recorder.isRecording { recordingOverlay }
 
             HStack(spacing: 24) {
-                Button {
-                    showEndConfirmation = true
-                } label: {
-                    Text("End")
-                        .font(.headline)
-                        .foregroundStyle(.white)
+                Button { showEndConfirmation = true } label: {
+                    Text("End").font(.headline).foregroundStyle(.white)
                         .frame(width: 80, height: 44)
                         .background(.red, in: RoundedRectangle(cornerRadius: Theme.radiusMedium))
                 }
 
                 Button {
-                    if recorder.isRecording {
-                        stopAndAddMoment()
-                    } else {
-                        requestMicAndRecord()
-                    }
+                    if recorder.isRecording { stopAndAddMoment() }
+                    else { requestMicAndRecord() }
                 } label: {
                     Image(systemName: recorder.isRecording ? "stop.fill" : "mic.fill")
-                        .font(.title2)
-                        .foregroundStyle(.white)
+                        .font(.title2).foregroundStyle(.white)
                         .frame(width: 56, height: 56)
                         .background(Theme.accent, in: Circle())
                 }
@@ -153,31 +119,20 @@ struct ActiveWorkoutTab: View {
         .background(Theme.background)
     }
 
-    // MARK: - Recording Overlay
-
     private var recordingOverlay: some View {
         HStack(spacing: 8) {
-            Circle()
-                .fill(.red)
-                .frame(width: 10, height: 10)
-            Text(formattedRecordingDuration)
-                .font(.body.monospacedDigit())
+            Circle().fill(.red).frame(width: 10, height: 10)
+            Text(formattedRecordingDuration).font(.body.monospacedDigit())
         }
     }
 
-    // MARK: - Helpers
-
     private var formattedElapsed: String {
         guard let session = workoutManager.activeSession else { return "0:00" }
-        let elapsed = Date().timeIntervalSince(session.startedAt)
-        let total = Int(elapsed)
+        let total = Int(Date().timeIntervalSince(session.startedAt))
         let hrs = total / 3600
         let mins = (total % 3600) / 60
         let secs = total % 60
-        if hrs > 0 {
-            return String(format: "%d:%02d:%02d", hrs, mins, secs)
-        }
-        return String(format: "%d:%02d", mins, secs)
+        return hrs > 0 ? String(format: "%d:%02d:%02d", hrs, mins, secs) : String(format: "%d:%02d", mins, secs)
     }
 
     private var formattedRecordingDuration: String {
@@ -191,26 +146,18 @@ struct ActiveWorkoutTab: View {
         case .undetermined:
             AVAudioApplication.requestRecordPermission { granted in
                 Task { @MainActor in
-                    if granted {
-                        recorder.startRecording()
-                    } else {
-                        showMicPermissionDenied = true
-                    }
+                    if granted { recorder.startRecording() }
+                    else { showMicPermissionDenied = true }
                 }
             }
-        case .denied:
-            showMicPermissionDenied = true
-        case .granted:
-            recorder.startRecording()
-        @unknown default:
-            break
+        case .denied: showMicPermissionDenied = true
+        case .granted: recorder.startRecording()
+        @unknown default: break
         }
     }
 
     private func stopAndAddMoment() {
         guard let url = recorder.stopRecording() else { return }
-        Task {
-            await workoutManager.addMoment(audioURL: url, source: .phone)
-        }
+        Task { await workoutManager.addMoment(audioURL: url, source: .phone) }
     }
 }

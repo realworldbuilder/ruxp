@@ -29,6 +29,7 @@ struct SettingsView: View {
     }
 
     var body: some View {
+        NavigationStack {
         Form {
             // MARK: - Trainer Soul
             Section {
@@ -179,6 +180,9 @@ struct SettingsView: View {
                 ShareSheetView(activityItems: [url])
             }
         }
+        .navigationTitle("Settings")
+        .navigationBarTitleDisplayMode(.inline)
+        }
     }
 
     // MARK: - Export Helpers
@@ -192,7 +196,7 @@ struct SettingsView: View {
 
     // MARK: - Keychain Helpers
 
-    private static let keychainService = "com.whussey.momentary.openai"
+    private static let keychainService = "com.williamhussey.mind2muscle.openai"
     private static let keychainAccount = "custom_api_key"
 
     private func saveCustomAPIKey() {

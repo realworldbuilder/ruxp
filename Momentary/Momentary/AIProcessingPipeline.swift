@@ -2,14 +2,16 @@ import Foundation
 import Network
 import os
 
-enum AIProcessingState: Equatable {
+// MARK: - Processing State
+
+enum WorkoutProcessingState: Equatable {
     case idle
     case processing(stage: String)
     case completed
     case failed(String)
     case queued
 
-    static func == (lhs: AIProcessingState, rhs: AIProcessingState) -> Bool {
+    static func == (lhs: WorkoutProcessingState, rhs: WorkoutProcessingState) -> Bool {
         switch (lhs, rhs) {
         case (.idle, .idle), (.completed, .completed), (.queued, .queued): return true
         case (.processing(let a), .processing(let b)): return a == b
@@ -19,27 +21,29 @@ enum AIProcessingState: Equatable {
     }
 }
 
+// MARK: - Workout Processor
+
 @Observable
 @MainActor
-final class AIProcessingPipeline {
-    private static let logger = Logger(subsystem: "com.whussey.momentary", category: "AIProcessingPipeline")
+final class WorkoutProcessor {
+    private static let logger = Logger(subsystem: "com.whussey.momentary", category: "WorkoutProcessor")
 
-    var state: AIProcessingState = .idle
+    var state: WorkoutProcessingState = .idle
+    var insightsEngine: InsightsEngine?
 
-    private let backend: AIBackend
+    private let aiService: AIService
     private let workoutStore: WorkoutStore
     private let networkMonitor = NWPathMonitor()
     private var isNetworkAvailable = true
     private let maxRetries = 3
-    var insightsService: InsightsService?
 
     private static var pendingQueueURL: URL {
         let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
         return docs.appendingPathComponent("pending_ai_queue.json")
     }
 
-    init(backend: AIBackend = OpenAIBackend(), workoutStore: WorkoutStore) {
-        self.backend = backend
+    init(aiService: AIService, workoutStore: WorkoutStore) {
+        self.aiService = aiService
         self.workoutStore = workoutStore
         startNetworkMonitoring()
     }
@@ -53,13 +57,13 @@ final class AIProcessingPipeline {
         }
 
         guard let duration = session.duration, duration > 0 else {
-            Self.logger.error("Workout \(session.id) has no duration — endedAt: \(String(describing: session.endedAt))")
+            Self.logger.error("Workout \(session.id) has no duration")
             state = .failed("Workout has no duration")
             return
         }
 
         if !isNetworkAvailable {
-            Self.logger.info("Network unavailable — queuing workout \(session.id) for later")
+            Self.logger.info("Network unavailable — queuing workout \(session.id)")
             queueForLater(session)
             state = .queued
             return
@@ -84,14 +88,11 @@ final class AIProcessingPipeline {
                     try await Task.sleep(for: .seconds(delay))
                 }
 
-                state = .processing(stage: "Generating structured log and content...")
-                Self.logger.info("Sending API request for workout \(session.id) (attempt \(attempt + 1)/\(self.maxRetries))")
-                let responseJSON = try await backend.complete(systemPrompt: systemPrompt, userPrompt: userPrompt)
-                Self.logger.info("Received API response for workout \(session.id) — \(responseJSON.count) characters")
+                state = .processing(stage: "Generating structured log...")
+                let responseJSON = try await aiService.complete(systemPrompt: systemPrompt, userPrompt: userPrompt)
 
                 state = .processing(stage: "Parsing response...")
                 let output = try parseResponse(responseJSON)
-                Self.logger.info("Parsed response for workout \(session.id): \(output.structuredLog.exercises.count) exercises, \(output.stories.count) stories")
 
                 var updatedSession = session
                 updatedSession.structuredLog = output.structuredLog
@@ -100,13 +101,12 @@ final class AIProcessingPipeline {
                 workoutStore.saveSession(updatedSession)
 
                 state = .completed
-                Self.logger.info("AI processing completed for workout \(session.id)")
-                await insightsService?.generateInsights()
+                Self.logger.info("Processing completed for workout \(session.id)")
+                await insightsEngine?.generateInsights()
                 return
 
-            } catch let error as AIProcessingError {
+            } catch let error as AIError {
                 lastError = error
-                Self.logger.error("AIProcessingError for workout \(session.id) (attempt \(attempt + 1)): \(error.localizedDescription)")
                 if case .rateLimited(let retryAfter) = error {
                     state = .processing(stage: "Rate limited, waiting \(Int(retryAfter))s...")
                     try? await Task.sleep(for: .seconds(retryAfter))
@@ -118,11 +118,9 @@ final class AIProcessingPipeline {
                 }
             } catch {
                 lastError = error
-                Self.logger.error("Unexpected error for workout \(session.id) (attempt \(attempt + 1)): \(error.localizedDescription)")
             }
         }
 
-        // All retries failed — queue for later
         queueForLater(session)
         state = .failed(lastError?.localizedDescription ?? "Processing failed after \(maxRetries) attempts")
     }
@@ -130,57 +128,46 @@ final class AIProcessingPipeline {
     // MARK: - Parse Response
 
     private func parseResponse(_ json: String) throws -> AIWorkoutOutput {
-        // Strip markdown code fences that GPT sometimes wraps around JSON
         var cleaned = json.trimmingCharacters(in: .whitespacesAndNewlines)
         if cleaned.hasPrefix("```") {
-            // Remove opening fence (```json or ```)
             if let firstNewline = cleaned.firstIndex(of: "\n") {
                 cleaned = String(cleaned[cleaned.index(after: firstNewline)...])
             }
-            // Remove closing fence
             if cleaned.hasSuffix("```") {
                 cleaned = String(cleaned.dropLast(3)).trimmingCharacters(in: .whitespacesAndNewlines)
             }
         }
 
-        Self.logger.debug("Raw JSON prefix (\(cleaned.count) chars): \(String(cleaned.prefix(500)))")
-
         guard let data = cleaned.data(using: .utf8) else {
-            Self.logger.error("Parse failed: response is not valid UTF-8 (\(cleaned.count) chars)")
-            throw AIProcessingError.parsingFailed("Invalid UTF-8")
+            throw AIError.parsingFailed("Invalid UTF-8")
         }
 
-        let decoder = JSONDecoder()
         do {
-            return try decoder.decode(AIWorkoutOutput.self, from: data)
+            return try JSONDecoder().decode(AIWorkoutOutput.self, from: data)
         } catch {
-            let detail = Self.describeDecodingError(error)
-            Self.logger.error("Parse failed: \(detail) — response was \(cleaned.count) chars")
-            throw AIProcessingError.parsingFailed(detail)
+            throw AIError.parsingFailed(describeDecodingError(error))
         }
     }
 
-    private static func describeDecodingError(_ error: Error) -> String {
-        switch error {
-        case let e as DecodingError:
-            switch e {
-            case .keyNotFound(let key, let ctx):
-                let path = ctx.codingPath.map(\.stringValue).joined(separator: ".")
-                return "Missing key '\(key.stringValue)' at path '\(path)'"
-            case .typeMismatch(let type, let ctx):
-                let path = ctx.codingPath.map(\.stringValue).joined(separator: ".")
-                return "Type mismatch: expected \(type) at path '\(path)' — \(ctx.debugDescription)"
-            case .valueNotFound(let type, let ctx):
-                let path = ctx.codingPath.map(\.stringValue).joined(separator: ".")
-                return "Null value for \(type) at path '\(path)'"
-            case .dataCorrupted(let ctx):
-                let path = ctx.codingPath.map(\.stringValue).joined(separator: ".")
-                return "Data corrupted at path '\(path)' — \(ctx.debugDescription)"
-            @unknown default:
-                return e.localizedDescription
-            }
-        default:
+    private func describeDecodingError(_ error: Error) -> String {
+        guard let decodingError = error as? DecodingError else {
             return error.localizedDescription
+        }
+        switch decodingError {
+        case .keyNotFound(let key, let ctx):
+            let path = ctx.codingPath.map(\.stringValue).joined(separator: ".")
+            return "Missing key '\(key.stringValue)' at '\(path)'"
+        case .typeMismatch(let type, let ctx):
+            let path = ctx.codingPath.map(\.stringValue).joined(separator: ".")
+            return "Type mismatch: expected \(type) at '\(path)'"
+        case .valueNotFound(let type, let ctx):
+            let path = ctx.codingPath.map(\.stringValue).joined(separator: ".")
+            return "Null value for \(type) at '\(path)'"
+        case .dataCorrupted(let ctx):
+            let path = ctx.codingPath.map(\.stringValue).joined(separator: ".")
+            return "Data corrupted at '\(path)'"
+        @unknown default:
+            return decodingError.localizedDescription
         }
     }
 
@@ -200,7 +187,6 @@ final class AIProcessingPipeline {
         queue.removeAll { $0.workoutID == session.id }
         queue.append(request)
         savePendingQueue(queue)
-        Self.logger.info("Queued workout \(session.id) for later processing")
     }
 
     func processPendingQueue() async {
@@ -256,7 +242,6 @@ final class AIProcessingPipeline {
                 guard let self else { return }
                 let wasUnavailable = !self.isNetworkAvailable
                 self.isNetworkAvailable = path.status == .satisfied
-
                 if wasUnavailable && self.isNetworkAvailable {
                     await self.processPendingQueue()
                 }

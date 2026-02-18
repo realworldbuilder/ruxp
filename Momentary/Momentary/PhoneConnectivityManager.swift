@@ -3,8 +3,8 @@ import os
 import WatchConnectivity
 
 @MainActor
-final class PhoneConnectivityManager: NSObject, ObservableObject {
-    private static let logger = Logger(subsystem: "com.whussey.momentary", category: "PhoneConnectivityManager")
+final class ConnectivityService: NSObject, ObservableObject {
+    private static let logger = Logger(subsystem: "com.whussey.momentary", category: "ConnectivityService")
 
     private let session: WCSession
 
@@ -30,9 +30,7 @@ final class PhoneConnectivityManager: NSObject, ObservableObject {
         let useReply = message.command == .start || message.command == .stop
         if session.isReachable {
             if useReply {
-                session.sendMessage(payload, replyHandler: { reply in
-                    Self.logger.debug("Received ack for \(message.command.rawValue)")
-                }, errorHandler: { [weak self] _ in
+                session.sendMessage(payload, replyHandler: { _ in }, errorHandler: { [weak self] _ in
                     self?.session.transferUserInfo(payload)
                 })
             } else {
@@ -60,31 +58,18 @@ final class PhoneConnectivityManager: NSObject, ObservableObject {
     }
 
     func sendTranscriptionToWatch(_ transcript: String, momentID: UUID, workoutID: UUID) {
-        let message = WorkoutMessage(
-            command: .momentTranscribed,
-            workoutID: workoutID,
-            momentID: momentID,
-            transcript: transcript
-        )
+        let message = WorkoutMessage(command: .momentTranscribed, workoutID: workoutID, momentID: momentID, transcript: transcript)
         sendWorkoutMessage(message)
     }
 
     func sendErrorToWatch(_ error: String, workoutID: UUID) {
-        let message = WorkoutMessage(
-            command: .momentTranscribed,
-            workoutID: workoutID,
-            error: error
-        )
+        let message = WorkoutMessage(command: .momentTranscribed, workoutID: workoutID, error: error)
         sendWorkoutMessage(message)
     }
 }
 
-extension PhoneConnectivityManager: WCSessionDelegate {
-    nonisolated func session(
-        _ session: WCSession,
-        activationDidCompleteWith activationState: WCSessionActivationState,
-        error: Error?
-    ) {
+extension ConnectivityService: WCSessionDelegate {
+    nonisolated func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
         guard activationState == .activated else { return }
         let ctx = session.receivedApplicationContext
         guard !ctx.isEmpty else { return }
@@ -94,9 +79,7 @@ extension PhoneConnectivityManager: WCSessionDelegate {
         }
     }
 
-    nonisolated func sessionDidBecomeInactive(_ session: WCSession) {
-        // Required for iOS
-    }
+    nonisolated func sessionDidBecomeInactive(_ session: WCSession) {}
 
     nonisolated func sessionDidDeactivate(_ session: WCSession) {
         session.activate()
@@ -105,7 +88,6 @@ extension PhoneConnectivityManager: WCSessionDelegate {
     nonisolated func session(_ session: WCSession, didReceive file: WCSessionFile) {
         let tempDir = FileManager.default.temporaryDirectory
         let destURL = tempDir.appendingPathComponent(UUID().uuidString + ".wav")
-
         let metadata = file.metadata
         let momentID = (metadata?[ConnectivityConstants.metadataMomentIDKey] as? String).flatMap(UUID.init)
         let workoutID = (metadata?[ConnectivityConstants.metadataWorkoutIDKey] as? String).flatMap(UUID.init)

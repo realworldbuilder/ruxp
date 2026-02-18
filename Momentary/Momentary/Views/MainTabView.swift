@@ -15,30 +15,26 @@ struct MainTabView: View {
     var body: some View {
         TabView(selection: $selectedTab) {
             HomeView()
-                .tabItem {
-                    Label("Home", systemImage: "house.fill")
-                }
+                .tabItem { Label("Home", systemImage: "house.fill") }
                 .tag(0)
 
             if workoutManager.activeSession != nil {
                 ActiveWorkoutTab()
-                    .tabItem {
-                        Label("Workout", systemImage: "figure.strengthtraining.traditional")
-                    }
+                    .tabItem { Label("Workout", systemImage: "figure.strengthtraining.traditional") }
                     .tag(1)
             }
 
             InsightsTab()
-                .tabItem {
-                    Label("Insights", systemImage: "lightbulb.fill")
-                }
+                .tabItem { Label("Insights", systemImage: "lightbulb.fill") }
                 .tag(2)
 
             ChatView()
-                .tabItem {
-                    Label("Trainer", systemImage: "bubble.left.and.text.bubble.right.fill")
-                }
+                .tabItem { Label("Trainer", systemImage: "bubble.left.and.text.bubble.right.fill") }
                 .tag(3)
+
+            SettingsView()
+                .tabItem { Label("Settings", systemImage: "gearshape.fill") }
+                .tag(4)
         }
         .tint(Theme.accent)
         .onChange(of: workoutManager.activeSession?.id) { oldVal, newVal in

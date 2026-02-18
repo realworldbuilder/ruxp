@@ -2,7 +2,7 @@ import SwiftUI
 
 struct WorkoutDetailView: View {
     @Environment(WorkoutManager.self) private var workoutManager
-    @Environment(AIProcessingPipeline.self) private var aiPipeline
+    @Environment(WorkoutProcessor.self) private var processor
     let workoutID: UUID
 
     @State private var session: WorkoutSession?
@@ -11,12 +11,12 @@ struct WorkoutDetailView: View {
     @AppStorage("weightUnit") private var weightUnit: String = WeightUnit.lbs.rawValue
 
     private var isProcessing: Bool {
-        if case .processing = aiPipeline.state { return true }
+        if case .processing = processor.state { return true }
         return false
     }
 
     private var isFailed: Bool {
-        if case .failed = aiPipeline.state { return true }
+        if case .failed = processor.state { return true }
         return false
     }
 
@@ -27,29 +27,22 @@ struct WorkoutDetailView: View {
 
     var body: some View {
         Group {
-            if let session {
-                detailContent(session)
-            } else {
-                ProgressView()
-            }
+            if let session { detailContent(session) }
+            else { ProgressView() }
         }
         .navigationTitle("Workout")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Theme.background, for: .navigationBar)
-        .onAppear {
-            session = workoutManager.workoutStore.loadSession(id: workoutID)
-        }
-        .onChange(of: aiPipeline.state) {
-            if aiPipeline.state == .completed || isFailed {
+        .onAppear { session = workoutManager.workoutStore.loadSession(id: workoutID) }
+        .onChange(of: processor.state) {
+            if processor.state == .completed || isFailed {
                 session = workoutManager.workoutStore.loadSession(id: workoutID)
             }
         }
         .toolbar {
             if canAnalyze {
                 ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        Task { await analyzeWorkout() }
-                    } label: {
+                    Button { Task { await analyzeWorkout() } } label: {
                         Label("Analyze", systemImage: "sparkles")
                     }
                 }
@@ -57,13 +50,9 @@ struct WorkoutDetailView: View {
             if session?.structuredLog != nil {
                 ToolbarItem(placement: .primaryAction) {
                     Button {
-                        if isEditing {
-                            saveEdits()
-                        }
+                        if isEditing { saveEdits() }
                         withAnimation { isEditing.toggle() }
-                    } label: {
-                        Text(isEditing ? "Done" : "Edit")
-                    }
+                    } label: { Text(isEditing ? "Done" : "Edit") }
                 }
             }
         }
@@ -79,39 +68,25 @@ struct WorkoutDetailView: View {
                 aiStatusSection()
                 if let log = session.structuredLog {
                     exerciseCards(log.exercises)
-                    if !log.summary.isEmpty {
-                        summaryCard(log.summary)
-                    }
-                    if !log.highlights.isEmpty {
-                        highlightsCard(log.highlights)
-                    }
-                    if !log.ambiguities.isEmpty {
-                        ambiguitiesCard(log.ambiguities)
-                    }
+                    if !log.summary.isEmpty { summaryCard(log.summary) }
+                    if !log.highlights.isEmpty { highlightsCard(log.highlights) }
+                    if !log.ambiguities.isEmpty { ambiguitiesCard(log.ambiguities) }
                 }
-                if let pack = session.contentPack {
-                    contentPackCards(pack)
-                }
-                if !session.stories.isEmpty {
-                    insightsCards(session.stories)
-                }
-                if !session.moments.isEmpty {
-                    transcriptCard(session.moments)
-                }
+                if let pack = session.contentPack { contentPackCards(pack) }
+                if !session.stories.isEmpty { insightsCards(session.stories) }
+                if !session.moments.isEmpty { transcriptCard(session.moments) }
             }
-            .padding(.horizontal)
-            .padding(.bottom, 24)
+            .padding(.horizontal).padding(.bottom, 24)
         }
         .background(Theme.background)
     }
 
-    // MARK: - Hero Section
+    // MARK: - Hero
 
     private func heroSection(_ session: WorkoutSession) -> some View {
         VStack(spacing: 12) {
             Text(session.startedAt, format: .dateTime.weekday(.wide).month(.wide).day())
                 .font(.title3.bold())
-
             HStack(spacing: 20) {
                 if let duration = session.duration {
                     statPill(icon: "clock", value: formatDuration(duration), label: "Duration")
@@ -119,16 +94,13 @@ struct WorkoutDetailView: View {
                 let exercises = session.structuredLog?.exercises ?? []
                 if !exercises.isEmpty {
                     statPill(icon: "figure.strengthtraining.traditional", value: "\(exercises.count)", label: "Exercises")
-                    let sets = exercises.reduce(0) { $0 + $1.sets.count }
-                    statPill(icon: "repeat", value: "\(sets)", label: "Sets")
+                    statPill(icon: "repeat", value: "\(exercises.reduce(0) { $0 + $1.sets.count })", label: "Sets")
                 }
             }
-
             let volume = computeVolume(session)
             if volume > 0 {
                 Text("\(formatVolume(volume)) \(weightUnit) total volume")
-                    .font(.subheadline.bold())
-                    .foregroundStyle(Theme.accent)
+                    .font(.subheadline.bold()).foregroundStyle(Theme.accent)
             }
         }
         .frame(maxWidth: .infinity)
@@ -137,14 +109,9 @@ struct WorkoutDetailView: View {
 
     private func statPill(icon: String, value: String, label: String) -> some View {
         VStack(spacing: 4) {
-            Image(systemName: icon)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Text(value)
-                .font(.headline)
-            Text(label)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
+            Image(systemName: icon).font(.caption).foregroundStyle(.secondary)
+            Text(value).font(.headline)
+            Text(label).font(.caption2).foregroundStyle(.secondary)
         }
     }
 
@@ -152,52 +119,36 @@ struct WorkoutDetailView: View {
 
     @ViewBuilder
     private func aiStatusSection() -> some View {
-        if isProcessing, case .processing(let stage) = aiPipeline.state {
+        if isProcessing, case .processing(let stage) = processor.state {
             HStack(spacing: 10) {
                 ProgressView()
-                Text(stage)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                Text(stage).font(.subheadline).foregroundStyle(.secondary)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .themeCard()
+            .frame(maxWidth: .infinity, alignment: .leading).themeCard()
         }
 
-        if case .failed(let message) = aiPipeline.state {
+        if case .failed(let message) = processor.state {
             VStack(alignment: .leading, spacing: 8) {
                 Label("Analysis Failed", systemImage: "exclamationmark.triangle.fill")
-                    .font(.subheadline.bold())
-                    .foregroundStyle(.red)
-                Text(message)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Button {
-                    Task { await analyzeWorkout() }
-                } label: {
-                    Label("Retry", systemImage: "arrow.clockwise")
-                        .font(.subheadline.bold())
-                        .frame(maxWidth: .infinity)
+                    .font(.subheadline.bold()).foregroundStyle(.red)
+                Text(message).font(.caption).foregroundStyle(.secondary)
+                Button { Task { await analyzeWorkout() } } label: {
+                    Label("Retry", systemImage: "arrow.clockwise").font(.subheadline.bold()).frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.red)
+                .buttonStyle(.borderedProminent).tint(.red)
             }
             .themeCard()
         }
 
-        if aiPipeline.state == .queued {
+        if processor.state == .queued {
             HStack(spacing: 10) {
-                Image(systemName: "clock.fill")
-                    .foregroundStyle(.orange)
+                Image(systemName: "clock.fill").foregroundStyle(.orange)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Queued for Processing")
-                        .font(.subheadline.bold())
-                    Text("Will process automatically when back online.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    Text("Queued for Processing").font(.subheadline.bold())
+                    Text("Will process automatically when back online.").font(.caption).foregroundStyle(.secondary)
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .themeCard()
+            .frame(maxWidth: .infinity, alignment: .leading).themeCard()
         }
     }
 
@@ -205,56 +156,32 @@ struct WorkoutDetailView: View {
 
     @ViewBuilder
     private func exerciseCards(_ exercises: [ExerciseGroup]) -> some View {
-        if isEditing {
-            editableExerciseCards()
-        } else {
-            readOnlyExerciseCards(exercises)
-        }
+        if isEditing { editableExerciseCards() }
+        else { readOnlyExerciseCards(exercises) }
     }
 
     private func readOnlyExerciseCards(_ exercises: [ExerciseGroup]) -> some View {
         ForEach(exercises) { exercise in
             VStack(alignment: .leading, spacing: 10) {
-                Text(exercise.exerciseName)
-                    .font(.headline)
-
+                Text(exercise.exerciseName).font(.headline)
                 setsTableHeader
-
                 ForEach(exercise.sets) { set in
                     HStack {
-                        Text("\(set.setNumber)")
-                            .frame(width: 36, alignment: .leading)
-                        if let reps = set.reps {
-                            Text("\(reps)")
-                                .frame(width: 50, alignment: .center)
-                        } else {
-                            Text("—")
-                                .frame(width: 50, alignment: .center)
-                                .foregroundStyle(.tertiary)
-                        }
-                        if let weight = set.weight {
-                            Text("\(weight, specifier: "%.0f") \(set.weightUnit.rawValue)")
-                                .frame(minWidth: 60, alignment: .center)
-                        } else {
-                            Text("—")
-                                .frame(minWidth: 60, alignment: .center)
-                                .foregroundStyle(.tertiary)
-                        }
+                        Text("\(set.setNumber)").frame(width: 36, alignment: .leading)
+                        Text(set.reps.map { "\($0)" } ?? "—").frame(width: 50, alignment: .center)
+                            .foregroundStyle(set.reps == nil ? .tertiary : .primary)
+                        Text(set.weight.map { "\($0, specifier: "%.0f") \(set.weightUnit.rawValue)" } ?? "—")
+                            .frame(minWidth: 60, alignment: .center)
+                            .foregroundStyle(set.weight == nil ? .tertiary : .primary)
                         Spacer()
                         if let notes = set.notes {
-                            Text(notes)
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
+                            Text(notes).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
                         }
                     }
                     .font(.subheadline)
                 }
-
                 if let notes = exercise.notes {
-                    Text(notes)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    Text(notes).font(.caption).foregroundStyle(.secondary)
                 }
             }
             .themeCard()
@@ -263,16 +190,12 @@ struct WorkoutDetailView: View {
 
     private var setsTableHeader: some View {
         HStack {
-            Text("Set")
-                .frame(width: 36, alignment: .leading)
-            Text("Reps")
-                .frame(width: 50, alignment: .center)
-            Text("Weight")
-                .frame(minWidth: 60, alignment: .center)
+            Text("Set").frame(width: 36, alignment: .leading)
+            Text("Reps").frame(width: 50, alignment: .center)
+            Text("Weight").frame(minWidth: 60, alignment: .center)
             Spacer()
         }
-        .font(.caption.bold())
-        .foregroundStyle(.secondary)
+        .font(.caption.bold()).foregroundStyle(.secondary)
     }
 
     @ViewBuilder
@@ -280,102 +203,52 @@ struct WorkoutDetailView: View {
         let exerciseCount = session?.structuredLog?.exercises.count ?? 0
         ForEach(0..<exerciseCount, id: \.self) { exerciseIndex in
             VStack(alignment: .leading, spacing: 10) {
-                // Editable exercise name
                 HStack {
-                    TextField(
-                        "Exercise Name",
-                        text: Binding(
-                            get: { session?.structuredLog?.exercises[exerciseIndex].exerciseName ?? "" },
-                            set: { session?.structuredLog?.exercises[exerciseIndex].exerciseName = $0 }
-                        )
-                    )
-                    .font(.headline)
-                    .textFieldStyle(.roundedBorder)
+                    TextField("Exercise Name", text: Binding(
+                        get: { session?.structuredLog?.exercises[exerciseIndex].exerciseName ?? "" },
+                        set: { session?.structuredLog?.exercises[exerciseIndex].exerciseName = $0 }
+                    ))
+                    .font(.headline).textFieldStyle(.roundedBorder)
 
                     Button(role: .destructive) {
-                        withAnimation {
-                            deleteExercise(at: exerciseIndex)
-                        }
-                    } label: {
-                        Image(systemName: "trash")
-                            .font(.caption)
-                    }
+                        withAnimation { deleteExercise(at: exerciseIndex) }
+                    } label: { Image(systemName: "trash").font(.caption) }
                     .buttonStyle(.borderless)
                 }
 
                 setsTableHeader
 
-                // Editable sets
                 let setCount = session?.structuredLog?.exercises[exerciseIndex].sets.count ?? 0
                 ForEach(0..<setCount, id: \.self) { setIndex in
                     HStack(spacing: 8) {
-                        Text("\(setIndex + 1)")
-                            .frame(width: 36, alignment: .leading)
-                            .font(.subheadline)
+                        Text("\(setIndex + 1)").frame(width: 36, alignment: .leading).font(.subheadline)
+                        TextField("—", text: Binding(
+                            get: { session?.structuredLog?.exercises[exerciseIndex].sets[setIndex].reps.map { "\($0)" } ?? "" },
+                            set: { session?.structuredLog?.exercises[exerciseIndex].sets[setIndex].reps = Int($0) }
+                        ))
+                        .frame(width: 50).multilineTextAlignment(.center).textFieldStyle(.roundedBorder)
+                        .keyboardType(.numberPad).font(.subheadline)
 
-                        TextField(
-                            "—",
-                            text: Binding(
-                                get: {
-                                    if let reps = session?.structuredLog?.exercises[exerciseIndex].sets[setIndex].reps {
-                                        return "\(reps)"
-                                    }
-                                    return ""
-                                },
-                                set: {
-                                    session?.structuredLog?.exercises[exerciseIndex].sets[setIndex].reps = Int($0)
-                                }
-                            )
-                        )
-                        .frame(width: 50)
-                        .multilineTextAlignment(.center)
-                        .textFieldStyle(.roundedBorder)
-                        .keyboardType(.numberPad)
-                        .font(.subheadline)
-
-                        TextField(
-                            "—",
-                            text: Binding(
-                                get: {
-                                    if let weight = session?.structuredLog?.exercises[exerciseIndex].sets[setIndex].weight {
-                                        return String(format: "%.0f", weight)
-                                    }
-                                    return ""
-                                },
-                                set: {
-                                    session?.structuredLog?.exercises[exerciseIndex].sets[setIndex].weight = Double($0)
-                                }
-                            )
-                        )
-                        .frame(width: 70)
-                        .multilineTextAlignment(.center)
-                        .textFieldStyle(.roundedBorder)
-                        .keyboardType(.decimalPad)
-                        .font(.subheadline)
+                        TextField("—", text: Binding(
+                            get: { session?.structuredLog?.exercises[exerciseIndex].sets[setIndex].weight.map { String(format: "%.0f", $0) } ?? "" },
+                            set: { session?.structuredLog?.exercises[exerciseIndex].sets[setIndex].weight = Double($0) }
+                        ))
+                        .frame(width: 70).multilineTextAlignment(.center).textFieldStyle(.roundedBorder)
+                        .keyboardType(.decimalPad).font(.subheadline)
 
                         Spacer()
 
                         Button(role: .destructive) {
-                            withAnimation {
-                                deleteSet(exerciseIndex: exerciseIndex, setIndex: setIndex)
-                            }
+                            withAnimation { deleteSet(exerciseIndex: exerciseIndex, setIndex: setIndex) }
                         } label: {
-                            Image(systemName: "minus.circle.fill")
-                                .foregroundStyle(.red)
-                                .font(.caption)
+                            Image(systemName: "minus.circle.fill").foregroundStyle(.red).font(.caption)
                         }
                         .buttonStyle(.borderless)
                     }
                 }
 
-                // Add set button
-                Button {
-                    withAnimation {
-                        addSet(exerciseIndex: exerciseIndex)
-                    }
-                } label: {
-                    Label("Add Set", systemImage: "plus.circle")
-                        .font(.caption)
+                Button { withAnimation { addSet(exerciseIndex: exerciseIndex) } } label: {
+                    Label("Add Set", systemImage: "plus.circle").font(.caption)
                 }
                 .buttonStyle(.borderless)
             }
@@ -383,62 +256,46 @@ struct WorkoutDetailView: View {
         }
     }
 
-    // MARK: - Summary Card
+    // MARK: - Summary / Highlights / Ambiguities
 
     private func summaryCard(_ summary: String) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label("Summary", systemImage: "text.quote")
-                .font(.subheadline.bold())
-                .foregroundStyle(.secondary)
-            Text(summary)
-                .font(.subheadline)
+            Label("Summary", systemImage: "text.quote").font(.subheadline.bold()).foregroundStyle(.secondary)
+            Text(summary).font(.subheadline)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .themeCard()
+        .frame(maxWidth: .infinity, alignment: .leading).themeCard()
     }
-
-    // MARK: - Highlights
 
     private func highlightsCard(_ highlights: [String]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label("Highlights", systemImage: "star.fill")
-                .font(.subheadline.bold())
-                .foregroundStyle(.secondary)
+            Label("Highlights", systemImage: "star.fill").font(.subheadline.bold()).foregroundStyle(.secondary)
             FlowLayout(spacing: 6) {
                 ForEach(highlights, id: \.self) { highlight in
-                    Text(highlight)
-                        .font(.caption)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .background(Theme.accentSubtle, in: Capsule())
+                    Text(highlight).font(.caption)
+                        .lineLimit(nil)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, 10).padding(.vertical, 5)
+                        .background(Theme.accentSubtle, in: RoundedRectangle(cornerRadius: Theme.radiusSmall))
                         .foregroundStyle(Theme.accent)
                 }
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .themeCard()
+        .frame(maxWidth: .infinity, alignment: .leading).themeCard()
     }
-
-    // MARK: - Ambiguities
 
     private func ambiguitiesCard(_ ambiguities: [Ambiguity]) -> some View {
         DisclosureGroup {
             ForEach(ambiguities) { ambiguity in
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(ambiguity.field)
-                        .font(.caption.bold())
-                    Text("Heard: \"\(ambiguity.rawTranscript)\"")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text("Best guess: \(ambiguity.bestGuess)")
-                        .font(.caption)
+                    Text(ambiguity.field).font(.caption.bold())
+                    Text("Heard: \"\(ambiguity.rawTranscript)\"").font(.caption).foregroundStyle(.secondary)
+                    Text("Best guess: \(ambiguity.bestGuess)").font(.caption)
                 }
                 .padding(.vertical, 2)
             }
         } label: {
             Label("Ambiguities (\(ambiguities.count))", systemImage: "questionmark.circle")
-                .font(.subheadline.bold())
-                .foregroundStyle(.orange)
+                .font(.subheadline.bold()).foregroundStyle(.orange)
         }
         .themeCard()
     }
@@ -447,37 +304,28 @@ struct WorkoutDetailView: View {
 
     private func contentPackCards(_ pack: ContentPack) -> some View {
         VStack(spacing: 12) {
-            if !pack.igCaptions.isEmpty {
-                contentDisclosure("Instagram Captions", icon: "camera", items: pack.igCaptions)
-            }
-            if !pack.tweetThread.isEmpty {
-                contentDisclosure("Tweet Thread", icon: "bubble.left", items: pack.tweetThread)
-            }
-            if !pack.reelScript.isEmpty {
-                contentDisclosure("Reel Script", icon: "film", items: [pack.reelScript])
-            }
-            if !pack.storyCards.isEmpty {
-                storyCardsDisclosure(pack.storyCards)
-            }
-            if !pack.hooks.isEmpty {
-                contentDisclosure("Hooks", icon: "link", items: pack.hooks)
-            }
-            if !pack.takeaways.isEmpty {
-                contentDisclosure("Takeaways", icon: "lightbulb", items: pack.takeaways)
-            }
+            if !pack.igCaptions.isEmpty { contentDisclosure("Instagram Captions", icon: "camera", items: pack.igCaptions) }
+            if !pack.tweetThread.isEmpty { contentDisclosure("Tweet Thread", icon: "bubble.left", items: pack.tweetThread) }
+            if !pack.reelScript.isEmpty { contentDisclosure("Reel Script", icon: "film", items: [pack.reelScript]) }
+            if !pack.storyCards.isEmpty { storyCardsDisclosure(pack.storyCards) }
+            if !pack.hooks.isEmpty { contentDisclosure("Hooks", icon: "link", items: pack.hooks) }
+            if !pack.takeaways.isEmpty { contentDisclosure("Takeaways", icon: "lightbulb", items: pack.takeaways) }
         }
     }
 
     private func contentDisclosure(_ title: String, icon: String, items: [String]) -> some View {
         DisclosureGroup {
             ForEach(items, id: \.self) { item in
-                copyableText(item)
+                Text(item).font(.caption).textSelection(.enabled)
+                    .contextMenu {
+                        Button { UIPasteboard.general.string = item; copyFeedbackTrigger.toggle() } label: {
+                            Label("Copy", systemImage: "doc.on.doc")
+                        }
+                        ShareLink(item: item)
+                    }
                     .padding(.vertical, 2)
             }
-        } label: {
-            Label(title, systemImage: icon)
-                .font(.subheadline.bold())
-        }
+        } label: { Label(title, systemImage: icon).font(.subheadline.bold()) }
         .themeCard()
     }
 
@@ -485,68 +333,49 @@ struct WorkoutDetailView: View {
         DisclosureGroup {
             ForEach(cards) { card in
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(card.title)
-                        .font(.subheadline.bold())
-                    Text(card.body)
-                        .font(.caption)
+                    Text(card.title).font(.subheadline.bold())
+                    Text(card.body).font(.caption)
                 }
                 .padding(.vertical, 4)
             }
-        } label: {
-            Label("Story Cards", systemImage: "rectangle.stack")
-                .font(.subheadline.bold())
-        }
+        } label: { Label("Story Cards", systemImage: "rectangle.stack").font(.subheadline.bold()) }
         .themeCard()
     }
 
-    // MARK: - Insights
+    // MARK: - Insights / Transcript
 
     private func insightsCards(_ stories: [InsightStory]) -> some View {
         ForEach(stories) { story in
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
-                    Text(story.title)
-                        .font(.subheadline.bold())
+                    Text(story.title).font(.subheadline.bold())
                     Spacer()
-                    Text(story.type.rawValue)
-                        .font(.caption2)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 2)
+                    Text(story.type.rawValue).font(.caption2)
+                        .padding(.horizontal, 8).padding(.vertical, 2)
                         .background(Theme.accentSubtle, in: Capsule())
                 }
-                Text(story.body)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                Text(story.body).font(.caption).foregroundStyle(.secondary)
             }
             .themeCard()
         }
     }
 
-    // MARK: - Transcript
-
     private func transcriptCard(_ moments: [Moment]) -> some View {
         DisclosureGroup {
             ForEach(moments) { moment in
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(moment.transcript)
-                        .font(.body)
+                    Text(moment.transcript).font(.body)
                     HStack {
-                        Text(moment.timestamp, style: .time)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                        Text(moment.timestamp, style: .time).font(.caption).foregroundStyle(.secondary)
                         if moment.source == .watch {
-                            Image(systemName: "applewatch")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
+                            Image(systemName: "applewatch").font(.caption2).foregroundStyle(.secondary)
                         }
                     }
                 }
-                .padding(.vertical, 2)
-                .textSelection(.enabled)
+                .padding(.vertical, 2).textSelection(.enabled)
             }
         } label: {
-            Label("Transcript (\(moments.count) moments)", systemImage: "waveform")
-                .font(.subheadline.bold())
+            Label("Transcript (\(moments.count) moments)", systemImage: "waveform").font(.subheadline.bold())
         }
         .themeCard()
     }
@@ -555,12 +384,11 @@ struct WorkoutDetailView: View {
 
     private func analyzeWorkout() async {
         guard let session = workoutManager.workoutStore.loadSession(id: workoutID) else { return }
-        await aiPipeline.processWorkout(session)
+        await processor.processWorkout(session)
     }
 
     private func saveEdits() {
         guard var updated = session else { return }
-        // Renumber all sets sequentially after edits
         if var log = updated.structuredLog {
             for i in log.exercises.indices {
                 for j in log.exercises[i].sets.indices {
@@ -575,15 +403,12 @@ struct WorkoutDetailView: View {
 
     private func addSet(exerciseIndex: Int) {
         guard var log = session?.structuredLog else { return }
-        let nextNumber = log.exercises[exerciseIndex].sets.count + 1
-        log.exercises[exerciseIndex].sets.append(ExerciseSet(setNumber: nextNumber))
+        log.exercises[exerciseIndex].sets.append(ExerciseSet(setNumber: log.exercises[exerciseIndex].sets.count + 1))
         session?.structuredLog = log
     }
 
     private func deleteExercise(at index: Int) {
-        guard var log = session?.structuredLog else { return }
-        log.exercises.remove(at: index)
-        session?.structuredLog = log
+        session?.structuredLog?.exercises.remove(at: index)
     }
 
     private func deleteSet(exerciseIndex: Int, setIndex: Int) {
@@ -595,55 +420,23 @@ struct WorkoutDetailView: View {
         session?.structuredLog = log
     }
 
-    private func renumberSets(exerciseIndex: Int) {
-        guard var log = session?.structuredLog else { return }
-        for i in log.exercises[exerciseIndex].sets.indices {
-            log.exercises[exerciseIndex].sets[i].setNumber = i + 1
-        }
-        session?.structuredLog = log
-    }
-
     // MARK: - Helpers
-
-    private func copyableText(_ text: String) -> some View {
-        Text(text)
-            .font(.caption)
-            .textSelection(.enabled)
-            .contextMenu {
-                Button {
-                    UIPasteboard.general.string = text
-                    copyFeedbackTrigger.toggle()
-                } label: {
-                    Label("Copy", systemImage: "doc.on.doc")
-                }
-                ShareLink(item: text)
-            }
-    }
 
     private func formatDuration(_ duration: TimeInterval) -> String {
         let total = Int(duration)
         let hrs = total / 3600
         let mins = (total % 3600) / 60
-        if hrs > 0 {
-            return "\(hrs)h \(mins)m"
-        }
-        return "\(mins)m"
+        return hrs > 0 ? "\(hrs)h \(mins)m" : "\(mins)m"
     }
 
     private func computeVolume(_ session: WorkoutSession) -> Double {
-        guard let exercises = session.structuredLog?.exercises else { return 0 }
-        return exercises.reduce(0.0) { total, group in
-            total + group.sets.reduce(0.0) { setTotal, set in
-                setTotal + Double(set.reps ?? 0) * (set.weight ?? 0)
-            }
+        (session.structuredLog?.exercises ?? []).reduce(0.0) { total, group in
+            total + group.sets.reduce(0.0) { $0 + Double($1.reps ?? 0) * ($1.weight ?? 0) }
         }
     }
 
     private func formatVolume(_ volume: Double) -> String {
-        if volume >= 1000 {
-            return String(format: "%.1fk", volume / 1000)
-        }
-        return String(format: "%.0f", volume)
+        volume >= 1000 ? String(format: "%.1fk", volume / 1000) : String(format: "%.0f", volume)
     }
 }
 
@@ -653,8 +446,7 @@ struct FlowLayout: Layout {
     var spacing: CGFloat = 6
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let result = layout(proposal: proposal, subviews: subviews)
-        return result.size
+        layout(proposal: proposal, subviews: subviews).size
     }
 
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
@@ -674,15 +466,12 @@ struct FlowLayout: Layout {
         for subview in subviews {
             let size = subview.sizeThatFits(.unspecified)
             if x + size.width > maxWidth, x > 0 {
-                x = 0
-                y += rowHeight + spacing
-                rowHeight = 0
+                x = 0; y += rowHeight + spacing; rowHeight = 0
             }
             positions.append(CGPoint(x: x, y: y))
             rowHeight = max(rowHeight, size.height)
             x += size.width + spacing
         }
-
         return (CGSize(width: maxWidth, height: y + rowHeight), positions)
     }
 }

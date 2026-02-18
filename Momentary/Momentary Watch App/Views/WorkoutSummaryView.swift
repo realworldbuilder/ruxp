@@ -9,74 +9,75 @@ struct WorkoutSummaryView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 10) {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 36))
-                    .foregroundStyle(.green)
+            VStack(spacing: 14) {
+                // Success icon
+                ZStack {
+                    Circle()
+                        .fill(WatchTheme.accent.opacity(0.15))
+                        .frame(width: 56, height: 56)
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 32))
+                        .foregroundStyle(WatchTheme.accent)
+                }
 
                 Text("Workout Complete")
-                    .font(.headline)
+                    .font(.system(.headline, design: .rounded))
+                    .foregroundStyle(WatchTheme.textPrimary)
 
+                // Stats grid
                 HStack(spacing: 20) {
-                    VStack(spacing: 2) {
-                        Text(formattedDuration)
-                            .font(.system(.body, design: .monospaced))
-                        Text("Duration")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
-
-                    VStack(spacing: 2) {
-                        Text("\(momentCount)")
-                            .font(.body)
-                        Text("Moments")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
+                    statCell(value: formattedDuration, label: "Duration", icon: "clock.fill", color: WatchTheme.accent)
+                    statCell(value: "\(momentCount)", label: "Moments", icon: "waveform", color: WatchTheme.accent)
                 }
 
                 if averageHeartRate > 0 || totalCalories > 0 {
                     HStack(spacing: 20) {
                         if averageHeartRate > 0 {
-                            VStack(spacing: 2) {
-                                HStack(spacing: 2) {
-                                    Image(systemName: "heart.fill")
-                                        .font(.caption2)
-                                        .foregroundStyle(.red)
-                                    Text("\(Int(averageHeartRate))")
-                                        .font(.body)
-                                }
-                                Text("Avg BPM")
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
-                            }
+                            statCell(value: "\(Int(averageHeartRate))", label: "Avg BPM", icon: "heart.fill", color: .red)
                         }
-
                         if totalCalories > 0 {
-                            VStack(spacing: 2) {
-                                HStack(spacing: 2) {
-                                    Image(systemName: "flame.fill")
-                                        .font(.caption2)
-                                        .foregroundStyle(.orange)
-                                    Text("\(Int(totalCalories))")
-                                        .font(.body)
-                                }
-                                Text("Calories")
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
-                            }
+                            statCell(value: "\(Int(totalCalories))", label: "Calories", icon: "flame.fill", color: .orange)
                         }
                     }
                 }
 
-                Button("Done") {
+                Button {
                     onDismiss()
+                } label: {
+                    Text("Done")
+                        .font(.system(.body, design: .rounded, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(
+                            LinearGradient(
+                                colors: WatchTheme.accentGradient,
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            ),
+                            in: RoundedRectangle(cornerRadius: 12)
+                        )
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.green)
+                .buttonStyle(.plain)
                 .padding(.top, 4)
             }
             .padding(.horizontal)
+        }
+    }
+
+    private func statCell(value: String, label: String, icon: String, color: Color) -> some View {
+        VStack(spacing: 4) {
+            HStack(spacing: 3) {
+                Image(systemName: icon)
+                    .font(.caption2)
+                    .foregroundStyle(color)
+                Text(value)
+                    .font(.system(.body, design: .monospaced, weight: .semibold))
+                    .foregroundStyle(WatchTheme.textPrimary)
+            }
+            Text(label)
+                .font(.caption2)
+                .foregroundStyle(WatchTheme.textSecondary)
         }
     }
 

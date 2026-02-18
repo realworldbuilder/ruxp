@@ -4,7 +4,7 @@ import os
 
 @MainActor
 final class PhoneAudioRecorderService: NSObject, ObservableObject {
-    private static let logger = Logger(subsystem: "com.wristassist.app", category: "PhoneAudioRecorderService")
+    private static let logger = Logger(subsystem: "com.whussey.momentary", category: "PhoneAudioRecorderService")
 
     @Published var isRecording = false
     @Published var recordingDuration: TimeInterval = 0
@@ -14,8 +14,7 @@ final class PhoneAudioRecorderService: NSObject, ObservableObject {
     private var recordingStartTime: Date?
 
     private var recordingURL: URL {
-        let dir = FileManager.default.temporaryDirectory
-        return dir.appendingPathComponent("phone_voicenote.wav")
+        FileManager.default.temporaryDirectory.appendingPathComponent("phone_voicenote.wav")
     }
 
     func startRecording() {
@@ -37,7 +36,6 @@ final class PhoneAudioRecorderService: NSObject, ObservableObject {
             AVLinearPCMIsFloatKey: false
         ]
 
-        // Remove previous recording if it exists
         try? FileManager.default.removeItem(at: recordingURL)
 
         do {
@@ -59,9 +57,7 @@ final class PhoneAudioRecorderService: NSObject, ObservableObject {
         stopTimer()
 
         let url = recordingURL
-        guard FileManager.default.fileExists(atPath: url.path) else {
-            return nil
-        }
+        guard FileManager.default.fileExists(atPath: url.path) else { return nil }
         return url
     }
 

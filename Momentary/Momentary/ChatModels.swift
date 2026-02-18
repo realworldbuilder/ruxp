@@ -54,13 +54,10 @@ enum ChatBlockType: String, Codable {
     case workoutList
 }
 
-// MARK: - Chat Block Payload (all-optional flat struct)
+// MARK: - Chat Block Payload
 
 struct ChatBlockPayload: Codable {
-    // text
     var text: String?
-
-    // workoutSummary
     var workoutId: String?
     var date: String?
     var duration: String?
@@ -68,27 +65,15 @@ struct ChatBlockPayload: Codable {
     var totalSets: Int?
     var totalVolume: Double?
     var exerciseNames: [String]?
-
-    // exerciseTable
     var exerciseName: String?
     var sets: [ChatSetRow]?
-
-    // metricGrid
     var metrics: [ChatMetric]?
-
-    // chart
     var chartType: String?
     var dataPoints: [ChatChartPoint]?
-
-    // insight
     var insightType: String?
     var title: String?
     var body: String?
-
-    // actionButtons
     var actions: [ChatAction]?
-
-    // workoutList
     var workouts: [ChatWorkoutListItem]?
 }
 
@@ -159,7 +144,7 @@ struct ChatWorkoutListItem: Codable, Identifiable {
     var volume: Double?
 }
 
-// MARK: - API Response Wrapper
+// MARK: - API Response
 
 struct ChatAPIResponse: Codable {
     var blocks: [ChatAPIBlock]?

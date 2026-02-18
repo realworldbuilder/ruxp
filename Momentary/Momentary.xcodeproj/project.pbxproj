@@ -7,12 +7,12 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		A1000001 /* MomentaryApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000001 /* MomentaryApp.swift */; };
-		E6C79CAC9B32429DA84CFBF4 /* TrainerSoulEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD351910FDA64E408F948152 /* TrainerSoulEditor.swift */; };
 		40533A7B62684C9486E76BA4 /* TrainerSoul.swift in Sources */ = {isa = PBXBuildFile; fileRef = E978F0CC76B8482FBC4A79C7 /* TrainerSoul.swift */; };
+		A1000001 /* MomentaryApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000001 /* MomentaryApp.swift */; };
 		A1000003 /* TranscriptionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000003 /* TranscriptionService.swift */; };
 		A1000004 /* PhoneConnectivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000004 /* PhoneConnectivityManager.swift */; };
 		A1000005 /* ConnectivityConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000010 /* ConnectivityConstants.swift */; };
+		A1000007 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B1000007 /* Assets.xcassets */; };
 		A1000008 /* PhoneAudioRecorderService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000008 /* PhoneAudioRecorderService.swift */; };
 		A1000009 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000011 /* Models.swift */; };
 		A1000010 /* WorkoutStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000012 /* WorkoutStore.swift */; };
@@ -44,6 +44,7 @@
 		A2000003 /* AudioRecorderService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000003 /* AudioRecorderService.swift */; };
 		A2000004 /* WatchConnectivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000004 /* WatchConnectivityManager.swift */; };
 		A2000005 /* ConnectivityConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000010 /* ConnectivityConstants.swift */; };
+		A2000006 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B2000005 /* Assets.xcassets */; };
 		A2000007 /* ExtendedSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000006 /* ExtendedSessionManager.swift */; };
 		A2000008 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000011 /* Models.swift */; };
 		A2000009 /* WorkoutStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000012 /* WorkoutStore.swift */; };
@@ -54,9 +55,9 @@
 		A2000014 /* ActiveWorkoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000010 /* ActiveWorkoutView.swift */; };
 		A2000015 /* WorkoutSummaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000011 /* WorkoutSummaryView.swift */; };
 		A2000017 /* NowPlayingPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000013 /* NowPlayingPage.swift */; };
+		E6C79CAC9B32429DA84CFBF4 /* TrainerSoulEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD351910FDA64E408F948152 /* TrainerSoulEditor.swift */; };
 		EP000002 /* Momentary Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = C2000001 /* Momentary Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		A1000007 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B1000007 /* Assets.xcassets */; };
-		A2000006 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B2000005 /* Assets.xcassets */; };
+		F89F2CA648E97262E033FB9E /* WatchTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = F58C19D99EDC0278BCB0538A /* WatchTheme.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -84,13 +85,13 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		B1000001 /* MomentaryApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MomentaryApp.swift; sourceTree = "<group>"; };
 		AD351910FDA64E408F948152 /* TrainerSoulEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainerSoulEditor.swift; sourceTree = "<group>"; };
-		E978F0CC76B8482FBC4A79C7 /* TrainerSoul.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainerSoul.swift; sourceTree = "<group>"; };
+		B1000001 /* MomentaryApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MomentaryApp.swift; sourceTree = "<group>"; };
 		B1000003 /* TranscriptionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionService.swift; sourceTree = "<group>"; };
 		B1000004 /* PhoneConnectivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneConnectivityManager.swift; sourceTree = "<group>"; };
-		B1000010 /* ConnectivityConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectivityConstants.swift; sourceTree = "<group>"; };
+		B1000007 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B1000008 /* PhoneAudioRecorderService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneAudioRecorderService.swift; sourceTree = "<group>"; };
+		B1000010 /* ConnectivityConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectivityConstants.swift; sourceTree = "<group>"; };
 		B1000011 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		B1000012 /* WorkoutStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutStore.swift; sourceTree = "<group>"; };
 		B1000013 /* HealthKitService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitService.swift; sourceTree = "<group>"; };
@@ -104,16 +105,6 @@
 		B1000021 /* WorkoutDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutDetailView.swift; sourceTree = "<group>"; };
 		B1000022 /* InsightsTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsTab.swift; sourceTree = "<group>"; };
 		B1000023 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
-		B2000001 /* MomentaryWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MomentaryWatchApp.swift; sourceTree = "<group>"; };
-		B2000003 /* AudioRecorderService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRecorderService.swift; sourceTree = "<group>"; };
-		B2000004 /* WatchConnectivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchConnectivityManager.swift; sourceTree = "<group>"; };
-		B2000006 /* ExtendedSessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtendedSessionManager.swift; sourceTree = "<group>"; };
-		B2000007 /* WatchWorkoutManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchWorkoutManager.swift; sourceTree = "<group>"; };
-		B2000008 /* WatchRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchRootView.swift; sourceTree = "<group>"; };
-		B2000009 /* WatchHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchHomeView.swift; sourceTree = "<group>"; };
-		B2000010 /* ActiveWorkoutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveWorkoutView.swift; sourceTree = "<group>"; };
-		B2000011 /* WorkoutSummaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutSummaryView.swift; sourceTree = "<group>"; };
-		B2000013 /* NowPlayingPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingPage.swift; sourceTree = "<group>"; };
 		B1000024 /* APIKeyProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIKeyProvider.swift; sourceTree = "<group>"; };
 		B1000025 /* StoryReadTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoryReadTracker.swift; sourceTree = "<group>"; };
 		B1000026 /* InsightsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsService.swift; sourceTree = "<group>"; };
@@ -127,10 +118,21 @@
 		B1000034 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
 		B1000035 /* ChatMessageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatMessageView.swift; sourceTree = "<group>"; };
 		B1000036 /* ChatBlockView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatBlockView.swift; sourceTree = "<group>"; };
-		B1000007 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		B2000001 /* MomentaryWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MomentaryWatchApp.swift; sourceTree = "<group>"; };
+		B2000003 /* AudioRecorderService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRecorderService.swift; sourceTree = "<group>"; };
+		B2000004 /* WatchConnectivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchConnectivityManager.swift; sourceTree = "<group>"; };
 		B2000005 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		B2000006 /* ExtendedSessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtendedSessionManager.swift; sourceTree = "<group>"; };
+		B2000007 /* WatchWorkoutManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchWorkoutManager.swift; sourceTree = "<group>"; };
+		B2000008 /* WatchRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchRootView.swift; sourceTree = "<group>"; };
+		B2000009 /* WatchHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchHomeView.swift; sourceTree = "<group>"; };
+		B2000010 /* ActiveWorkoutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveWorkoutView.swift; sourceTree = "<group>"; };
+		B2000011 /* WorkoutSummaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutSummaryView.swift; sourceTree = "<group>"; };
+		B2000013 /* NowPlayingPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingPage.swift; sourceTree = "<group>"; };
 		C1000001 /* Momentary.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Momentary.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C2000001 /* Momentary Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Momentary Watch App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		E978F0CC76B8482FBC4A79C7 /* TrainerSoul.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainerSoul.swift; sourceTree = "<group>"; };
+		F58C19D99EDC0278BCB0538A /* WatchTheme.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchTheme.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -191,8 +193,8 @@
 				B1000033 /* ChatService.swift */,
 				F2000002 /* Views */,
 				B1000007 /* Assets.xcassets */,
-			
-				E978F0CC76B8482FBC4A79C7 /* TrainerSoul.swift */,);
+				E978F0CC76B8482FBC4A79C7 /* TrainerSoul.swift */,
+			);
 			path = Momentary;
 			sourceTree = "<group>";
 		};
@@ -212,8 +214,8 @@
 				B1000034 /* ChatView.swift */,
 				B1000035 /* ChatMessageView.swift */,
 				B1000036 /* ChatBlockView.swift */,
-			
-				AD351910FDA64E408F948152 /* TrainerSoulEditor.swift */,);
+				AD351910FDA64E408F948152 /* TrainerSoulEditor.swift */,
+			);
 			path = Views;
 			sourceTree = "<group>";
 		};
@@ -239,6 +241,7 @@
 				B2000010 /* ActiveWorkoutView.swift */,
 				B2000011 /* WorkoutSummaryView.swift */,
 				B2000013 /* NowPlayingPage.swift */,
+				F58C19D99EDC0278BCB0538A /* WatchTheme.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -383,9 +386,9 @@
 				A1000034 /* ChatView.swift in Sources */,
 				A1000035 /* ChatMessageView.swift in Sources */,
 				A1000036 /* ChatBlockView.swift in Sources */,
-			
 				40533A7B62684C9486E76BA4 /* TrainerSoul.swift in Sources */,
-				E6C79CAC9B32429DA84CFBF4 /* TrainerSoulEditor.swift in Sources */,);
+				E6C79CAC9B32429DA84CFBF4 /* TrainerSoulEditor.swift in Sources */,
+			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		S2000001 /* Sources */ = {
@@ -406,6 +409,7 @@
 				A2000014 /* ActiveWorkoutView.swift in Sources */,
 				A2000015 /* WorkoutSummaryView.swift in Sources */,
 				A2000017 /* NowPlayingPage.swift in Sources */,
+				F89F2CA648E97262E033FB9E /* WatchTheme.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -550,12 +554,11 @@
 				CURRENT_PROJECT_VERSION = 19;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "";
-				INFOPLIST_KEY_CFBundleDisplayName = Momentary;
+				INFOPLIST_KEY_CFBundleDisplayName = Mind2Muscle;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Momentary reads your workout data to provide training insights.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Momentary saves your strength training workouts to Apple Health.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Microphone access is needed to record workout voice moments.";
-				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -566,7 +569,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.whussey.momentary;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
@@ -588,12 +591,11 @@
 				CURRENT_PROJECT_VERSION = 19;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "";
-				INFOPLIST_KEY_CFBundleDisplayName = Momentary;
+				INFOPLIST_KEY_CFBundleDisplayName = Mind2Muscle;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Momentary reads your workout data to provide training insights.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Momentary saves your strength training workouts to Apple Health.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Microphone access is needed to record workout voice moments.";
-				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -604,7 +606,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.whussey.momentary;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
@@ -627,7 +629,7 @@
 				CURRENT_PROJECT_VERSION = 19;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "";
-				INFOPLIST_KEY_CFBundleDisplayName = Momentary;
+				INFOPLIST_KEY_CFBundleDisplayName = Mind2Muscle;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Momentary reads your workout data to provide training insights.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Momentary saves your strength training workouts to Apple Health.";
@@ -638,7 +640,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.whussey.momentary.watchkitapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
@@ -661,7 +663,7 @@
 				CURRENT_PROJECT_VERSION = 19;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "";
-				INFOPLIST_KEY_CFBundleDisplayName = Momentary;
+				INFOPLIST_KEY_CFBundleDisplayName = Mind2Muscle;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Momentary reads your workout data to provide training insights.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Momentary saves your strength training workouts to Apple Health.";
@@ -672,7 +674,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.whussey.momentary.watchkitapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
@@ -717,7 +719,6 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
-
 	};
 	rootObject = P0000001 /* Project object */;
 }

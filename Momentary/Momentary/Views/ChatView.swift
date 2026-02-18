@@ -1,9 +1,9 @@
 import SwiftUI
 
 struct ChatView: View {
-    @Environment(ChatService.self) private var chatService
+    @Environment(ChatEngine.self) private var chatService
     @Environment(WorkoutManager.self) private var workoutManager
-    @Environment(AIProcessingPipeline.self) private var aiPipeline
+    @Environment(WorkoutProcessor.self) private var aiPipeline
     @State private var inputText = ""
     @State private var navigationPath = NavigationPath()
     @State private var showExportSheet = false
@@ -24,15 +24,6 @@ struct ChatView: View {
             .navigationTitle("Trainer")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    NavigationLink {
-                        SettingsView()
-                    } label: {
-                        Image(systemName: "gearshape")
-                            .foregroundColor(Theme.textSecondary)
-                    }
-                }
-
                 if !chatService.messages.isEmpty {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button {
@@ -71,16 +62,16 @@ struct ChatView: View {
                 .multilineTextAlignment(.center)
 
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
-                SuggestedChip(text: "Plan my next workout", icon: "calendar.badge.plus") {
+                SuggestedChip(text: "Plan workout", icon: "calendar.badge.plus") {
                     sendMessage("Plan my next workout")
                 }
-                SuggestedChip(text: "How's my progress?", icon: "chart.line.uptrend.xyaxis") {
+                SuggestedChip(text: "My progress", icon: "chart.line.uptrend.xyaxis") {
                     sendMessage("How's my progress?")
                 }
                 SuggestedChip(text: "Weekly summary", icon: "calendar.day.timeline.leading") {
                     sendMessage("Give me a weekly summary")
                 }
-                SuggestedChip(text: "What should I focus on?", icon: "target") {
+                SuggestedChip(text: "Focus areas", icon: "target") {
                     sendMessage("What should I focus on?")
                 }
             }
@@ -193,7 +184,7 @@ private struct SuggestedChip: View {
                     .font(.subheadline)
                     .fontWeight(.medium)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+                    .minimumScaleFactor(0.7)
             }
             .foregroundColor(Theme.accent)
             .frame(maxWidth: .infinity, minHeight: 44)

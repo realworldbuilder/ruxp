@@ -2,10 +2,9 @@ import Foundation
 import Security
 
 enum APIKeyProvider {
-    private static let keychainService = "com.whussey.momentary.openai"
+    private static let keychainService = "com.williamhussey.mind2muscle.openai"
     private static let keychainAccount = "custom_api_key"
 
-    /// Returns the custom Keychain key if set, otherwise the embedded key.
     static var resolvedKey: String {
         if let custom = loadKeychainKey(), !custom.isEmpty {
             return custom

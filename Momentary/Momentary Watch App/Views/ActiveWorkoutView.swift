@@ -13,14 +13,6 @@ struct ActiveWorkoutView: View {
     @State private var showSnippet = false
     @State private var showSummary = false
 
-    private var idleGradient: [Color] {
-        [Color(red: 0.3, green: 0.85, blue: 0.2), Color(red: 0.1, green: 0.65, blue: 0.25)]
-    }
-
-    private var recordingGradient: [Color] {
-        [Color(red: 0.1, green: 0.9, blue: 0.1), Color(red: 0.0, green: 0.5, blue: 0.15)]
-    }
-
     var body: some View {
         Group {
             if showSummary {
@@ -72,10 +64,10 @@ struct ActiveWorkoutView: View {
     private var activeView: some View {
         TabView {
             workoutPage
-                .containerBackground(.black.gradient, for: .tabView)
+                .containerBackground(WatchTheme.background.gradient, for: .tabView)
 
             NowPlayingPage()
-                .containerBackground(.black.gradient, for: .tabView)
+                .containerBackground(WatchTheme.background.gradient, for: .tabView)
         }
         .tabViewStyle(.verticalPage)
     }
@@ -85,17 +77,11 @@ struct ActiveWorkoutView: View {
     private var workoutPage: some View {
         VStack(spacing: 4) {
             workoutTimer
-
             healthMetricsRow
-
             Spacer(minLength: 0)
-
             momentRecordButton
-
             statusArea
-
             Spacer(minLength: 0)
-
             endWorkoutButton
         }
         .padding(.horizontal, 8)
@@ -113,7 +99,7 @@ struct ActiveWorkoutView: View {
 
             Text(formattedElapsed)
                 .font(.system(.title2, design: .monospaced))
-                .foregroundStyle(.white.opacity(0.6))
+                .foregroundStyle(WatchTheme.textPrimary.opacity(0.6))
 
             if workoutManager.healthKitService.heartRate > 0 {
                 HStack(spacing: 4) {
@@ -123,7 +109,7 @@ struct ActiveWorkoutView: View {
                     Text("\(Int(workoutManager.healthKitService.heartRate))")
                         .font(.caption)
                 }
-                .foregroundStyle(.white.opacity(0.4))
+                .foregroundStyle(WatchTheme.textSecondary.opacity(0.6))
             }
 
             HStack(spacing: 4) {
@@ -132,7 +118,7 @@ struct ActiveWorkoutView: View {
                 Text("\(workoutManager.momentCount)")
                     .font(.caption)
             }
-            .foregroundStyle(.white.opacity(0.4))
+            .foregroundStyle(WatchTheme.textSecondary.opacity(0.6))
 
             Spacer()
         }
@@ -143,7 +129,7 @@ struct ActiveWorkoutView: View {
     private var workoutTimer: some View {
         Text(formattedElapsed)
             .font(.system(.title3, design: .monospaced))
-            .foregroundStyle(.white)
+            .foregroundStyle(WatchTheme.textPrimary)
             .accessibilityLabel("Workout time: \(spokenElapsed)")
     }
 
@@ -161,7 +147,7 @@ struct ActiveWorkoutView: View {
                     .font(.system(.caption, design: .monospaced))
                 Text("BPM")
                     .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(WatchTheme.textTertiary)
             }
 
             HStack(spacing: 4) {
@@ -174,10 +160,10 @@ struct ActiveWorkoutView: View {
                     .font(.system(.caption, design: .monospaced))
                 Text("CAL")
                     .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(WatchTheme.textTertiary)
             }
         }
-        .foregroundStyle(.white)
+        .foregroundStyle(WatchTheme.textPrimary)
     }
 
     // MARK: - Record Button
@@ -191,11 +177,12 @@ struct ActiveWorkoutView: View {
             }
         } label: {
             ZStack {
+                // Outer glow when recording
                 if workoutManager.isRecordingMoment {
                     Circle()
                         .fill(
                             RadialGradient(
-                                colors: [Color(red: 0.1, green: 0.9, blue: 0.1).opacity(0.4), .clear],
+                                colors: [WatchTheme.accentBright.opacity(0.4), .clear],
                                 center: .center,
                                 startRadius: 20,
                                 endRadius: 50
@@ -206,11 +193,12 @@ struct ActiveWorkoutView: View {
                         .accessibilityHidden(true)
                 }
 
+                // Spinning ring when recording
                 if workoutManager.isRecordingMoment {
                     Circle()
                         .strokeBorder(
                             AngularGradient(
-                                colors: recordingGradient + [recordingGradient[0]],
+                                colors: WatchTheme.recordingGradient + [WatchTheme.recordingGradient[0]],
                                 center: .center
                             ),
                             lineWidth: 3
@@ -220,10 +208,11 @@ struct ActiveWorkoutView: View {
                         .accessibilityHidden(true)
                 }
 
+                // Main button circle
                 Circle()
                     .fill(
                         LinearGradient(
-                            colors: workoutManager.isRecordingMoment ? recordingGradient : idleGradient,
+                            colors: workoutManager.isRecordingMoment ? WatchTheme.recordingGradient : WatchTheme.accentGradient,
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
@@ -248,22 +237,22 @@ struct ActiveWorkoutView: View {
         if workoutManager.isRecordingMoment {
             HStack(spacing: 6) {
                 Circle()
-                    .fill(.green)
+                    .fill(WatchTheme.accentBright)
                     .frame(width: 8, height: 8)
                     .opacity(dotVisible ? 1.0 : 0.0)
 
                 Text(formattedRecordingDuration)
                     .font(.system(.body, design: .monospaced))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(WatchTheme.textPrimary)
             }
             .accessibilityElement(children: .combine)
         } else if workoutManager.connectivity.isSending {
             VStack(spacing: 6) {
                 ProgressView()
-                    .tint(.green)
+                    .tint(WatchTheme.accent)
                 Text("Transcribing")
                     .font(.caption)
-                    .foregroundStyle(.green)
+                    .foregroundStyle(WatchTheme.accent)
                     .fixedSize()
             }
         } else {
@@ -273,7 +262,7 @@ struct ActiveWorkoutView: View {
                 Text("\(workoutManager.momentCount) moment\(workoutManager.momentCount == 1 ? "" : "s")")
                     .font(.caption)
             }
-            .foregroundStyle(.white.opacity(0.6))
+            .foregroundStyle(WatchTheme.textSecondary)
         }
     }
 
@@ -284,7 +273,7 @@ struct ActiveWorkoutView: View {
         if let snippet = workoutManager.latestTranscriptSnippet, showSnippet {
             Text(truncatedSnippet(snippet))
                 .font(.caption2)
-                .foregroundStyle(.white.opacity(0.8))
+                .foregroundStyle(WatchTheme.textPrimary.opacity(0.8))
                 .lineLimit(2)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 10)
@@ -292,7 +281,7 @@ struct ActiveWorkoutView: View {
                 .frame(maxWidth: .infinity)
                 .background(
                     RoundedRectangle(cornerRadius: 10)
-                        .fill(.black.opacity(0.85))
+                        .fill(WatchTheme.surface.opacity(0.95))
                 )
                 .transition(.move(edge: .bottom).combined(with: .opacity))
         }
@@ -318,11 +307,18 @@ struct ActiveWorkoutView: View {
             showSummary = true
         } label: {
             Text("End Workout")
-                .font(.caption)
+                .font(.system(.caption, weight: .semibold))
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 8)
-                .background(.red.opacity(0.8), in: RoundedRectangle(cornerRadius: 10))
+                .background(
+                    LinearGradient(
+                        colors: WatchTheme.dangerGradient,
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    ),
+                    in: RoundedRectangle(cornerRadius: 10)
+                )
         }
         .buttonStyle(.plain)
         .accessibilityLabel("End workout")

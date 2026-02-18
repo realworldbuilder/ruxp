@@ -1,36 +1,41 @@
 import Foundation
 import os
 
-protocol AIBackend: Sendable {
-    func complete(systemPrompt: String, userPrompt: String) async throws -> String
-}
+// MARK: - Unified AI Service
 
-final class OpenAIBackend: AIBackend, Sendable {
-    private static let logger = Logger(subsystem: "com.whussey.momentary", category: "OpenAIBackend")
+@Observable
+@MainActor
+final class AIService {
+    private static let logger = Logger(subsystem: "com.whussey.momentary", category: "AIService")
 
-    private let endpoint = URL(string: "https://api.openai.com/v1/chat/completions")!
+    private let chatEndpoint = URL(string: "https://api.openai.com/v1/chat/completions")!
+    private let whisperEndpoint = URL(string: "https://api.openai.com/v1/audio/transcriptions")!
     private let model = "gpt-4o"
 
-    func complete(systemPrompt: String, userPrompt: String) async throws -> String {
-        let apiKey = APIKeyProvider.resolvedKey
-        guard !apiKey.isEmpty else {
-            throw AIProcessingError.noAPIKey
-        }
+    // MARK: - Chat Completion
 
-        let requestBody: [String: Any] = [
+    func complete(systemPrompt: String, userPrompt: String) async throws -> String {
+        try await complete(messages: [
+            ["role": "system", "content": systemPrompt],
+            ["role": "user", "content": userPrompt]
+        ])
+    }
+
+    func complete(messages: [[String: String]], jsonMode: Bool = true) async throws -> String {
+        let apiKey = APIKeyProvider.resolvedKey
+        guard !apiKey.isEmpty else { throw AIError.noAPIKey }
+
+        var requestBody: [String: Any] = [
             "model": model,
-            "messages": [
-                ["role": "system", "content": systemPrompt],
-                ["role": "user", "content": userPrompt]
-            ],
-            "response_format": [
-                "type": "json_object"
-            ],
+            "messages": messages,
             "temperature": 0.7,
             "max_tokens": 4096
         ]
+        if jsonMode {
+            requestBody["response_format"] = ["type": "json_object"]
+        }
 
-        var request = URLRequest(url: endpoint)
+        var request = URLRequest(url: chatEndpoint)
         request.httpMethod = "POST"
         request.addValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -40,17 +45,17 @@ final class OpenAIBackend: AIBackend, Sendable {
         let (data, response) = try await URLSession.shared.data(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse else {
-            throw AIProcessingError.invalidResponse
+            throw AIError.invalidResponse
         }
 
         if httpResponse.statusCode == 429 {
             let retryAfter = httpResponse.value(forHTTPHeaderField: "Retry-After")
-            throw AIProcessingError.rateLimited(retryAfter: Double(retryAfter ?? "") ?? 5.0)
+            throw AIError.rateLimited(retryAfter: Double(retryAfter ?? "") ?? 5.0)
         }
 
         guard (200...299).contains(httpResponse.statusCode) else {
             let body = String(data: data, encoding: .utf8) ?? "Unknown error"
-            throw AIProcessingError.apiError(statusCode: httpResponse.statusCode, message: body)
+            throw AIError.apiError(statusCode: httpResponse.statusCode, message: body)
         }
 
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -58,16 +63,70 @@ final class OpenAIBackend: AIBackend, Sendable {
               let firstChoice = choices.first,
               let message = firstChoice["message"] as? [String: Any],
               let content = message["content"] as? String else {
-            throw AIProcessingError.invalidResponse
+            throw AIError.invalidResponse
         }
 
         return content
     }
+
+    // MARK: - Whisper Transcription
+
+    func transcribe(audioURL: URL) async throws -> String {
+        let apiKey = APIKeyProvider.resolvedKey
+        guard !apiKey.isEmpty else { throw AIError.noAPIKey }
+
+        let audioData = try Data(contentsOf: audioURL)
+        let boundary = UUID().uuidString
+
+        var request = URLRequest(url: whisperEndpoint)
+        request.httpMethod = "POST"
+        request.addValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        request.addValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 60
+
+        var body = Data()
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"model\"\r\n\r\n".data(using: .utf8)!)
+        body.append("whisper-1\r\n".data(using: .utf8)!)
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"file\"; filename=\"audio.m4a\"\r\n".data(using: .utf8)!)
+        body.append("Content-Type: audio/m4a\r\n\r\n".data(using: .utf8)!)
+        body.append(audioData)
+        body.append("\r\n".data(using: .utf8)!)
+        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
+
+        request.httpBody = body
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw AIError.invalidResponse
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            let errorBody = String(data: data, encoding: .utf8) ?? "Unknown error"
+            Self.logger.error("Whisper API error \(httpResponse.statusCode): \(errorBody)")
+            throw AIError.apiError(statusCode: httpResponse.statusCode, message: errorBody)
+        }
+
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let text = json["text"] as? String else {
+            throw AIError.invalidResponse
+        }
+
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { throw AIError.emptyResult }
+
+        return trimmed
+    }
 }
 
-enum AIProcessingError: LocalizedError {
+// MARK: - AI Error
+
+enum AIError: LocalizedError {
     case noAPIKey
     case invalidResponse
+    case emptyResult
     case rateLimited(retryAfter: Double)
     case apiError(statusCode: Int, message: String)
     case parsingFailed(String)
@@ -75,12 +134,13 @@ enum AIProcessingError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .noAPIKey: return "No OpenAI API key configured."
-        case .invalidResponse: return "Invalid response from OpenAI"
-        case .rateLimited(let retryAfter): return "Rate limited. Retrying in \(Int(retryAfter))s."
-        case .apiError(let code, let message): return "API error (\(code)): \(message)"
-        case .parsingFailed(let detail): return "Failed to parse AI response: \(detail)"
-        case .networkUnavailable: return "No network connection. Processing will resume when online."
+        case .noAPIKey: "No OpenAI API key configured."
+        case .invalidResponse: "Invalid response from OpenAI"
+        case .emptyResult: "No speech detected"
+        case .rateLimited(let retryAfter): "Rate limited. Retrying in \(Int(retryAfter))s."
+        case .apiError(let code, let message): "API error (\(code)): \(message)"
+        case .parsingFailed(let detail): "Failed to parse AI response: \(detail)"
+        case .networkUnavailable: "No network connection."
         }
     }
 }

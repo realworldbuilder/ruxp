@@ -2,7 +2,7 @@ import SwiftUI
 
 struct InsightsTab: View {
     @Environment(WorkoutManager.self) private var workoutManager
-    @Environment(InsightsService.self) private var insightsService
+    @Environment(InsightsEngine.self) private var insightsService
     @State private var selectedTag: String?
     @State private var showingStoryViewer = false
     @State private var storyViewerStartIndex = 0
