@@ -34,12 +34,22 @@ struct TrainerSoulEditor: View {
 
                 // MARK: - Training Style
                 Section("Training Style") {
-                    Picker("Style", selection: $draft.trainingStyle) {
-                        ForEach(TrainerSoul.TrainingStyle.allCases) { style in
-                            Text(style.rawValue).tag(style)
+                    ForEach(TrainerSoul.TrainingStyle.allCases) { style in
+                        Button {
+                            draft.trainingStyle = style
+                        } label: {
+                            HStack {
+                                Text(style.rawValue)
+                                    .font(.subheadline.weight(.medium))
+                                    .foregroundStyle(Theme.textPrimary)
+                                Spacer()
+                                if draft.trainingStyle == style {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundStyle(Theme.accent)
+                                }
+                            }
                         }
                     }
-                    .pickerStyle(.segmented)
                 }
 
                 // MARK: - Coaching Tone

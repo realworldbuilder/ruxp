@@ -74,11 +74,13 @@ struct ActiveWorkoutView: View {
 
     private var mainPage: some View {
         VStack(spacing: 0) {
-            // Timer
-            Text(formattedElapsed)
-                .font(.system(.title2, design: .monospaced))
-                .foregroundStyle(WatchTheme.textPrimary)
-                .padding(.top, 4)
+            // Timer — uses TimelineView so watchOS keeps it ticking
+            TimelineView(.periodic(from: .now, by: 1.0)) { _ in
+                Text(formattedElapsed)
+                    .font(.system(.title2, design: .monospaced))
+                    .foregroundStyle(WatchTheme.textPrimary)
+            }
+            .padding(.top, 4)
 
             Spacer(minLength: 4)
 
@@ -172,9 +174,11 @@ struct ActiveWorkoutView: View {
     private var alwaysOnView: some View {
         VStack(spacing: 10) {
             Spacer()
-            Text(formattedElapsed)
-                .font(.system(.title2, design: .monospaced))
-                .foregroundStyle(WatchTheme.textPrimary.opacity(0.6))
+            TimelineView(.periodic(from: .now, by: 1.0)) { _ in
+                Text(formattedElapsed)
+                    .font(.system(.title2, design: .monospaced))
+                    .foregroundStyle(WatchTheme.textPrimary.opacity(0.6))
+            }
             if workoutManager.healthKitService.heartRate > 0 {
                 HStack(spacing: 4) {
                     Image(systemName: "heart.fill").font(.caption2).foregroundStyle(.red.opacity(0.5))

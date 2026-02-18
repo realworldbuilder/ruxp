@@ -7,9 +7,11 @@ struct WatchHomeView: View {
         VStack(spacing: 12) {
             Spacer()
             
-            Image(systemName: "waveform.circle.fill")
-                .font(.system(size: 32))
-                .foregroundStyle(WatchTheme.accent)
+            Image("AppIcon")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 48, height: 48)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
             
             Text("M2M")
                 .font(.system(.title3, design: .rounded, weight: .bold))
@@ -21,7 +23,7 @@ struct WatchHomeView: View {
                 workoutManager.startWorkout()
             } label: {
                 HStack(spacing: 8) {
-                    Image(systemName: "mic.fill")
+                    Image(systemName: "figure.strengthtraining.traditional")
                         .font(.system(size: 16, weight: .semibold))
                     Text("Start Workout")
                         .font(.system(.headline, design: .rounded))

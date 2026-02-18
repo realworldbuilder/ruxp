@@ -264,20 +264,46 @@ struct HomeView: View {
 
     private var activeWorkoutBanner: some View {
         Section {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 6) {
-                        Circle().fill(Theme.accent).frame(width: 8, height: 8)
-                        Text("Workout Active").font(.headline)
+            Button {
+                NotificationCenter.default.post(name: .switchToWorkoutTab, object: nil)
+            } label: {
+                HStack(spacing: 12) {
+                    // Pulsing indicator
+                    ZStack {
+                        Circle()
+                            .fill(Theme.accent.opacity(0.2))
+                            .frame(width: 44, height: 44)
+                        Circle()
+                            .fill(Theme.accent)
+                            .frame(width: 12, height: 12)
                     }
-                    Text("\(workoutManager.activeSession?.moments.count ?? 0) moments")
-                        .font(.caption).foregroundStyle(Theme.textSecondary)
+                    
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Workout Active")
+                            .font(.headline)
+                            .foregroundStyle(Theme.textPrimary)
+                        Text("\(workoutManager.activeSession?.moments.count ?? 0) moments recorded")
+                            .font(.caption)
+                            .foregroundStyle(Theme.textSecondary)
+                    }
+                    
+                    Spacer()
+                    
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(Theme.accent)
                 }
-                Spacer()
-                Text("View").font(.subheadline.bold()).foregroundStyle(Theme.accent)
+                .padding(.vertical, 8)
             }
-            .padding(.vertical, 4)
-            .listRowBackground(Theme.cardBackground)
+            .buttonStyle(.plain)
+            .listRowBackground(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Theme.accent.opacity(0.08))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Theme.accent.opacity(0.3), lineWidth: 1)
+                    )
+            )
         }
     }
 

@@ -1,5 +1,9 @@
 import SwiftUI
 
+extension Notification.Name {
+    static let switchToWorkoutTab = Notification.Name("switchToWorkoutTab")
+}
+
 struct MainTabView: View {
     @Environment(WorkoutManager.self) private var workoutManager
     @State private var selectedTab = 0
@@ -37,6 +41,11 @@ struct MainTabView: View {
                 .tag(4)
         }
         .tint(Theme.accent)
+        .onReceive(NotificationCenter.default.publisher(for: .switchToWorkoutTab)) { _ in
+            if workoutManager.activeSession != nil {
+                selectedTab = 1
+            }
+        }
         .onChange(of: workoutManager.activeSession?.id) { oldVal, newVal in
             if newVal != nil && oldVal == nil {
                 selectedTab = 1
