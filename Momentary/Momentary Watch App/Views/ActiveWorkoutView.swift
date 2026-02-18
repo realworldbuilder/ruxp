@@ -3,12 +3,10 @@ import WatchKit
 
 struct ActiveWorkoutView: View {
     @Environment(WatchWorkoutManager.self) private var workoutManager
-
     @Environment(\.isLuminanceReduced) var isLuminanceReduced
     @Environment(\.accessibilityReduceMotion) var reduceMotion
 
     @State private var isPulsing = false
-    @State private var ringRotation: Double = 0
     @State private var dotVisible = true
     @State private var showSnippet = false
     @State private var showSummary = false
@@ -33,14 +31,10 @@ struct ActiveWorkoutView: View {
         }
         .onChange(of: workoutManager.latestTranscriptSnippet) {
             if workoutManager.latestTranscriptSnippet != nil {
-                withAnimation(.easeOut(duration: 0.4)) {
-                    showSnippet = true
-                }
+                withAnimation(.easeOut(duration: 0.4)) { showSnippet = true }
                 Task {
                     try? await Task.sleep(for: .seconds(3))
-                    withAnimation(.easeIn(duration: 0.3)) {
-                        showSnippet = false
-                    }
+                    withAnimation(.easeIn(duration: 0.3)) { showSnippet = false }
                 }
             }
         }
@@ -53,42 +47,124 @@ struct ActiveWorkoutView: View {
             }
         }
         .onChange(of: workoutManager.didReceiveRemoteStop) {
-            if workoutManager.didReceiveRemoteStop {
-                showSummary = true
-            }
+            if workoutManager.didReceiveRemoteStop { showSummary = true }
         }
     }
 
-    // MARK: - Active View
+    // MARK: - Active View (Vertical Pages)
 
     private var activeView: some View {
         TabView {
-            workoutPage
+            // Page 1: Main controls
+            mainPage
                 .containerBackground(WatchTheme.background.gradient, for: .tabView)
 
+            // Page 2: Health stats
+            statsPage
+                .containerBackground(WatchTheme.background.gradient, for: .tabView)
+
+            // Page 3: Now Playing
             NowPlayingPage()
                 .containerBackground(WatchTheme.background.gradient, for: .tabView)
         }
         .tabViewStyle(.verticalPage)
     }
 
-    // MARK: - Workout Page
+    // MARK: - Page 1: Main Controls
 
-    private var workoutPage: some View {
-        VStack(spacing: 4) {
-            workoutTimer
-            healthMetricsRow
-            Spacer(minLength: 0)
-            momentRecordButton
+    private var mainPage: some View {
+        VStack(spacing: 0) {
+            // Timer
+            Text(formattedElapsed)
+                .font(.system(.title2, design: .monospaced))
+                .foregroundStyle(WatchTheme.textPrimary)
+                .padding(.top, 4)
+
+            Spacer(minLength: 4)
+
+            // Record button
+            recordButton
+
+            // Status
             statusArea
-            Spacer(minLength: 0)
-            endWorkoutButton
+                .padding(.top, 4)
+
+            Spacer(minLength: 4)
+
+            // End workout
+            Button {
+                workoutManager.endWorkout()
+                showSummary = true
+            } label: {
+                Text("End")
+                    .font(.system(.footnote, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+                    .background(.red.opacity(0.8), in: RoundedRectangle(cornerRadius: 10))
+            }
+            .buttonStyle(.plain)
         }
         .padding(.horizontal, 8)
         .overlay(alignment: .bottom) {
-            snippetOverlay
-                .padding(.bottom, 44)
+            snippetOverlay.padding(.bottom, 40)
         }
+    }
+
+    // MARK: - Page 2: Stats
+
+    private var statsPage: some View {
+        VStack(spacing: 14) {
+            Text("STATS")
+                .font(.system(.caption2, weight: .semibold))
+                .foregroundStyle(WatchTheme.textTertiary)
+                .tracking(1.5)
+
+            Spacer()
+
+            // Heart Rate
+            HStack(spacing: 6) {
+                Image(systemName: "heart.fill")
+                    .foregroundStyle(.red)
+                Text(workoutManager.healthKitService.heartRate > 0
+                     ? "\(Int(workoutManager.healthKitService.heartRate))"
+                     : "--")
+                    .font(.system(.title2, design: .monospaced, weight: .bold))
+                Text("BPM")
+                    .font(.caption)
+                    .foregroundStyle(WatchTheme.textTertiary)
+            }
+            .foregroundStyle(WatchTheme.textPrimary)
+
+            // Calories
+            HStack(spacing: 6) {
+                Image(systemName: "flame.fill")
+                    .foregroundStyle(.orange)
+                Text(workoutManager.healthKitService.activeCalories > 0
+                     ? "\(Int(workoutManager.healthKitService.activeCalories))"
+                     : "--")
+                    .font(.system(.title2, design: .monospaced, weight: .bold))
+                Text("CAL")
+                    .font(.caption)
+                    .foregroundStyle(WatchTheme.textTertiary)
+            }
+            .foregroundStyle(WatchTheme.textPrimary)
+
+            // Moments
+            HStack(spacing: 6) {
+                Image(systemName: "waveform")
+                    .foregroundStyle(WatchTheme.accent)
+                Text("\(workoutManager.momentCount)")
+                    .font(.system(.title2, design: .monospaced, weight: .bold))
+                Text(workoutManager.momentCount == 1 ? "MOMENT" : "MOMENTS")
+                    .font(.caption)
+                    .foregroundStyle(WatchTheme.textTertiary)
+            }
+            .foregroundStyle(WatchTheme.textPrimary)
+
+            Spacer()
+        }
+        .padding(.horizontal, 8)
     }
 
     // MARK: - Always On Display
@@ -96,79 +172,23 @@ struct ActiveWorkoutView: View {
     private var alwaysOnView: some View {
         VStack(spacing: 10) {
             Spacer()
-
             Text(formattedElapsed)
                 .font(.system(.title2, design: .monospaced))
                 .foregroundStyle(WatchTheme.textPrimary.opacity(0.6))
-
             if workoutManager.healthKitService.heartRate > 0 {
                 HStack(spacing: 4) {
-                    Image(systemName: "heart.fill")
-                        .font(.caption2)
-                        .foregroundStyle(.red.opacity(0.5))
-                    Text("\(Int(workoutManager.healthKitService.heartRate))")
-                        .font(.caption)
+                    Image(systemName: "heart.fill").font(.caption2).foregroundStyle(.red.opacity(0.5))
+                    Text("\(Int(workoutManager.healthKitService.heartRate))").font(.caption)
                 }
                 .foregroundStyle(WatchTheme.textSecondary.opacity(0.6))
             }
-
-            HStack(spacing: 4) {
-                Image(systemName: "waveform")
-                    .font(.caption)
-                Text("\(workoutManager.momentCount)")
-                    .font(.caption)
-            }
-            .foregroundStyle(WatchTheme.textSecondary.opacity(0.6))
-
             Spacer()
         }
     }
 
-    // MARK: - Workout Timer
-
-    private var workoutTimer: some View {
-        Text(formattedElapsed)
-            .font(.system(.title3, design: .monospaced))
-            .foregroundStyle(WatchTheme.textPrimary)
-            .accessibilityLabel("Workout time: \(spokenElapsed)")
-    }
-
-    // MARK: - Health Metrics
-
-    private var healthMetricsRow: some View {
-        HStack(spacing: 16) {
-            HStack(spacing: 4) {
-                Image(systemName: "heart.fill")
-                    .foregroundStyle(.red)
-                    .font(.caption2)
-                Text(workoutManager.healthKitService.heartRate > 0
-                     ? "\(Int(workoutManager.healthKitService.heartRate))"
-                     : "--")
-                    .font(.system(.caption, design: .monospaced))
-                Text("BPM")
-                    .font(.caption2)
-                    .foregroundStyle(WatchTheme.textTertiary)
-            }
-
-            HStack(spacing: 4) {
-                Image(systemName: "flame.fill")
-                    .foregroundStyle(.orange)
-                    .font(.caption2)
-                Text(workoutManager.healthKitService.activeCalories > 0
-                     ? "\(Int(workoutManager.healthKitService.activeCalories))"
-                     : "--")
-                    .font(.system(.caption, design: .monospaced))
-                Text("CAL")
-                    .font(.caption2)
-                    .foregroundStyle(WatchTheme.textTertiary)
-            }
-        }
-        .foregroundStyle(WatchTheme.textPrimary)
-    }
-
     // MARK: - Record Button
 
-    private var momentRecordButton: some View {
+    private var recordButton: some View {
         Button {
             if workoutManager.isRecordingMoment {
                 workoutManager.stopRecordingMoment()
@@ -177,57 +197,31 @@ struct ActiveWorkoutView: View {
             }
         } label: {
             ZStack {
-                // Outer glow when recording
                 if workoutManager.isRecordingMoment {
                     Circle()
-                        .fill(
-                            RadialGradient(
-                                colors: [WatchTheme.accentBright.opacity(0.4), .clear],
-                                center: .center,
-                                startRadius: 20,
-                                endRadius: 50
-                            )
-                        )
-                        .frame(width: 82, height: 82)
+                        .fill(RadialGradient(
+                            colors: [WatchTheme.accentBright.opacity(0.4), .clear],
+                            center: .center, startRadius: 16, endRadius: 40
+                        ))
+                        .frame(width: 72, height: 72)
                         .opacity(isPulsing ? 0.8 : 0.3)
-                        .accessibilityHidden(true)
                 }
 
-                // Spinning ring when recording
-                if workoutManager.isRecordingMoment {
-                    Circle()
-                        .strokeBorder(
-                            AngularGradient(
-                                colors: WatchTheme.recordingGradient + [WatchTheme.recordingGradient[0]],
-                                center: .center
-                            ),
-                            lineWidth: 3
-                        )
-                        .frame(width: 76, height: 76)
-                        .rotationEffect(.degrees(ringRotation))
-                        .accessibilityHidden(true)
-                }
-
-                // Main button circle
                 Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: workoutManager.isRecordingMoment ? WatchTheme.recordingGradient : WatchTheme.accentGradient,
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 66, height: 66)
+                    .fill(LinearGradient(
+                        colors: workoutManager.isRecordingMoment ? WatchTheme.recordingGradient : WatchTheme.accentGradient,
+                        startPoint: .topLeading, endPoint: .bottomTrailing
+                    ))
+                    .frame(width: 56, height: 56)
 
                 Image(systemName: workoutManager.isRecordingMoment ? "stop.fill" : "mic.fill")
-                    .font(.system(size: 26, weight: .semibold))
+                    .font(.system(size: 22, weight: .semibold))
                     .foregroundStyle(.white)
             }
             .scaleEffect(isPulsing ? 1.05 : 1.0)
         }
         .buttonStyle(.plain)
         .sensoryFeedback(.impact, trigger: workoutManager.isRecordingMoment)
-        .accessibilityLabel(workoutManager.isRecordingMoment ? "Stop recording moment" : "Record a moment")
     }
 
     // MARK: - Status Area
@@ -235,34 +229,24 @@ struct ActiveWorkoutView: View {
     @ViewBuilder
     private var statusArea: some View {
         if workoutManager.isRecordingMoment {
-            HStack(spacing: 6) {
+            HStack(spacing: 4) {
                 Circle()
                     .fill(WatchTheme.accentBright)
-                    .frame(width: 8, height: 8)
+                    .frame(width: 6, height: 6)
                     .opacity(dotVisible ? 1.0 : 0.0)
-
                 Text(formattedRecordingDuration)
-                    .font(.system(.body, design: .monospaced))
+                    .font(.system(.caption, design: .monospaced))
                     .foregroundStyle(WatchTheme.textPrimary)
             }
-            .accessibilityElement(children: .combine)
         } else if workoutManager.connectivity.isSending {
-            VStack(spacing: 6) {
-                ProgressView()
-                    .tint(WatchTheme.accent)
-                Text("Transcribing")
-                    .font(.caption)
-                    .foregroundStyle(WatchTheme.accent)
-                    .fixedSize()
+            HStack(spacing: 4) {
+                ProgressView().tint(WatchTheme.accent)
+                Text("Transcribing").font(.caption2).foregroundStyle(WatchTheme.accent)
             }
         } else {
-            HStack(spacing: 4) {
-                Image(systemName: "waveform")
-                    .font(.caption2)
-                Text("\(workoutManager.momentCount) moment\(workoutManager.momentCount == 1 ? "" : "s")")
-                    .font(.caption)
-            }
-            .foregroundStyle(WatchTheme.textSecondary)
+            Text("\(workoutManager.momentCount) moment\(workoutManager.momentCount == 1 ? "" : "s")")
+                .font(.caption2)
+                .foregroundStyle(WatchTheme.textSecondary)
         }
     }
 
@@ -271,121 +255,44 @@ struct ActiveWorkoutView: View {
     @ViewBuilder
     private var snippetOverlay: some View {
         if let snippet = workoutManager.latestTranscriptSnippet, showSnippet {
-            Text(truncatedSnippet(snippet))
+            Text(snippet.prefix(80) + (snippet.count > 80 ? "..." : ""))
                 .font(.caption2)
                 .foregroundStyle(WatchTheme.textPrimary.opacity(0.8))
                 .lineLimit(2)
                 .multilineTextAlignment(.center)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 8)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 6)
                 .frame(maxWidth: .infinity)
-                .background(
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(WatchTheme.surface.opacity(0.95))
-                )
+                .background(RoundedRectangle(cornerRadius: 8).fill(WatchTheme.surface.opacity(0.95)))
                 .transition(.move(edge: .bottom).combined(with: .opacity))
         }
-
         if let error = workoutManager.lastError {
-            Label {
-                Text(error)
-                    .lineLimit(2)
-            } icon: {
-                Image(systemName: "exclamationmark.triangle.fill")
-            }
-            .font(.caption2)
-            .foregroundStyle(.red)
-            .padding(.horizontal, 8)
+            Label(error, systemImage: "exclamationmark.triangle.fill")
+                .font(.caption2).foregroundStyle(.red).padding(.horizontal, 8)
         }
-    }
-
-    // MARK: - End Workout Button
-
-    private var endWorkoutButton: some View {
-        Button {
-            workoutManager.endWorkout()
-            showSummary = true
-        } label: {
-            Text("End Workout")
-                .font(.system(.caption, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 8)
-                .background(
-                    LinearGradient(
-                        colors: WatchTheme.dangerGradient,
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    ),
-                    in: RoundedRectangle(cornerRadius: 10)
-                )
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("End workout")
     }
 
     // MARK: - Helpers
 
     private var formattedElapsed: String {
         let total = Int(workoutManager.elapsedTime)
-        let hrs = total / 3600
-        let mins = (total % 3600) / 60
-        let secs = total % 60
-        if hrs > 0 {
-            return String(format: "%d:%02d:%02d", hrs, mins, secs)
-        }
-        return String(format: "%d:%02d", mins, secs)
-    }
-
-    private var spokenElapsed: String {
-        let total = Int(workoutManager.elapsedTime)
-        let mins = total / 60
-        let secs = total % 60
-        if mins == 0 { return "\(secs) seconds" }
-        return "\(mins) minutes \(secs) seconds"
+        let hrs = total / 3600; let mins = (total % 3600) / 60; let secs = total % 60
+        return hrs > 0 ? String(format: "%d:%02d:%02d", hrs, mins, secs) : String(format: "%d:%02d", mins, secs)
     }
 
     private var formattedRecordingDuration: String {
-        let seconds = Int(workoutManager.recorder.recordingDuration)
-        let mins = seconds / 60
-        let secs = seconds % 60
-        return String(format: "%d:%02d", mins, secs)
+        let s = Int(workoutManager.recorder.recordingDuration)
+        return String(format: "%d:%02d", s / 60, s % 60)
     }
-
-    private func truncatedSnippet(_ text: String, maxLength: Int = 80) -> String {
-        guard text.count > maxLength else { return text }
-        let trimmed = text.prefix(maxLength)
-        if let lastSpace = trimmed.lastIndex(of: " ") {
-            return String(trimmed[trimmed.startIndex..<lastSpace]) + "..."
-        }
-        return String(trimmed) + "..."
-    }
-
-    // MARK: - Animations
 
     private func startAnimations() {
-        if reduceMotion {
-            isPulsing = true
-            ringRotation = 0
-            dotVisible = true
-        } else {
-            withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
-                isPulsing = true
-            }
-            withAnimation(.linear(duration: 2.0).repeatForever(autoreverses: false)) {
-                ringRotation = 360
-            }
-            withAnimation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true)) {
-                dotVisible = false
-            }
+        if reduceMotion { isPulsing = true; dotVisible = true } else {
+            withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) { isPulsing = true }
+            withAnimation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true)) { dotVisible = false }
         }
     }
 
     private func stopAnimations() {
-        withAnimation(.easeOut(duration: 0.3)) {
-            isPulsing = false
-            ringRotation = 0
-            dotVisible = true
-        }
+        withAnimation(.easeOut(duration: 0.3)) { isPulsing = false; dotVisible = true }
     }
 }

@@ -318,36 +318,33 @@ struct HomeView: View {
     // MARK: - Workout Row
 
     private func workoutRow(_ entry: WorkoutSessionIndex) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(entry.startedAt, style: .date).font(.headline)
-            HStack(spacing: 12) {
-                if let duration = entry.duration {
-                    Label(formatDuration(duration), systemImage: "clock")
-                }
-                if entry.exerciseCount > 0 {
-                    Label("\(entry.exerciseCount) exercises", systemImage: "figure.strengthtraining.traditional")
-                }
-                if entry.totalSets > 0 {
-                    Label("\(entry.totalSets) sets", systemImage: "repeat")
-                }
-                if entry.hasStructuredLog {
-                    Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.accent).font(.caption)
-                }
-            }
-            .font(.caption).foregroundStyle(.secondary)
-
-            HStack(spacing: 8) {
-                if entry.totalVolume > 0 {
-                    Text("\(formatVolume(entry.totalVolume)) \(weightUnit)")
-                        .font(.caption.bold()).foregroundStyle(Theme.accent)
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 8) {
+                    Text(entry.startedAt, style: .date)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Theme.textPrimary)
+                    if let duration = entry.duration {
+                        Text(formatDuration(duration))
+                            .font(.caption)
+                            .foregroundStyle(Theme.textTertiary)
+                    }
                 }
                 if !entry.exerciseNames.isEmpty {
-                    Text(entry.exerciseNames.joined(separator: ", "))
-                        .font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                    Text(entry.exerciseNames.joined(separator: " · "))
+                        .font(.caption)
+                        .foregroundStyle(Theme.textSecondary)
+                        .lineLimit(1)
                 }
             }
+            Spacer()
+            if entry.totalVolume > 0 {
+                Text("\(formatVolume(entry.totalVolume))")
+                    .font(.subheadline.weight(.bold).monospacedDigit())
+                    .foregroundStyle(Theme.accent)
+            }
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, 4)
     }
 
     // MARK: - Weekly Stats
