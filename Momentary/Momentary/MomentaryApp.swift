@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct MomentaryApp: App {
+struct Mind2MuscleApp: App {
     @State private var workoutManager: WorkoutManager
     @State private var workoutProcessor: WorkoutProcessor
     @State private var insightsEngine: InsightsEngine
