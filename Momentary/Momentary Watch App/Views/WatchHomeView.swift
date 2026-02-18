@@ -7,7 +7,7 @@ struct WatchHomeView: View {
         VStack(spacing: 12) {
             Spacer()
             
-            Image("AppIcon")
+            Image("Logo")
                 .resizable()
                 .scaledToFit()
                 .frame(width: 48, height: 48)
