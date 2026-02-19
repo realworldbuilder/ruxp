@@ -30,6 +30,7 @@ final class WorkoutProcessor {
 
     var state: WorkoutProcessingState = .idle
     var insightsEngine: InsightsEngine?
+    var insightsStore: InsightsStore?
 
     private let aiService: AIService
     private let workoutStore: WorkoutStore
@@ -102,6 +103,7 @@ final class WorkoutProcessor {
 
                 state = .completed
                 Self.logger.info("Processing completed for workout \(session.id)")
+                insightsStore?.ingest(updatedSession)
                 await insightsEngine?.generateInsights()
                 return
 

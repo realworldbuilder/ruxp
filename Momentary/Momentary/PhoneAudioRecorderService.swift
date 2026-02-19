@@ -13,8 +13,10 @@ final class PhoneAudioRecorderService: NSObject, ObservableObject {
     private var timer: Timer?
     private var recordingStartTime: Date?
 
-    private var recordingURL: URL {
-        FileManager.default.temporaryDirectory.appendingPathComponent("phone_voicenote.wav")
+    private var currentRecordingURL: URL?
+
+    private func makeRecordingURL() -> URL {
+        FileManager.default.temporaryDirectory.appendingPathComponent("moment_\(UUID().uuidString).wav")
     }
 
     func startRecording() {
@@ -36,10 +38,11 @@ final class PhoneAudioRecorderService: NSObject, ObservableObject {
             AVLinearPCMIsFloatKey: false
         ]
 
-        try? FileManager.default.removeItem(at: recordingURL)
+        let url = makeRecordingURL()
+        currentRecordingURL = url
 
         do {
-            audioRecorder = try AVAudioRecorder(url: recordingURL, settings: settings)
+            audioRecorder = try AVAudioRecorder(url: url, settings: settings)
             audioRecorder?.record()
             isRecording = true
             recordingStartTime = Date()
@@ -56,13 +59,16 @@ final class PhoneAudioRecorderService: NSObject, ObservableObject {
         isRecording = false
         stopTimer()
 
-        let url = recordingURL
-        guard FileManager.default.fileExists(atPath: url.path) else { return nil }
+        guard let url = currentRecordingURL,
+              FileManager.default.fileExists(atPath: url.path) else { return nil }
+        currentRecordingURL = nil
         return url
     }
 
-    func cleanup() {
-        try? FileManager.default.removeItem(at: recordingURL)
+    func cleanup(url: URL? = nil) {
+        if let url {
+            try? FileManager.default.removeItem(at: url)
+        }
     }
 
     private func startTimer() {

@@ -2,6 +2,8 @@ import SwiftUI
 
 extension Notification.Name {
     static let switchToWorkoutTab = Notification.Name("switchToWorkoutTab")
+    static let workoutsDidChange = Notification.Name("workoutsDidChange")
+    static let switchToTab = Notification.Name("switchToTab")
 }
 
 struct MainTabView: View {
@@ -44,6 +46,11 @@ struct MainTabView: View {
         .onReceive(NotificationCenter.default.publisher(for: .switchToWorkoutTab)) { _ in
             if workoutManager.activeSession != nil {
                 selectedTab = 1
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .switchToTab)) { notification in
+            if let idx = notification.userInfo?["tabIndex"] as? Int {
+                selectedTab = idx
             }
         }
         .onChange(of: workoutManager.activeSession?.id) { oldVal, newVal in

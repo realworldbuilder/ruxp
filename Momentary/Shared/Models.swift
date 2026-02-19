@@ -12,6 +12,8 @@ struct WorkoutSession: Codable, Identifiable {
     var structuredLog: StructuredLog?
     var contentPack: ContentPack?
     var stories: [InsightStory]
+    var averageHeartRate: Double?
+    var activeCalories: Double?
 
     init(
         id: UUID = UUID(),
@@ -21,7 +23,9 @@ struct WorkoutSession: Codable, Identifiable {
         moments: [Moment] = [],
         structuredLog: StructuredLog? = nil,
         contentPack: ContentPack? = nil,
-        stories: [InsightStory] = []
+        stories: [InsightStory] = [],
+        averageHeartRate: Double? = nil,
+        activeCalories: Double? = nil
     ) {
         self.id = id
         self.startedAt = startedAt
@@ -31,6 +35,8 @@ struct WorkoutSession: Codable, Identifiable {
         self.structuredLog = structuredLog
         self.contentPack = contentPack
         self.stories = stories
+        self.averageHeartRate = averageHeartRate
+        self.activeCalories = activeCalories
     }
 
     var duration: TimeInterval? {
@@ -662,6 +668,8 @@ struct WorkoutMessage: Codable {
     var timestamp: Date
     var error: String?
     var healthWorkoutUUID: UUID?
+    var avgHeartRate: Double?
+    var activeCalories: Double?
 
     init(
         command: WorkoutCommand,
@@ -671,7 +679,9 @@ struct WorkoutMessage: Codable {
         confidence: Double? = nil,
         timestamp: Date = Date(),
         error: String? = nil,
-        healthWorkoutUUID: UUID? = nil
+        healthWorkoutUUID: UUID? = nil,
+        avgHeartRate: Double? = nil,
+        activeCalories: Double? = nil
     ) {
         self.command = command
         self.workoutID = workoutID
@@ -681,6 +691,8 @@ struct WorkoutMessage: Codable {
         self.timestamp = timestamp
         self.error = error
         self.healthWorkoutUUID = healthWorkoutUUID
+        self.avgHeartRate = avgHeartRate
+        self.activeCalories = activeCalories
     }
 
     func toDictionary() -> [String: Any] {
@@ -694,6 +706,8 @@ struct WorkoutMessage: Codable {
         if let confidence { dict["confidence"] = confidence }
         if let error { dict["error"] = error }
         if let healthWorkoutUUID { dict["healthWorkoutUUID"] = healthWorkoutUUID.uuidString }
+        if let avgHeartRate { dict["avgHeartRate"] = avgHeartRate }
+        if let activeCalories { dict["activeCalories"] = activeCalories }
         return dict
     }
 
@@ -714,7 +728,9 @@ struct WorkoutMessage: Codable {
             confidence: dict["confidence"] as? Double,
             timestamp: Date(timeIntervalSince1970: timestampInterval),
             error: dict["error"] as? String,
-            healthWorkoutUUID: (dict["healthWorkoutUUID"] as? String).flatMap(UUID.init)
+            healthWorkoutUUID: (dict["healthWorkoutUUID"] as? String).flatMap(UUID.init),
+            avgHeartRate: dict["avgHeartRate"] as? Double,
+            activeCalories: dict["activeCalories"] as? Double
         )
     }
 }
@@ -732,10 +748,12 @@ struct WorkoutSessionIndex: Codable, Identifiable {
     var totalSets: Int
     var totalVolume: Double
     var hasStories: Bool
+    var averageHeartRate: Double?
+    var activeCalories: Double?
 
     private enum CodingKeys: String, CodingKey {
         case id, startedAt, endedAt, momentCount, hasStructuredLog, exerciseNames
-        case exerciseCount, totalSets, totalVolume, hasStories
+        case exerciseCount, totalSets, totalVolume, hasStories, averageHeartRate, activeCalories
     }
 
     init(from session: WorkoutSession) {
@@ -754,6 +772,8 @@ struct WorkoutSessionIndex: Codable, Identifiable {
             }
         }
         self.hasStories = !session.stories.isEmpty
+        self.averageHeartRate = session.averageHeartRate
+        self.activeCalories = session.activeCalories
     }
 
     init(from decoder: Decoder) throws {
@@ -768,11 +788,112 @@ struct WorkoutSessionIndex: Codable, Identifiable {
         self.totalSets = (try? container.decode(Int.self, forKey: .totalSets)) ?? 0
         self.totalVolume = (try? container.decode(Double.self, forKey: .totalVolume)) ?? 0
         self.hasStories = (try? container.decode(Bool.self, forKey: .hasStories)) ?? false
+        self.averageHeartRate = try? container.decodeIfPresent(Double.self, forKey: .averageHeartRate)
+        self.activeCalories = try? container.decodeIfPresent(Double.self, forKey: .activeCalories)
     }
 
     var duration: TimeInterval? {
         guard let endedAt else { return nil }
         return endedAt.timeIntervalSince(startedAt)
+    }
+
+    /// Smart workout title based on exercises (e.g. "Chest Day", "Pull Day", "Full Body")
+    var title: String {
+        WorkoutTitleGenerator.generate(from: exerciseNames)
+    }
+}
+
+// MARK: - Workout Title Generator
+
+enum WorkoutTitleGenerator {
+    private static let muscleMap: [String: Set<String>] = [
+        "chest": ["bench", "chest", "fly", "flye", "pec", "dumbbell press", "incline press", "decline press", "push up", "pushup", "dip"],
+        "back": ["row", "pull up", "pullup", "chin up", "chinup", "lat", "deadlift", "pulldown", "pull-down", "back extension", "barbell row", "cable row", "t-bar"],
+        "shoulders": ["shoulder", "overhead press", "ohp", "military press", "lateral raise", "front raise", "rear delt", "face pull", "shrug", "delt"],
+        "legs": ["squat", "leg press", "lunge", "hamstring", "quad", "calf", "calves", "leg curl", "leg extension", "hip thrust", "glute", "rdl", "romanian", "goblet"],
+        "arms": ["bicep", "curl", "tricep", "triceps", "hammer curl", "preacher", "skull crusher", "pushdown", "extension"],
+        "core": ["ab", "abs", "crunch", "plank", "sit up", "situp", "cable crunch", "leg raise", "oblique", "core"]
+    ]
+
+    static func generate(from exerciseNames: [String]) -> String {
+        guard !exerciseNames.isEmpty else { return "Workout" }
+
+        // Tally which muscle groups are hit
+        var hits: [String: Int] = [:]
+        for name in exerciseNames {
+            let lower = name.lowercased()
+            for (group, keywords) in muscleMap {
+                if keywords.contains(where: { lower.contains($0) }) {
+                    hits[group, default: 0] += 1
+                }
+            }
+        }
+
+        // No matches — just use the first exercise
+        guard !hits.isEmpty else {
+            return exerciseNames.first.map { formatExerciseName($0) + " Day" } ?? "Workout"
+        }
+
+        let sorted = hits.sorted { $0.value > $1.value }
+        let total = exerciseNames.count
+        let topGroup = sorted[0].key
+        let topCount = sorted[0].value
+
+        // If one group dominates (>60%), name it that
+        if Double(topCount) / Double(total) > 0.6 || sorted.count == 1 {
+            return friendlyName(topGroup)
+        }
+
+        // Check for push/pull/legs patterns
+        let groupSet = Set(sorted.map(\.key))
+        if groupSet.isSuperset(of: ["chest", "shoulders"]) && !groupSet.contains("back") {
+            return "Push Day"
+        }
+        if groupSet.isSuperset(of: ["back"]) && !groupSet.contains("chest") && (groupSet.contains("arms") || sorted.count <= 2) {
+            return "Pull Day"
+        }
+        if groupSet.contains("legs") && sorted.count <= 2 {
+            return "Leg Day"
+        }
+
+        // Upper vs lower
+        let upperGroups: Set<String> = ["chest", "back", "shoulders", "arms"]
+        let lowerGroups: Set<String> = ["legs"]
+        let hasUpper = !groupSet.intersection(upperGroups).isEmpty
+        let hasLower = !groupSet.intersection(lowerGroups).isEmpty
+
+        if hasUpper && hasLower && sorted.count >= 3 {
+            return "Full Body"
+        }
+        if hasUpper && !hasLower {
+            return "Upper Body"
+        }
+        if hasLower && !hasUpper {
+            return "Lower Body"
+        }
+
+        // Two groups
+        if sorted.count == 2 {
+            return "\(friendlyName(sorted[0].key)) & \(friendlyName(sorted[1].key))"
+        }
+
+        return "Full Body"
+    }
+
+    private static func friendlyName(_ group: String) -> String {
+        switch group {
+        case "chest": return "Chest Day"
+        case "back": return "Back Day"
+        case "shoulders": return "Shoulder Day"
+        case "legs": return "Leg Day"
+        case "arms": return "Arms Day"
+        case "core": return "Core Day"
+        default: return "Workout"
+        }
+    }
+
+    private static func formatExerciseName(_ name: String) -> String {
+        name.prefix(1).uppercased() + name.dropFirst()
     }
 }
 

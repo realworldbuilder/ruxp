@@ -127,6 +127,8 @@ struct ChatAction: Codable, Identifiable {
     var label: String
     var actionType: ChatActionType
     var workoutId: String?
+    var prompt: String?       // For .askTrainer — pre-fills and sends this message
+    var tabIndex: Int?        // For .switchTab — index of tab to navigate to
 }
 
 enum ChatActionType: String, Codable {
@@ -134,6 +136,9 @@ enum ChatActionType: String, Codable {
     case viewWorkout
     case analyzeWorkout
     case exportData
+    case askTrainer           // Send a follow-up message to the trainer
+    case switchTab            // Navigate to a different tab
+    case viewInsights         // Jump to insights tab
 }
 
 struct ChatWorkoutListItem: Codable, Identifiable {

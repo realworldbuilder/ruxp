@@ -26,6 +26,13 @@ final class WatchWorkoutManager {
 
     init() {
         setupConnectivityCallbacks()
+        connectivity.onMomentCountUpdated = { [weak self] count in
+            guard let self else { return }
+            // Always take the max — phone knows the true total
+            if count > self.momentCount {
+                self.momentCount = count
+            }
+        }
     }
 
     // MARK: - Workout Lifecycle
@@ -57,16 +64,19 @@ final class WatchWorkoutManager {
     func endWorkout() {
         guard let workoutID = currentWorkoutID else { return }
 
-        let message = WorkoutMessage(
-            command: .stop,
-            workoutID: workoutID,
-            healthWorkoutUUID: healthKitService.workoutUUID
-        )
-        connectivity.sendWorkoutCommand(message)
-        connectivity.updateWorkoutContext(workoutID: workoutID, isActive: false, startedAt: nil)
-
+        // End HealthKit workout FIRST to capture final stats, then send to phone
         Task {
             await healthKitService.endWorkout()
+
+            let message = WorkoutMessage(
+                command: .stop,
+                workoutID: workoutID,
+                healthWorkoutUUID: healthKitService.workoutUUID,
+                avgHeartRate: healthKitService.averageHeartRate > 0 ? healthKitService.averageHeartRate : nil,
+                activeCalories: healthKitService.totalActiveCalories > 0 ? healthKitService.totalActiveCalories : nil
+            )
+            connectivity.sendWorkoutCommand(message)
+            connectivity.updateWorkoutContext(workoutID: workoutID, isActive: false, startedAt: nil)
         }
 
         stopElapsedTimer()
@@ -161,6 +171,8 @@ final class WatchWorkoutManager {
                 if let transcript = message.transcript {
                     self.latestTranscriptSnippet = transcript
                     self.connectivity.isSending = false
+                    // Phone moment was transcribed — bump count if we're behind
+                    // (watch-recorded moments already counted in stopRecordingMoment)
                 } else if let error = message.error {
                     self.lastError = error
                     self.connectivity.isSending = false

@@ -12,6 +12,7 @@ final class WatchConnectivityManager: NSObject, ObservableObject {
 
     var onWorkoutCommand: ((WorkoutMessage) async -> Void)?
     var onReceivedWorkoutContext: ((_ workoutID: UUID?, _ isActive: Bool, _ startedAt: Date?) -> Void)?
+    var onMomentCountUpdated: ((_ count: Int) -> Void)?
 
     private let session: WCSession
     private var sendingTimeout: DispatchWorkItem?
@@ -77,6 +78,12 @@ final class WatchConnectivityManager: NSObject, ObservableObject {
         let isActive = context[ConnectivityConstants.contextIsActiveKey] as? Bool ?? false
         let workoutID = (context[ConnectivityConstants.contextWorkoutIDKey] as? String).flatMap(UUID.init)
         let startedAt = (context[ConnectivityConstants.contextStartedAtKey] as? TimeInterval).map { Date(timeIntervalSince1970: $0) }
+
+        // Sync moment count if present
+        if let count = context[ConnectivityConstants.contextMomentCountKey] as? Int {
+            onMomentCountUpdated?(count)
+        }
+
         return (workoutID, isActive, startedAt)
     }
 

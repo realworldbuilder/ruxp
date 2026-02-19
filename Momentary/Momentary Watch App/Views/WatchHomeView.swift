@@ -10,12 +10,8 @@ struct WatchHomeView: View {
             Image("Logo")
                 .resizable()
                 .scaledToFit()
-                .frame(width: 48, height: 48)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-            
-            Text("M2M")
-                .font(.system(.title3, design: .rounded, weight: .bold))
-                .foregroundStyle(WatchTheme.textPrimary)
+                .frame(width: 72, height: 72)
+                .clipShape(RoundedRectangle(cornerRadius: 16))
             
             Spacer()
             

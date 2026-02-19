@@ -102,6 +102,38 @@ struct WorkoutDetailView: View {
                 Text("\(formatVolume(volume)) \(weightUnit) total volume")
                     .font(.subheadline.bold()).foregroundStyle(Theme.accent)
             }
+
+            // Apple Health data
+            let hasHealth = session.averageHeartRate != nil || session.activeCalories != nil
+            if hasHealth {
+                Divider().overlay(Theme.divider)
+                HStack(spacing: 24) {
+                    if let hr = session.averageHeartRate, hr > 0 {
+                        VStack(spacing: 4) {
+                            Image(systemName: "heart.fill")
+                                .font(.caption)
+                                .foregroundStyle(.red)
+                            Text("\(Int(hr))")
+                                .font(.headline.monospacedDigit())
+                            Text("Avg BPM")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    if let cal = session.activeCalories, cal > 0 {
+                        VStack(spacing: 4) {
+                            Image(systemName: "flame.fill")
+                                .font(.caption)
+                                .foregroundStyle(.orange)
+                            Text("\(Int(cal))")
+                                .font(.headline.monospacedDigit())
+                            Text("Calories")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
         }
         .frame(maxWidth: .infinity)
         .themeCard(cornerRadius: Theme.radiusLarge)
@@ -285,14 +317,17 @@ struct WorkoutDetailView: View {
 
     private func ambiguitiesCard(_ ambiguities: [Ambiguity]) -> some View {
         DisclosureGroup {
-            ForEach(ambiguities) { ambiguity in
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(ambiguity.field).font(.caption.bold())
-                    Text("Heard: \"\(ambiguity.rawTranscript)\"").font(.caption).foregroundStyle(.secondary)
-                    Text("Best guess: \(ambiguity.bestGuess)").font(.caption)
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(ambiguities) { ambiguity in
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(ambiguity.field).font(.caption.bold())
+                        Text("Heard: \"\(ambiguity.rawTranscript)\"").font(.caption).foregroundStyle(.secondary)
+                        Text("Best guess: \(ambiguity.bestGuess)").font(.caption)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .padding(.vertical, 2)
             }
+            .padding(.top, 4)
         } label: {
             Label("Ambiguities (\(ambiguities.count))", systemImage: "questionmark.circle")
                 .font(.subheadline.bold()).foregroundStyle(.orange)
@@ -362,20 +397,27 @@ struct WorkoutDetailView: View {
 
     private func transcriptCard(_ moments: [Moment]) -> some View {
         DisclosureGroup {
-            ForEach(moments) { moment in
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(moment.transcript).font(.body)
-                    HStack {
-                        Text(moment.timestamp, style: .time).font(.caption).foregroundStyle(.secondary)
-                        if moment.source == .watch {
-                            Image(systemName: "applewatch").font(.caption2).foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(moments) { moment in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(moment.transcript).font(.body)
+                        HStack(spacing: 4) {
+                            Text(moment.timestamp, style: .time).font(.caption).foregroundStyle(.secondary)
+                            if moment.source == .watch {
+                                Image(systemName: "applewatch").font(.caption2).foregroundStyle(.secondary)
+                            }
                         }
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .textSelection(.enabled)
+                    if moment.id != moments.last?.id {
+                        Divider().overlay(Theme.divider)
+                    }
                 }
-                .padding(.vertical, 2).textSelection(.enabled)
             }
+            .padding(.top, 4)
         } label: {
-            Label("Transcript (\(moments.count) moments)", systemImage: "waveform").font(.subheadline.bold())
+            Label("Transcript (\(moments.count) \(moments.count == 1 ? "moment" : "moments"))", systemImage: "waveform").font(.subheadline.bold())
         }
         .themeCard()
     }

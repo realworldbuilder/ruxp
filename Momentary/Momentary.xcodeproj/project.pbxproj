@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		05E897D533E77CD16291264B /* InsightsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F12111238AF7255613A24A12 /* InsightsStore.swift */; };
 		40533A7B62684C9486E76BA4 /* TrainerSoul.swift in Sources */ = {isa = PBXBuildFile; fileRef = E978F0CC76B8482FBC4A79C7 /* TrainerSoul.swift */; };
 		A1000001 /* MomentaryApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000001 /* MomentaryApp.swift */; };
 		A1000003 /* TranscriptionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000003 /* TranscriptionService.swift */; };
@@ -55,7 +56,10 @@
 		A2000014 /* ActiveWorkoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000010 /* ActiveWorkoutView.swift */; };
 		A2000015 /* WorkoutSummaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000011 /* WorkoutSummaryView.swift */; };
 		A2000017 /* NowPlayingPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000013 /* NowPlayingPage.swift */; };
+		AB1D49684D5346E3121A4C65 /* SampleDataGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 472082E58F43CCB8FB7234DF /* SampleDataGenerator.swift */; };
+		CC641F3B7AF2A8BBC0E29956 /* ConversationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B329A9E030BA5296F32E78C5 /* ConversationStore.swift */; };
 		E6C79CAC9B32429DA84CFBF4 /* TrainerSoulEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD351910FDA64E408F948152 /* TrainerSoulEditor.swift */; };
+		EFE887148495B3C1EBD9BE70 /* InsightDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F32CA92DB2D52BB5BA25593D /* InsightDetailView.swift */; };
 		EP000002 /* Momentary Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = C2000001 /* Momentary Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		F89F2CA648E97262E033FB9E /* WatchTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = F58C19D99EDC0278BCB0538A /* WatchTheme.swift */; };
 /* End PBXBuildFile section */
@@ -85,6 +89,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		472082E58F43CCB8FB7234DF /* SampleDataGenerator.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SampleDataGenerator.swift; sourceTree = "<group>"; };
 		AD351910FDA64E408F948152 /* TrainerSoulEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainerSoulEditor.swift; sourceTree = "<group>"; };
 		B1000001 /* MomentaryApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MomentaryApp.swift; sourceTree = "<group>"; };
 		B1000003 /* TranscriptionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionService.swift; sourceTree = "<group>"; };
@@ -129,9 +134,12 @@
 		B2000010 /* ActiveWorkoutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveWorkoutView.swift; sourceTree = "<group>"; };
 		B2000011 /* WorkoutSummaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutSummaryView.swift; sourceTree = "<group>"; };
 		B2000013 /* NowPlayingPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingPage.swift; sourceTree = "<group>"; };
+		B329A9E030BA5296F32E78C5 /* ConversationStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ConversationStore.swift; sourceTree = "<group>"; };
 		C1000001 /* Momentary.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Momentary.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C2000001 /* Momentary Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Momentary Watch App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		E978F0CC76B8482FBC4A79C7 /* TrainerSoul.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainerSoul.swift; sourceTree = "<group>"; };
+		F12111238AF7255613A24A12 /* InsightsStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = InsightsStore.swift; sourceTree = "<group>"; };
+		F32CA92DB2D52BB5BA25593D /* InsightDetailView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = InsightDetailView.swift; sourceTree = "<group>"; };
 		F58C19D99EDC0278BCB0538A /* WatchTheme.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchTheme.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -194,6 +202,9 @@
 				F2000002 /* Views */,
 				B1000007 /* Assets.xcassets */,
 				E978F0CC76B8482FBC4A79C7 /* TrainerSoul.swift */,
+				B329A9E030BA5296F32E78C5 /* ConversationStore.swift */,
+				472082E58F43CCB8FB7234DF /* SampleDataGenerator.swift */,
+				F12111238AF7255613A24A12 /* InsightsStore.swift */,
 			);
 			path = Momentary;
 			sourceTree = "<group>";
@@ -215,6 +226,7 @@
 				B1000035 /* ChatMessageView.swift */,
 				B1000036 /* ChatBlockView.swift */,
 				AD351910FDA64E408F948152 /* TrainerSoulEditor.swift */,
+				F32CA92DB2D52BB5BA25593D /* InsightDetailView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -388,6 +400,10 @@
 				A1000036 /* ChatBlockView.swift in Sources */,
 				40533A7B62684C9486E76BA4 /* TrainerSoul.swift in Sources */,
 				E6C79CAC9B32429DA84CFBF4 /* TrainerSoulEditor.swift in Sources */,
+				CC641F3B7AF2A8BBC0E29956 /* ConversationStore.swift in Sources */,
+				AB1D49684D5346E3121A4C65 /* SampleDataGenerator.swift in Sources */,
+				05E897D533E77CD16291264B /* InsightsStore.swift in Sources */,
+				EFE887148495B3C1EBD9BE70 /* InsightDetailView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -551,7 +567,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Momentary/Momentary.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 26;
+				CURRENT_PROJECT_VERSION = 34;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "";
 				INFOPLIST_KEY_CFBundleDisplayName = Mind2Muscle;
@@ -588,7 +604,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Momentary/Momentary.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 26;
+				CURRENT_PROJECT_VERSION = 34;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "";
 				INFOPLIST_KEY_CFBundleDisplayName = Mind2Muscle;
@@ -626,7 +642,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "Momentary Watch App/Momentary Watch App.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 26;
+				CURRENT_PROJECT_VERSION = 34;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "";
 				INFOPLIST_KEY_CFBundleDisplayName = Mind2Muscle;
@@ -660,7 +676,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "Momentary Watch App/Momentary Watch App.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 26;
+				CURRENT_PROJECT_VERSION = 34;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "";
 				INFOPLIST_KEY_CFBundleDisplayName = Mind2Muscle;

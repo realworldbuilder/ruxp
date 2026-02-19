@@ -2,35 +2,53 @@ import SwiftUI
 
 struct ChatView: View {
     @Environment(ChatEngine.self) private var chatService
+    @Environment(ConversationStore.self) private var conversationStore
     @Environment(WorkoutManager.self) private var workoutManager
     @Environment(WorkoutProcessor.self) private var aiPipeline
     @State private var inputText = ""
     @State private var navigationPath = NavigationPath()
     @State private var showExportSheet = false
     @State private var exportData: Data?
+    @State private var showHistory = false
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
             VStack(spacing: 0) {
-                if chatService.messages.isEmpty {
+                if showHistory {
+                    historyList
+                } else if chatService.messages.isEmpty {
                     emptyState
                 } else {
                     messageList
                 }
 
-                inputBar
+                if !showHistory {
+                    inputBar
+                }
             }
             .background(Theme.background)
-            .navigationTitle("Trainer")
+            .navigationTitle(showHistory ? "Chat History" : "Trainer")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                if !chatService.messages.isEmpty {
-                    ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            showHistory.toggle()
+                        }
+                    } label: {
+                        Image(systemName: showHistory ? "xmark" : "clock.arrow.circlepath")
+                            .foregroundColor(Theme.textSecondary)
+                    }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    if showHistory {
+                        EmptyView()
+                    } else {
                         Button {
-                            chatService.clearConversation()
+                            chatService.startNewConversation()
                         } label: {
-                            Image(systemName: "trash")
-                                .foregroundColor(Theme.textSecondary)
+                            Image(systemName: "square.and.pencil")
+                                .foregroundColor(Theme.accent)
                         }
                     }
                 }
@@ -42,6 +60,59 @@ struct ChatView: View {
                 if let data = exportData {
                     ShareSheet(data: data)
                 }
+            }
+        }
+    }
+
+    // MARK: - History List
+
+    private var historyList: some View {
+        Group {
+            if conversationStore.conversations.isEmpty {
+                VStack(spacing: 16) {
+                    Spacer()
+                    Image(systemName: "bubble.left.and.text.bubble.right")
+                        .font(.system(size: 40))
+                        .foregroundColor(Theme.textTertiary)
+                    Text("No conversations yet")
+                        .font(.subheadline)
+                        .foregroundColor(Theme.textSecondary)
+                    Spacer()
+                }
+            } else {
+                List {
+                    ForEach(conversationStore.conversations) { convo in
+                        Button {
+                            chatService.loadConversation(convo.id)
+                            withAnimation { showHistory = false }
+                        } label: {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(convo.title)
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(conversationStore.activeConversationId == convo.id ? Theme.accent : Theme.textPrimary)
+                                    .lineLimit(1)
+                                Text(convo.updatedAt.formatted(.relative(presentation: .named)))
+                                    .font(.caption)
+                                    .foregroundColor(Theme.textTertiary)
+                            }
+                            .padding(.vertical, 4)
+                        }
+                        .listRowBackground(
+                            conversationStore.activeConversationId == convo.id
+                                ? Theme.accent.opacity(0.1)
+                                : Theme.surface
+                        )
+                    }
+                    .onDelete { indexSet in
+                        for idx in indexSet {
+                            let convo = conversationStore.conversations[idx]
+                            chatService.deleteConversation(convo.id)
+                        }
+                    }
+                }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
             }
         }
     }
@@ -164,6 +235,16 @@ struct ChatView: View {
                 exportData = data
                 showExportSheet = true
             }
+        case .askTrainer:
+            if let prompt = action.prompt, !prompt.isEmpty {
+                Task { await chatService.send(prompt) }
+            }
+        case .switchTab:
+            if let idx = action.tabIndex {
+                NotificationCenter.default.post(name: .switchToTab, object: nil, userInfo: ["tabIndex": idx])
+            }
+        case .viewInsights:
+            NotificationCenter.default.post(name: .switchToTab, object: nil, userInfo: ["tabIndex": 2])
         }
     }
 }

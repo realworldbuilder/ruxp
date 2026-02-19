@@ -11,7 +11,7 @@ struct HomeView: View {
     var body: some View {
         NavigationStack {
             Group { mainContent }
-                .navigationTitle("Mind2Muscle")
+                .navigationTitle("")
                 .toolbarBackground(Theme.background, for: .navigationBar)
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
@@ -77,37 +77,31 @@ struct HomeView: View {
     private var emptyStateView: some View {
         ScrollView {
             VStack(spacing: 0) {
-                Spacer().frame(height: 40)
+                Spacer().frame(height: 32)
 
-                // Hero — voice waveform icon
-                ZStack {
-                    Circle()
-                        .fill(Theme.accent.opacity(0.1))
-                        .frame(width: 100, height: 100)
-                    Circle()
-                        .fill(Theme.accent.opacity(0.06))
-                        .frame(width: 140, height: 140)
-                    Image(systemName: "waveform.circle.fill")
-                        .font(.system(size: 56))
-                        .foregroundStyle(Theme.accent)
-                }
-                .padding(.bottom, 24)
+                // App logo
+                Image("Logo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 80, height: 80)
+                    .clipShape(RoundedRectangle(cornerRadius: 18))
+                    .padding(.bottom, 20)
 
                 // Tagline
-                Text("Your voice.\nYour workout log.")
-                    .font(.system(size: 28, weight: .bold))
+                Text("talk. lift. done.")
+                    .font(.system(size: 30, weight: .bold))
                     .multilineTextAlignment(.center)
                     .foregroundStyle(Theme.textPrimary)
-                    .padding(.bottom, 8)
+                    .padding(.bottom, 6)
 
-                Text("Just talk during your workout — AI turns it into a structured training log.")
+                Text("Hit the mic, say what you did, and your workout is logged. That's it.")
                     .font(.subheadline)
                     .foregroundStyle(Theme.textSecondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 40)
-                    .padding(.bottom, 32)
+                    .padding(.bottom, 28)
 
-                // Start Workout button — pill style
+                // Start Workout button
                 Button { workoutManager.startWorkout() } label: {
                     HStack(spacing: 10) {
                         Image(systemName: "mic.fill")
@@ -122,19 +116,46 @@ struct HomeView: View {
                 }
                 .buttonStyle(.plain)
                 .padding(.horizontal, 40)
-                .padding(.bottom, 40)
+                .padding(.bottom, 32)
 
-                // Feature highlights
+                // How it works — 3 steps
                 VStack(spacing: 16) {
-                    featureRow(icon: "mic.fill", title: "Speak your sets", subtitle: "\"Bench press, 3 sets of 10 at 135\"")
-                    featureRow(icon: "cpu", title: "AI structures your log", subtitle: "Exercises, sets, reps, weight — organized automatically")
-                    featureRow(icon: "chart.line.uptrend.xyaxis", title: "Track your progress", subtitle: "Volume trends, PRs, weekly insights")
-                    featureRow(icon: "applewatch", title: "Works on Apple Watch", subtitle: "Record from your wrist, mid-set")
+                    featureRow(icon: "mic.fill", title: "1. Talk between sets", subtitle: "\"Bench 4 sets of 8 at 185\" — natural language, no forms")
+                    featureRow(icon: "cpu", title: "2. AI builds your log", subtitle: "Exercises, sets, reps, weight — structured automatically")
+                    featureRow(icon: "chart.line.uptrend.xyaxis", title: "3. Track everything", subtitle: "Volume, PRs, trends — see your progress over time")
                 }
                 .padding(.horizontal, 24)
-                .padding(.bottom, 40)
+                .padding(.bottom, 24)
 
-                // Example prompt card (ChatGPT-style)
+                // Apple Health + Watch badges
+                HStack(spacing: 12) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "heart.fill")
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                        Text("Apple Health sync")
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(Theme.textSecondary)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Theme.surface, in: Capsule())
+
+                    HStack(spacing: 6) {
+                        Image(systemName: "applewatch")
+                            .font(.caption)
+                            .foregroundStyle(Theme.accent)
+                        Text("Apple Watch")
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(Theme.textSecondary)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Theme.surface, in: Capsule())
+                }
+                .padding(.bottom, 32)
+
+                // Example prompt card
                 VStack(alignment: .leading, spacing: 12) {
                     HStack(spacing: 8) {
                         Image(systemName: "quote.opening")
@@ -146,9 +167,9 @@ struct HomeView: View {
                     }
 
                     VStack(spacing: 8) {
-                        exampleChip("Just finished bench press, 4 sets, went 135, 155, 175, 185")
+                        exampleChip("Bench press, 4 sets, went 135, 155, 175, 185")
                         exampleChip("Squat day — worked up to 225 for 3")
-                        exampleChip("Did 3 sets of pull-ups to failure, then some curls")
+                        exampleChip("3 sets of pull-ups to failure, then some curls")
                     }
                 }
                 .padding(20)
@@ -218,6 +239,7 @@ struct HomeView: View {
                 .onDelete { offsets in
                     let ids = offsets.map { workoutManager.workoutStore.index[$0].id }
                     for id in ids { workoutManager.workoutStore.deleteSession(id: id) }
+                    NotificationCenter.default.post(name: .workoutsDidChange, object: nil)
                 }
             }
         }
@@ -282,7 +304,7 @@ struct HomeView: View {
                         Text("Workout Active")
                             .font(.headline)
                             .foregroundStyle(Theme.textPrimary)
-                        Text("\(workoutManager.activeSession?.moments.count ?? 0) moments recorded")
+                        Text("\(workoutManager.activeSession?.moments.count ?? 0) \((workoutManager.activeSession?.moments.count ?? 0) == 1 ? "moment" : "moments") recorded")
                             .font(.caption)
                             .foregroundStyle(Theme.textSecondary)
                     }
@@ -346,10 +368,13 @@ struct HomeView: View {
     private func workoutRow(_ entry: WorkoutSessionIndex) -> some View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
+                Text(entry.title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Theme.textPrimary)
                 HStack(spacing: 8) {
                     Text(entry.startedAt, style: .date)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(Theme.textPrimary)
+                        .font(.caption)
+                        .foregroundStyle(Theme.textSecondary)
                     if let duration = entry.duration {
                         Text(formatDuration(duration))
                             .font(.caption)
@@ -359,8 +384,34 @@ struct HomeView: View {
                 if !entry.exerciseNames.isEmpty {
                     Text(entry.exerciseNames.joined(separator: " · "))
                         .font(.caption)
-                        .foregroundStyle(Theme.textSecondary)
+                        .foregroundStyle(Theme.textTertiary)
                         .lineLimit(1)
+                }
+                // Health data badges
+                let hasHealth = entry.averageHeartRate != nil || entry.activeCalories != nil
+                if hasHealth {
+                    HStack(spacing: 10) {
+                        if let hr = entry.averageHeartRate, hr > 0 {
+                            HStack(spacing: 3) {
+                                Image(systemName: "heart.fill")
+                                    .font(.caption2)
+                                    .foregroundStyle(.red)
+                                Text("\(Int(hr)) bpm")
+                                    .font(.caption2.monospacedDigit())
+                                    .foregroundStyle(Theme.textSecondary)
+                            }
+                        }
+                        if let cal = entry.activeCalories, cal > 0 {
+                            HStack(spacing: 3) {
+                                Image(systemName: "flame.fill")
+                                    .font(.caption2)
+                                    .foregroundStyle(.orange)
+                                Text("\(Int(cal)) cal")
+                                    .font(.caption2.monospacedDigit())
+                                    .foregroundStyle(Theme.textSecondary)
+                            }
+                        }
+                    }
                 }
             }
             Spacer()
@@ -417,6 +468,8 @@ struct HomeView: View {
     private func deleteSelected() {
         for id in selectedWorkouts { workoutManager.workoutStore.deleteSession(id: id) }
         selectedWorkouts.removeAll()
+        // Post notification so insights refresh after deletion
+        NotificationCenter.default.post(name: .workoutsDidChange, object: nil)
     }
 
     private func formatDuration(_ duration: TimeInterval) -> String {

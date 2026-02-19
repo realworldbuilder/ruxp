@@ -14,10 +14,15 @@ enum ConnectivityConstants {
     static let transcriptKey = "transcript"
     static let confidenceKey = "confidence"
 
+    // Health data keys (watch → phone)
+    static let avgHeartRateKey = "avgHeartRate"
+    static let activeCaloriesKey = "activeCalories"
+
     // Application context keys
     static let contextWorkoutIDKey = "ctx_workoutID"
     static let contextIsActiveKey = "ctx_isActive"
     static let contextStartedAtKey = "ctx_startedAt"
+    static let contextMomentCountKey = "ctx_momentCount"
 
     // File transfer metadata keys
     static let fileTypeMomentAudio = "momentAudio"

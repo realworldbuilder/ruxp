@@ -232,26 +232,31 @@ struct ActiveWorkoutView: View {
 
     @ViewBuilder
     private var statusArea: some View {
-        if workoutManager.isRecordingMoment {
-            HStack(spacing: 4) {
-                Circle()
-                    .fill(WatchTheme.accentBright)
-                    .frame(width: 6, height: 6)
-                    .opacity(dotVisible ? 1.0 : 0.0)
-                Text(formattedRecordingDuration)
-                    .font(.system(.caption, design: .monospaced))
-                    .foregroundStyle(WatchTheme.textPrimary)
+        Group {
+            if workoutManager.isRecordingMoment {
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(WatchTheme.accentBright)
+                        .frame(width: 6, height: 6)
+                        .opacity(dotVisible ? 1.0 : 0.0)
+                    Text(formattedRecordingDuration)
+                        .font(.system(.caption, design: .monospaced))
+                        .foregroundStyle(WatchTheme.textPrimary)
+                }
+            } else if workoutManager.connectivity.isSending {
+                HStack(spacing: 4) {
+                    ProgressView().tint(WatchTheme.accent)
+                    Text("Transcribing")
+                        .font(.caption2)
+                        .foregroundStyle(WatchTheme.accent)
+                }
+            } else {
+                Text("\(workoutManager.momentCount) moment\(workoutManager.momentCount == 1 ? "" : "s")")
+                    .font(.caption2)
+                    .foregroundStyle(WatchTheme.textSecondary)
             }
-        } else if workoutManager.connectivity.isSending {
-            HStack(spacing: 4) {
-                ProgressView().tint(WatchTheme.accent)
-                Text("Transcribing").font(.caption2).foregroundStyle(WatchTheme.accent)
-            }
-        } else {
-            Text("\(workoutManager.momentCount) moment\(workoutManager.momentCount == 1 ? "" : "s")")
-                .font(.caption2)
-                .foregroundStyle(WatchTheme.textSecondary)
         }
+        .frame(maxWidth: .infinity, alignment: .center)
     }
 
     // MARK: - Snippet Overlay

@@ -16,6 +16,11 @@ struct SettingsView: View {
     @State private var soul = TrainerSoul.load()
     @State private var showSoulEditor = false
 
+    // TODO: ⚠️ REMOVE BEFORE APP STORE SUBMISSION ⚠️
+    @State private var devTapCount = 0
+    @State private var showLoadSampleData = false
+    @State private var sampleDataLoaded = false
+
     private var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"
     }
@@ -150,9 +155,52 @@ struct SettingsView: View {
 
             // MARK: - About
             Section("About") {
-                LabeledContent("Version", value: "\(appVersion) (\(buildNumber))")
                 LabeledContent("AI Model", value: "GPT-4o")
                 LabeledContent("Transcription", value: "OpenAI Whisper API")
+
+                // TODO: ⚠️ REMOVE BEFORE APP STORE SUBMISSION ⚠️
+                // Tap version 5 times to reveal sample data loader
+                HStack {
+                    Text("Version")
+                    Spacer()
+                    Text("\(appVersion) (\(buildNumber))")
+                        .foregroundStyle(.secondary)
+                }
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    devTapCount += 1
+                    if devTapCount >= 5 {
+                        showLoadSampleData = true
+                        devTapCount = 0
+                    }
+                }
+            }
+
+            // TODO: ⚠️ REMOVE BEFORE APP STORE SUBMISSION ⚠️
+            if showLoadSampleData {
+                Section {
+                    Button {
+                        let samples = SampleDataGenerator.generate()
+                        for session in samples {
+                            workoutManager.workoutStore.saveSession(session)
+                        }
+                        workoutManager.workoutStore.loadIndex()
+                        NotificationCenter.default.post(name: .workoutsDidChange, object: nil)
+                        sampleDataLoaded = true
+                    } label: {
+                        Label("Load Sample Workouts (7)", systemImage: "tray.and.arrow.down")
+                    }
+
+                    if sampleDataLoaded {
+                        Text("✅ 7 sample workouts loaded!")
+                            .font(.caption)
+                            .foregroundStyle(Theme.accent)
+                    }
+                } header: {
+                    Text("🛠 Developer")
+                } footer: {
+                    Text("Loads 7 realistic workouts spanning 9 days: Chest, Pull, Leg, Push, Back & Biceps, Full Body, Shoulders.")
+                }
             }
         }
         .scrollContentBackground(.hidden)

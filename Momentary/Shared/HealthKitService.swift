@@ -122,6 +122,44 @@ final class HealthKitService: NSObject {
         // On iPhone without watch, no live workout to end
     }
     #endif
+
+    // MARK: - Query Health Data for a Completed Workout
+
+    /// Fetches average heart rate and active calories for a time range from HealthKit
+    func fetchWorkoutHealthData(start: Date, end: Date) async -> (avgHeartRate: Double?, activeCalories: Double?) {
+        guard isHealthKitAvailable, isAuthorized else { return (nil, nil) }
+
+        async let hr = fetchAverageHeartRate(start: start, end: end)
+        async let cal = fetchActiveCalories(start: start, end: end)
+
+        return await (hr, cal)
+    }
+
+    private func fetchAverageHeartRate(start: Date, end: Date) async -> Double? {
+        let hrType = HKQuantityType(.heartRate)
+        let predicate = HKQuery.predicateForSamples(withStart: start, end: end)
+
+        return await withCheckedContinuation { continuation in
+            let query = HKStatisticsQuery(quantityType: hrType, quantitySamplePredicate: predicate, options: .discreteAverage) { _, stats, _ in
+                let avg = stats?.averageQuantity()?.doubleValue(for: HKUnit.count().unitDivided(by: .minute()))
+                continuation.resume(returning: avg)
+            }
+            healthStore.execute(query)
+        }
+    }
+
+    private func fetchActiveCalories(start: Date, end: Date) async -> Double? {
+        let calType = HKQuantityType(.activeEnergyBurned)
+        let predicate = HKQuery.predicateForSamples(withStart: start, end: end)
+
+        return await withCheckedContinuation { continuation in
+            let query = HKStatisticsQuery(quantityType: calType, quantitySamplePredicate: predicate, options: .cumulativeSum) { _, stats, _ in
+                let total = stats?.sumQuantity()?.doubleValue(for: .kilocalorie())
+                continuation.resume(returning: total)
+            }
+            healthStore.execute(query)
+        }
+    }
 }
 
 // MARK: - HKLiveWorkoutBuilderDelegate

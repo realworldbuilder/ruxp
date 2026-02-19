@@ -6,6 +6,8 @@ struct Mind2MuscleApp: App {
     @State private var workoutProcessor: WorkoutProcessor
     @State private var insightsEngine: InsightsEngine
     @State private var chatEngine: ChatEngine
+    @State private var conversationStore: ConversationStore
+    @State private var insightsStore: InsightsStore
 
     init() {
         let store = WorkoutStore()
@@ -15,7 +17,9 @@ struct Mind2MuscleApp: App {
         let healthKit = HealthKitService()
         let processor = WorkoutProcessor(aiService: aiService, workoutStore: store)
         let insights = InsightsEngine(workoutStore: store, aiService: aiService)
-        let chat = ChatEngine(workoutStore: store, insightsEngine: insights, aiService: aiService)
+        let persistentInsights = InsightsStore()
+        let convoStore = ConversationStore()
+        let chat = ChatEngine(workoutStore: store, insightsEngine: insights, aiService: aiService, conversationStore: convoStore)
         let manager = WorkoutManager(
             workoutStore: store,
             connectivity: connectivity,
@@ -24,12 +28,22 @@ struct Mind2MuscleApp: App {
             processor: processor
         )
         processor.insightsEngine = insights
+        processor.insightsStore = persistentInsights
 
         _workoutManager = State(initialValue: manager)
         _workoutProcessor = State(initialValue: processor)
         _insightsEngine = State(initialValue: insights)
         _chatEngine = State(initialValue: chat)
+        _conversationStore = State(initialValue: convoStore)
+        _insightsStore = State(initialValue: persistentInsights)
+
+        // Rebuild persistent insights if empty (first launch / migration)
+        if persistentInsights.lifetimeStats.totalWorkouts == 0 && !store.index.isEmpty {
+            persistentInsights.rebuild(from: store)
+        }
     }
+
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
@@ -38,10 +52,18 @@ struct Mind2MuscleApp: App {
                 .environment(workoutProcessor)
                 .environment(insightsEngine)
                 .environment(chatEngine)
+                .environment(conversationStore)
+                .environment(insightsStore)
                 .preferredColorScheme(.dark)
                 .task {
                     await workoutProcessor.processPendingQueue()
                     await insightsEngine.generateInsights()
+                }
+                .onChange(of: scenePhase) {
+                    if scenePhase == .active {
+                        // Restore active workout if app was backgrounded/killed
+                        workoutManager.refreshActiveSession()
+                    }
                 }
         }
     }

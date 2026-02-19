@@ -70,7 +70,14 @@ enum ChatPromptBuilder {
 
         7. "actionButtons" — Row of action buttons
            payload: { "actions": [{"label": "Start Workout", "actionType": "startWorkout"}] }
-           Action types: "startWorkout", "viewWorkout" (requires "workoutId"), "analyzeWorkout" (requires "workoutId"), "exportData"
+           Action types:
+           - "startWorkout" — starts a new workout session
+           - "viewWorkout" — navigates to workout detail (requires "workoutId")
+           - "analyzeWorkout" — runs AI analysis on a workout (requires "workoutId")
+           - "exportData" — exports all workout data
+           - "askTrainer" — sends a follow-up message to you (requires "prompt", e.g. {"label": "Build me a plan", "actionType": "askTrainer", "prompt": "Build me a full body workout plan for today"})
+           - "viewInsights" — navigates to the Insights tab
+           IMPORTANT: Use "askTrainer" buttons to let users dig deeper. E.g. after suggesting they diversify training, add a button like "Plan a leg day" with a prompt that asks you for a leg day plan. Make buttons actionable and specific.
 
         8. "workoutList" — List of clickable workout rows
            payload: { "workouts": [{"workoutId": "uuid", "date": "Jan 15", "summary": "Chest & Back", "volume": 12500.0}] }

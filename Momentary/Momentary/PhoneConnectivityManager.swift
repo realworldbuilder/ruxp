@@ -57,6 +57,14 @@ final class ConnectivityService: NSObject, ObservableObject {
         return (workoutID, isActive, startedAt)
     }
 
+    func updateMomentCount(_ count: Int, workoutID: UUID) {
+        var context = session.applicationContext
+        context[ConnectivityConstants.contextMomentCountKey] = count
+        context[ConnectivityConstants.contextWorkoutIDKey] = workoutID.uuidString
+        context[ConnectivityConstants.contextIsActiveKey] = true
+        try? session.updateApplicationContext(context)
+    }
+
     func sendTranscriptionToWatch(_ transcript: String, momentID: UUID, workoutID: UUID) {
         let message = WorkoutMessage(command: .momentTranscribed, workoutID: workoutID, momentID: momentID, transcript: transcript)
         sendWorkoutMessage(message)

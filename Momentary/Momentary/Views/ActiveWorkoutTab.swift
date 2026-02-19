@@ -19,6 +19,18 @@ struct ActiveWorkoutTab: View {
             .navigationTitle("Active Workout")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(Theme.background, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { showEndConfirmation = true } label: {
+                        Text("End")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 6)
+                            .background(.red, in: Capsule())
+                    }
+                }
+            }
             .alert("Microphone Access Required", isPresented: $showMicPermissionDenied) {
                 Button("Open Settings") {
                     if let url = URL(string: UIApplication.openSettingsURLString) {
@@ -45,7 +57,7 @@ struct ActiveWorkoutTab: View {
                 .foregroundStyle(.primary)
 
             HStack(spacing: 16) {
-                Label("\(workoutManager.activeSession?.moments.count ?? 0) moments", systemImage: "waveform")
+                Label("\(workoutManager.activeSession?.moments.count ?? 0) \((workoutManager.activeSession?.moments.count ?? 0) == 1 ? "moment" : "moments")", systemImage: "waveform")
                     .font(.subheadline).foregroundStyle(Theme.textSecondary)
 
                 if workoutManager.isProcessingMoment {
@@ -95,24 +107,17 @@ struct ActiveWorkoutTab: View {
         VStack(spacing: 12) {
             if recorder.isRecording { recordingOverlay }
 
-            HStack(spacing: 24) {
-                Button { showEndConfirmation = true } label: {
-                    Text("End").font(.headline).foregroundStyle(.white)
-                        .frame(width: 80, height: 44)
-                        .background(.red, in: RoundedRectangle(cornerRadius: Theme.radiusMedium))
-                }
-
-                Button {
-                    if recorder.isRecording { stopAndAddMoment() }
-                    else { requestMicAndRecord() }
-                } label: {
-                    Image(systemName: recorder.isRecording ? "stop.fill" : "mic.fill")
-                        .font(.title2).foregroundStyle(.white)
-                        .frame(width: 56, height: 56)
-                        .background(Theme.accent, in: Circle())
-                }
-                .accessibilityLabel(recorder.isRecording ? "Stop recording" : "Record moment")
+            Button {
+                if recorder.isRecording { stopAndAddMoment() }
+                else { requestMicAndRecord() }
+            } label: {
+                Image(systemName: recorder.isRecording ? "stop.fill" : "mic.fill")
+                    .font(.title2).foregroundStyle(.white)
+                    .frame(width: 64, height: 64)
+                    .background(recorder.isRecording ? Color.red : Theme.accent, in: Circle())
+                    .shadow(color: (recorder.isRecording ? Color.red : Theme.accent).opacity(0.4), radius: 8, y: 2)
             }
+            .accessibilityLabel(recorder.isRecording ? "Stop recording" : "Record moment")
             .padding(.bottom, 16)
         }
         .padding()

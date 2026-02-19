@@ -4,7 +4,7 @@ import os
 @Observable
 @MainActor
 final class ChatEngine {
-    private static let logger = Logger(subsystem: "com.whussey.momentary", category: "ChatEngine")
+    private static let logger = Logger(subsystem: "com.williamhussey.mind2muscle", category: "ChatEngine")
 
     var messages: [ChatMessage] = []
     var isResponding = false
@@ -13,17 +13,62 @@ final class ChatEngine {
     private let workoutStore: WorkoutStore
     private let insightsEngine: InsightsEngine
     private let aiService: AIService
+    private let conversationStore: ConversationStore
     private let maxHistoryMessages = 20
 
-    init(workoutStore: WorkoutStore, insightsEngine: InsightsEngine, aiService: AIService) {
+    init(workoutStore: WorkoutStore, insightsEngine: InsightsEngine, aiService: AIService, conversationStore: ConversationStore) {
         self.workoutStore = workoutStore
         self.insightsEngine = insightsEngine
         self.aiService = aiService
+        self.conversationStore = conversationStore
+
+        // Resume the most recent conversation if it exists
+        if let latest = conversationStore.conversations.first {
+            conversationStore.activeConversationId = latest.id
+            messages = conversationStore.loadMessages(for: latest.id)
+        }
+    }
+
+    // MARK: - Conversation Management
+
+    func startNewConversation() {
+        // Save current first
+        if !messages.isEmpty {
+            conversationStore.save(messages: messages)
+        }
+        let id = conversationStore.newConversation()
+        conversationStore.activeConversationId = id
+        messages = []
+        lastError = nil
+    }
+
+    func loadConversation(_ id: UUID) {
+        // Save current first
+        if !messages.isEmpty {
+            conversationStore.save(messages: messages)
+        }
+        conversationStore.activeConversationId = id
+        messages = conversationStore.loadMessages(for: id)
+        lastError = nil
+    }
+
+    func deleteConversation(_ id: UUID) {
+        let wasActive = conversationStore.activeConversationId == id
+        conversationStore.delete(id: id)
+        if wasActive {
+            messages = []
+            lastError = nil
+        }
     }
 
     // MARK: - Send Message
 
     func send(_ userText: String) async {
+        // Auto-create conversation if none active
+        if conversationStore.activeConversationId == nil {
+            _ = conversationStore.newConversation()
+        }
+
         let userMessage = ChatMessage(
             role: .user,
             blocks: [ChatBlock(type: .text, payload: ChatBlockPayload(text: userText))]
@@ -66,9 +111,15 @@ final class ChatEngine {
         }
 
         isResponding = false
+
+        // Auto-save after each exchange
+        conversationStore.save(messages: messages)
     }
 
     func clearConversation() {
+        if let id = conversationStore.activeConversationId {
+            conversationStore.delete(id: id)
+        }
         messages = []
         lastError = nil
     }
@@ -122,20 +173,16 @@ final class ChatEngine {
             return [ChatBlock(type: .text, payload: ChatBlockPayload(text: cleaned))]
         }
 
-        // Try standard decode first
         if let response = try? JSONDecoder().decode(ChatAPIResponse.self, from: data),
            let blocks = response.blocks?.compactMap({ $0.toChatBlock() }),
            !blocks.isEmpty {
             return blocks
         }
 
-        // Fallback: try to manually parse the JSON structure
         if let jsonObj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
            let blocksArray = jsonObj["blocks"] as? [[String: Any]] {
             var result: [ChatBlock] = []
             for blockDict in blocksArray {
-                // Handle both { "type": "text", "payload": { "text": "..." } }
-                // and { "text": "payload", "type": { ... } } (malformed)
                 if let typeStr = blockDict["type"] as? String,
                    let blockType = ChatBlockType(rawValue: typeStr) {
                     if let payloadDict = blockDict["payload"] as? [String: Any],
@@ -143,7 +190,6 @@ final class ChatEngine {
                        let payload = try? JSONDecoder().decode(ChatBlockPayload.self, from: payloadData) {
                         result.append(ChatBlock(type: blockType, payload: payload))
                     } else {
-                        // Type is valid but payload failed — try to extract text from the block itself
                         let text = blockDict["text"] as? String
                             ?? (blockDict["payload"] as? [String: Any])?["text"] as? String
                         if let text {
@@ -155,16 +201,13 @@ final class ChatEngine {
             if !result.isEmpty { return result }
         }
 
-        // Last resort: if it looks like JSON but we can't parse blocks, extract any "text" values
         if cleaned.contains("\"text\"") {
-            let textPattern = /"text"\s*:\s*"([^"]+)"/
-            var extractedTexts: [String] = []
-            // Simple extraction — find all text values
             if let jsonObj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                var extractedTexts: [String] = []
                 extractTextsRecursive(from: jsonObj, into: &extractedTexts)
-            }
-            if !extractedTexts.isEmpty {
-                return extractedTexts.map { ChatBlock(type: .text, payload: ChatBlockPayload(text: $0)) }
+                if !extractedTexts.isEmpty {
+                    return extractedTexts.map { ChatBlock(type: .text, payload: ChatBlockPayload(text: $0)) }
+                }
             }
         }
 
@@ -174,17 +217,15 @@ final class ChatEngine {
 
     private func extractTextsRecursive(from obj: Any, into texts: inout [String]) {
         if let dict = obj as? [String: Any] {
-            // If this dict has a "type" of "text" and a text payload, grab it
             if let type = dict["type"] as? String, type == "text",
                let payload = dict["payload"] as? [String: Any],
                let text = payload["text"] as? String {
                 texts.append(text)
                 return
             }
-            // If this dict has a direct "text" key and looks like a text block
             if let text = dict["text"] as? String,
                dict["type"] == nil || (dict["type"] as? String) == "text" {
-                if !text.isEmpty && text.count > 5 { // skip tiny fragments
+                if !text.isEmpty && text.count > 5 {
                     texts.append(text)
                 }
             }
