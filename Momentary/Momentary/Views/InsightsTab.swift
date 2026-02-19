@@ -1,4 +1,24 @@
 import SwiftUI
+import UniformTypeIdentifiers
+
+enum TimePeriod: String, CaseIterable {
+    case weekly = "Weekly"
+    case monthly = "Monthly"  
+    case allTime = "All-Time"
+}
+
+struct ShareableImageItem: Identifiable, Transferable {
+    let id = UUID()
+    let image: UIImage
+    
+    static var transferRepresentation: some TransferRepresentation {
+        DataRepresentation(contentType: .png) { item in
+            item.image.pngData() ?? Data()
+        } importing: { data in
+            ShareableImageItem(image: UIImage(data: data) ?? UIImage())
+        }
+    }
+}
 
 struct InsightsTab: View {
     @Environment(WorkoutManager.self) private var workoutManager
@@ -9,6 +29,8 @@ struct InsightsTab: View {
     @State private var storyViewerStartIndex = 0
     @State private var showingLifetimeDetail = false
     @State private var showingPRDetail = false
+    @State private var selectedPeriod: TimePeriod = .weekly
+    @State private var shareItem: ShareableImageItem? = nil
 
     private struct LinkedInsight: Identifiable {
         let id: UUID
@@ -19,43 +41,56 @@ struct InsightsTab: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                LazyVStack(spacing: 16) {
-                    // Story Carousel
-                    if !insightsService.stories.isEmpty {
-                        storyCarouselSection
-                    }
-
-                    // Dashboard Metrics
-                    if !insightsService.dashboardMetrics.isEmpty {
-                        dashboardSection
-                    }
-
-                    // Persistent lifetime stats (always show if we have data)
-                    if insightsStore.lifetimeStats.totalWorkouts > 0 {
-                        lifetimeSection
-                            .onTapGesture { showingLifetimeDetail = true }
-                    }
-
-                    // Persistent PRs
-                    if !insightsStore.personalRecords.isEmpty {
-                        prSection
-                            .onTapGesture { showingPRDetail = true }
-                    }
-
-                    // Recent per-workout insights
-                    if allLinkedInsights.isEmpty && insightsService.stories.isEmpty && insightsStore.lifetimeStats.totalWorkouts == 0 {
-                        ContentUnavailableView {
-                            Label("No Insights Yet", systemImage: "lightbulb")
-                        } description: {
-                            Text("Complete a workout to get AI-generated insights about your training.")
-                        }
-                        .padding(.top, 60)
-                    } else if !allLinkedInsights.isEmpty {
-                        recentInsightsSection
+            VStack(spacing: 0) {
+                // Time Period Segmented Picker
+                Picker("Time Period", selection: $selectedPeriod) {
+                    ForEach(TimePeriod.allCases, id: \.self) { period in
+                        Text(period.rawValue).tag(period)
                     }
                 }
-                .padding(.bottom, 24)
+                .pickerStyle(.segmented)
+                .colorMultiply(Color(hex: "1a1a1a"))
+                .environment(\.colorScheme, .dark)
+                .padding(.horizontal)
+                .padding(.bottom, 16)
+                
+                ScrollView {
+                    LazyVStack(spacing: 16) {
+                        // Story Carousel
+                        if !insightsService.stories.isEmpty {
+                            storyCarouselSection
+                        }
+
+                        // Dashboard Metrics - now filtered by period
+                        if !filteredDashboardMetrics.isEmpty {
+                            dashboardSection
+                        }
+
+                        // Filtered lifetime stats (always show if we have data)
+                        if filteredStats.totalWorkouts > 0 {
+                            lifetimeSection
+                                .onTapGesture { showingLifetimeDetail = true }
+                        }
+
+                        // Persistent PRs
+                        if !insightsStore.personalRecords.isEmpty {
+                            prSection
+                        }
+
+                        // Recent per-workout insights
+                        if allLinkedInsights.isEmpty && insightsService.stories.isEmpty && insightsStore.lifetimeStats.totalWorkouts == 0 {
+                            ContentUnavailableView {
+                                Label("No Insights Yet", systemImage: "lightbulb")
+                            } description: {
+                                Text("Complete a workout to get AI-generated insights about your training.")
+                            }
+                            .padding(.top, 60)
+                        } else if !allLinkedInsights.isEmpty {
+                            recentInsightsSection
+                        }
+                    }
+                    .padding(.bottom, 24)
+                }
             }
             .background(Theme.background)
             .navigationTitle("Insights")
@@ -80,6 +115,12 @@ struct InsightsTab: View {
                     showingStoryViewer = false
                 }
             }
+            .sheet(item: $shareItem) { item in
+                ShareLink(item: item, preview: SharePreview("Mind2Muscle Insights", icon: Image(uiImage: item.image))) {
+                    Label("Share Insight", systemImage: "square.and.arrow.up")
+                }
+                .presentationDetents([.medium])
+            }
             .task {
                 await insightsService.generateInsights()
             }
@@ -100,7 +141,7 @@ struct InsightsTab: View {
     // MARK: - Dashboard Section
     private var dashboardSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label("This Week", systemImage: "chart.bar.fill")
+            Label(selectedPeriod == .weekly ? "This Week" : selectedPeriod == .monthly ? "This Month" : "All Time", systemImage: "chart.bar.fill")
                 .font(.subheadline.bold())
                 .foregroundStyle(.secondary)
                 .padding(.horizontal)
@@ -109,7 +150,7 @@ struct InsightsTab: View {
                 GridItem(.flexible(), spacing: 12),
                 GridItem(.flexible(), spacing: 12)
             ], spacing: 12) {
-                ForEach(insightsService.dashboardMetrics) { metric in
+                ForEach(filteredDashboardMetrics) { metric in
                     MetricCard(metric: metric)
                 }
             }
@@ -144,7 +185,7 @@ struct InsightsTab: View {
     // MARK: - Lifetime Stats Section
     private var lifetimeSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label("All-Time", systemImage: "trophy.fill")
+            Label(periodLabel, systemImage: "trophy.fill")
                 .font(.subheadline.bold())
                 .foregroundStyle(.secondary)
                 .padding(.horizontal)
@@ -155,28 +196,28 @@ struct InsightsTab: View {
             ], spacing: 12) {
                 lifetimeStatCard(
                     icon: "figure.strengthtraining.traditional",
-                    value: "\(insightsStore.lifetimeStats.totalWorkouts)",
+                    value: "\(filteredStats.totalWorkouts)",
                     title: "Workouts",
-                    subtitle: insightsStore.lifetimeStats.daysSinceFirst.map { "over \($0) days" },
+                    subtitle: selectedPeriod == .allTime ? filteredStats.daysSinceFirst.map { "over \($0) days" } : nil,
                     color: .green
                 )
                 lifetimeStatCard(
                     icon: "scalemass.fill",
-                    value: formatVolume(insightsStore.lifetimeStats.totalVolume),
+                    value: formatVolume(filteredStats.totalVolume),
                     title: "Total Volume",
                     subtitle: "lbs lifted",
                     color: .blue
                 )
                 lifetimeStatCard(
                     icon: "repeat",
-                    value: "\(insightsStore.lifetimeStats.totalSets)",
+                    value: "\(filteredStats.totalSets)",
                     title: "Total Sets",
-                    subtitle: String(format: "%.0f avg/workout", insightsStore.lifetimeStats.averageSetsPerWorkout),
+                    subtitle: selectedPeriod != .allTime ? nil : String(format: "%.0f avg/workout", filteredStats.averageSetsPerWorkout),
                     color: .purple
                 )
                 lifetimeStatCard(
                     icon: "dumbbell.fill",
-                    value: "\(insightsStore.lifetimeStats.totalExercises)",
+                    value: "\(filteredStats.totalExercises)",
                     title: "Exercises",
                     subtitle: "logged",
                     color: .orange
@@ -188,9 +229,21 @@ struct InsightsTab: View {
 
     private func lifetimeStatCard(icon: String, value: String, title: String, subtitle: String?, color: Color) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Image(systemName: icon)
-                .font(.caption)
-                .foregroundStyle(color)
+            HStack {
+                Image(systemName: icon)
+                    .font(.caption)
+                    .foregroundStyle(color)
+                Spacer()
+                Button(action: {
+                    shareStatCard(icon: icon, value: value, title: title, subtitle: subtitle, color: color)
+                }) {
+                    Image(systemName: "square.and.arrow.up")
+                        .font(.caption)
+                        .foregroundStyle(Theme.textSecondary)
+                }
+                .buttonStyle(.plain)
+            }
+            
             Text(value)
                 .font(.title2.bold())
             Text(title)
@@ -209,10 +262,18 @@ struct InsightsTab: View {
     // MARK: - PR Section
     private var prSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label("Personal Records", systemImage: "star.fill")
-                .font(.subheadline.bold())
-                .foregroundStyle(.secondary)
-                .padding(.horizontal)
+            HStack {
+                Label("Personal Records", systemImage: "star.fill")
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Button("See All") {
+                    showingPRDetail = true
+                }
+                .font(.caption)
+                .foregroundStyle(Theme.accent)
+            }
+            .padding(.horizontal)
 
             VStack(spacing: 12) {
                 // Top 3 PRs - Achievement Wall Style
@@ -224,53 +285,34 @@ struct InsightsTab: View {
                     }
                     .padding(.horizontal)
                 }
-                
-                // Remaining PRs as smaller rows
-                if topPRs.count > 3 {
-                    LazyVStack(spacing: 8) {
-                        ForEach(Array(topPRs.dropFirst(3).prefix(7))) { pr in
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(pr.exercise)
-                                        .font(.subheadline.bold())
-                                        .foregroundStyle(Theme.textPrimary)
-                                    if let date = pr.date as Date? {
-                                        Text(date, format: .dateTime.month(.abbreviated).day())
-                                            .font(.caption2)
-                                            .foregroundStyle(.tertiary)
-                                    }
-                                }
-                                Spacer()
-                                VStack(alignment: .trailing, spacing: 2) {
-                                    Text("\(Int(pr.weight)) lbs")
-                                        .font(.headline)
-                                        .foregroundStyle(Theme.accent)
-                                    if let improvement = pr.improvement, improvement > 0 {
-                                        Text("+\(Int(improvement)) lbs")
-                                            .font(.caption2)
-                                            .foregroundStyle(.green)
-                                    }
-                                }
-                            }
-                            .themeCard()
-                        }
-                    }
-                    .padding(.horizontal)
-                }
             }
         }
     }
     
     private func topPRCard(pr: PRRecord, rank: Int) -> some View {
         VStack(spacing: 8) {
-            // Rank indicator
-            ZStack {
-                Circle()
-                    .fill(rankColor(rank).opacity(0.2))
-                    .frame(width: 24, height: 24)
-                Text("\(rank)")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(rankColor(rank))
+            // Top row with rank and share button
+            HStack {
+                ZStack {
+                    Circle()
+                        .fill(rankColor(rank).opacity(0.2))
+                        .frame(width: 24, height: 24)
+                    Text("\(rank)")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(rankColor(rank))
+                }
+                
+                Spacer()
+                
+                Button(action: {
+                    let subtitle = pr.improvement != nil && pr.improvement! > 0 ? "+\(Int(pr.improvement!)) lbs improvement" : "Personal Record"
+                    sharePRCard(pr: pr, subtitle: subtitle)
+                }) {
+                    Image(systemName: "square.and.arrow.up")
+                        .font(.caption2)
+                        .foregroundStyle(Theme.textSecondary)
+                }
+                .buttonStyle(.plain)
             }
             
             // Weight - The star of the show
@@ -342,6 +384,105 @@ struct InsightsTab: View {
             return String(format: "%.1fK", volume / 1000)
         }
         return String(format: "%.0f", volume)
+    }
+
+    // MARK: - Computed Properties for Filtering
+    
+    private var periodLabel: String {
+        switch selectedPeriod {
+        case .weekly: return "This Week"
+        case .monthly: return "This Month"
+        case .allTime: return "All-Time"
+        }
+    }
+    
+    private var filteredStats: LifetimeStats {
+        switch selectedPeriod {
+        case .weekly:
+            return calculatePeriodStats(days: 7)
+        case .monthly:
+            return calculatePeriodStats(days: 30)
+        case .allTime:
+            return insightsStore.lifetimeStats
+        }
+    }
+    
+    private var filteredDashboardMetrics: [DashboardMetric] {
+        // For now, just return existing dashboard metrics
+        // The dashboard metrics are already weekly-based
+        switch selectedPeriod {
+        case .weekly:
+            return insightsService.dashboardMetrics
+        case .monthly, .allTime:
+            // Return empty for now - dashboard metrics are inherently weekly
+            return []
+        }
+    }
+    
+    private func calculatePeriodStats(days: Int) -> LifetimeStats {
+        let cutoffDate = Calendar.current.date(byAdding: .day, value: -days, to: Date()) ?? Date()
+        
+        let relevantSnapshots = insightsStore.weeklySnapshots.filter { snapshot in
+            snapshot.weekStart >= cutoffDate
+        }
+        
+        let totalWorkouts = relevantSnapshots.reduce(into: 0) { result, snapshot in
+            result += snapshot.workoutCount
+        }
+        let totalVolume = relevantSnapshots.reduce(into: 0.0) { result, snapshot in
+            result += snapshot.totalVolume
+        }
+        let totalSets = relevantSnapshots.reduce(into: 0) { result, snapshot in
+            result += snapshot.totalSets
+        }
+        let totalExercises = relevantSnapshots.reduce(into: 0) { result, snapshot in
+            result += snapshot.exerciseNames.count
+        }
+        
+        var stats = LifetimeStats()
+        stats.totalWorkouts = totalWorkouts
+        stats.totalVolume = totalVolume
+        stats.totalSets = totalSets
+        stats.totalExercises = totalExercises
+        return stats
+    }
+    
+    // MARK: - Share Functions
+    
+    @MainActor
+    private func renderShareImage(title: String, value: String, subtitle: String?, icon: String, accentColor: Color) -> UIImage? {
+        let card = ShareableInsightCard(title: title, value: value, subtitle: subtitle, icon: icon, accentColor: accentColor)
+        let renderer = ImageRenderer(content: card)
+        renderer.scale = 3.0
+        return renderer.uiImage
+    }
+    
+    private func shareStatCard(icon: String, value: String, title: String, subtitle: String?, color: Color) {
+        Task { @MainActor in
+            if let image = renderShareImage(
+                title: title,
+                value: value,
+                subtitle: subtitle,
+                icon: icon,
+                accentColor: color
+            ) {
+                shareItem = ShareableImageItem(image: image)
+            }
+        }
+    }
+    
+    private func sharePRCard(pr: PRRecord, subtitle: String) {
+        Task { @MainActor in
+            if let image = renderShareImage(
+                title: pr.exercise,
+                value: "\(Int(pr.weight)) lbs",
+                subtitle: subtitle,
+                icon: "star.fill",
+                accentColor: Theme.accent
+            ) {
+                shareItem = ShareableImageItem(image: image)
+            }
+        }
     }
 
     // MARK: - Data
@@ -495,5 +636,71 @@ struct FilterChip: View {
                 .foregroundStyle(isSelected ? Theme.accent : Theme.textSecondary)
         }
         .buttonStyle(.plain)
+    }
+}
+
+// MARK: - ShareableInsightCard (Inline for now)
+
+struct ShareableInsightCard: View {
+    let title: String
+    let value: String
+    let subtitle: String?
+    let icon: String
+    let accentColor: Color
+    
+    var body: some View {
+        VStack(spacing: 16) {
+            // M2M branding header
+            HStack {
+                Image(systemName: "dumbbell.fill")
+                    .foregroundColor(Color(hex: "10a37f"))
+                Text("Mind2Muscle")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.white.opacity(0.7))
+                Spacer()
+            }
+            
+            Spacer()
+            
+            // Main content
+            Image(systemName: icon)
+                .font(.system(size: 32))
+                .foregroundColor(accentColor)
+            
+            Text(value)
+                .font(.system(size: 48, weight: .black, design: .rounded))
+                .foregroundColor(.white)
+            
+            Text(title)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundColor(.white)
+            
+            if let subtitle {
+                Text(subtitle)
+                    .font(.system(size: 14))
+                    .foregroundColor(.white.opacity(0.6))
+            }
+            
+            Spacer()
+            
+            // Date footer
+            Text(Date().formatted(date: .abbreviated, time: .omitted))
+                .font(.system(size: 12))
+                .foregroundColor(.white.opacity(0.4))
+        }
+        .padding(24)
+        .frame(width: 360, height: 480)
+        .background(
+            LinearGradient(
+                colors: [Color(hex: "1a1a1a"), Color(hex: "0d0d0d")],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(Color.white.opacity(0.1), lineWidth: 1)
+        )
+        .cornerRadius(20)
     }
 }
