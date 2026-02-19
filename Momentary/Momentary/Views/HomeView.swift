@@ -2,6 +2,7 @@ import SwiftUI
 
 struct HomeView: View {
     @Environment(WorkoutManager.self) private var workoutManager
+    @Environment(InsightsStore.self) private var insightsStore
     @State private var editMode: EditMode = .inactive
     @State private var showDeleteConfirmation = false
     @State private var selectedWorkouts = Set<UUID>()
@@ -449,16 +450,8 @@ struct HomeView: View {
 
         let top3 = exerciseFrequency.sorted { $0.value > $1.value }.prefix(3).map(\.key)
 
-        var streak = 0
-        var checkDate = calendar.startOfDay(for: now)
-        while true {
-            let dayEnd = calendar.date(byAdding: .day, value: 1, to: checkDate)!
-            let hasWorkout = workoutManager.workoutStore.index.contains { $0.startedAt >= checkDate && $0.startedAt < dayEnd }
-            if hasWorkout {
-                streak += 1
-                checkDate = calendar.date(byAdding: .day, value: -1, to: checkDate)!
-            } else { break }
-        }
+        // Use persistent streak from insights store
+        let streak = insightsStore.lifetimeStats.currentStreak
 
         return WeeklyStatsResult(workoutCount: thisWeek.count, totalVolume: totalVolume, topExercises: top3, streak: streak)
     }

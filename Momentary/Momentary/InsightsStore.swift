@@ -47,6 +47,15 @@ final class InsightsStore {
             lifetimeStats.firstWorkoutDate = session.startedAt
         }
 
+        // Add workout date to set and recompute streak
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+        let dateString = dateFormatter.string(from: session.startedAt)
+        lifetimeStats.workoutDates.insert(dateString)
+        
+        // Recompute current streak by counting consecutive days backwards from today
+        recomputeStreak()
+
         // Update PRs
         for exercise in log.exercises {
             let maxWeight = exercise.sets.compactMap(\.weight).max() ?? 0
@@ -105,6 +114,55 @@ final class InsightsStore {
         Self.logger.info("Rebuilt insights from \(sorted.count) workouts")
     }
 
+    // MARK: - Streak Calculation
+
+    private func recomputeStreak() {
+        let calendar = Calendar.current
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+        
+        var currentStreak = 0
+        var longestStreak = 0
+        var tempStreak = 0
+        
+        // Start from today and work backwards
+        var checkDate = calendar.startOfDay(for: Date())
+        
+        // Count current streak backwards from today
+        while true {
+            let dateString = dateFormatter.string(from: checkDate)
+            if lifetimeStats.workoutDates.contains(dateString) {
+                currentStreak += 1
+                checkDate = calendar.date(byAdding: .day, value: -1, to: checkDate)!
+            } else {
+                break
+            }
+        }
+        
+        // Find longest streak by checking all dates in chronological order
+        let sortedDates = lifetimeStats.workoutDates.compactMap { dateFormatter.date(from: $0) }.sorted()
+        
+        for (index, date) in sortedDates.enumerated() {
+            if index == 0 {
+                tempStreak = 1
+            } else {
+                let previousDate = sortedDates[index - 1]
+                let daysBetween = calendar.dateComponents([.day], from: previousDate, to: date).day ?? 0
+                
+                if daysBetween == 1 {
+                    tempStreak += 1
+                } else {
+                    longestStreak = max(longestStreak, tempStreak)
+                    tempStreak = 1
+                }
+            }
+        }
+        longestStreak = max(longestStreak, tempStreak)
+        
+        lifetimeStats.currentStreak = currentStreak
+        lifetimeStats.longestStreak = longestStreak
+    }
+
     // MARK: - Persistence
 
     private func save() {
@@ -145,6 +203,9 @@ struct LifetimeStats: Codable {
     var totalExercises: Int = 0
     var firstWorkoutDate: Date?
     var lastWorkoutDate: Date?
+    var currentStreak: Int = 0
+    var longestStreak: Int = 0
+    var workoutDates: Set<String> = []
 
     var daysSinceFirst: Int? {
         guard let first = firstWorkoutDate else { return nil }

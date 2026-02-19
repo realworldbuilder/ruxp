@@ -214,34 +214,120 @@ struct InsightsTab: View {
                 .foregroundStyle(.secondary)
                 .padding(.horizontal)
 
-            LazyVStack(spacing: 8) {
-                ForEach(topPRs) { pr in
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(pr.exercise)
-                                .font(.subheadline.bold())
-                            if let date = pr.date as Date? {
-                                Text(date, format: .dateTime.month(.abbreviated).day())
-                                    .font(.caption2)
-                                    .foregroundStyle(.tertiary)
-                            }
-                        }
-                        Spacer()
-                        VStack(alignment: .trailing, spacing: 2) {
-                            Text("\(Int(pr.weight)) lbs")
-                                .font(.headline)
-                                .foregroundStyle(Theme.accent)
-                            if let improvement = pr.improvement, improvement > 0 {
-                                Text("+\(Int(improvement)) lbs")
-                                    .font(.caption2)
-                                    .foregroundStyle(.green)
-                            }
+            VStack(spacing: 12) {
+                // Top 3 PRs - Achievement Wall Style
+                if topPRs.count >= 3 {
+                    HStack(spacing: 8) {
+                        ForEach(Array(topPRs.prefix(3).enumerated()), id: \.element.id) { index, pr in
+                            topPRCard(pr: pr, rank: index + 1)
                         }
                     }
-                    .themeCard()
+                    .padding(.horizontal)
+                }
+                
+                // Remaining PRs as smaller rows
+                if topPRs.count > 3 {
+                    LazyVStack(spacing: 8) {
+                        ForEach(Array(topPRs.dropFirst(3).prefix(7))) { pr in
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(pr.exercise)
+                                        .font(.subheadline.bold())
+                                        .foregroundStyle(Theme.textPrimary)
+                                    if let date = pr.date as Date? {
+                                        Text(date, format: .dateTime.month(.abbreviated).day())
+                                            .font(.caption2)
+                                            .foregroundStyle(.tertiary)
+                                    }
+                                }
+                                Spacer()
+                                VStack(alignment: .trailing, spacing: 2) {
+                                    Text("\(Int(pr.weight)) lbs")
+                                        .font(.headline)
+                                        .foregroundStyle(Theme.accent)
+                                    if let improvement = pr.improvement, improvement > 0 {
+                                        Text("+\(Int(improvement)) lbs")
+                                            .font(.caption2)
+                                            .foregroundStyle(.green)
+                                    }
+                                }
+                            }
+                            .themeCard()
+                        }
+                    }
+                    .padding(.horizontal)
                 }
             }
-            .padding(.horizontal)
+        }
+    }
+    
+    private func topPRCard(pr: PRRecord, rank: Int) -> some View {
+        VStack(spacing: 8) {
+            // Rank indicator
+            ZStack {
+                Circle()
+                    .fill(rankColor(rank).opacity(0.2))
+                    .frame(width: 24, height: 24)
+                Text("\(rank)")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(rankColor(rank))
+            }
+            
+            // Weight - The star of the show
+            VStack(spacing: 2) {
+                Text("\(Int(pr.weight))")
+                    .font(.system(size: 24, weight: .bold, design: .rounded))
+                    .foregroundStyle(Theme.accent)
+                
+                Text("lbs")
+                    .font(.caption2.weight(.medium))
+                    .foregroundStyle(Theme.textSecondary)
+            }
+            
+            // Exercise name
+            Text(pr.exercise)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Theme.textPrimary)
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+                .minimumScaleFactor(0.8)
+            
+            // Improvement if available
+            if let improvement = pr.improvement, improvement > 0 {
+                Text("+\(Int(improvement))")
+                    .font(.caption2.weight(.medium))
+                    .foregroundStyle(.green)
+            } else {
+                Text("")
+                    .font(.caption2)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 110)
+        .padding(12)
+        .background(
+            LinearGradient(
+                colors: [
+                    Color.white.opacity(0.1),
+                    Color.white.opacity(0.05)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            ),
+            in: RoundedRectangle(cornerRadius: Theme.radiusMedium)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.radiusMedium)
+                .stroke(rankColor(rank).opacity(0.3), lineWidth: 1.5)
+        )
+    }
+    
+    private func rankColor(_ rank: Int) -> Color {
+        switch rank {
+        case 1: return Color(hex: "FFD700") // Gold
+        case 2: return Color(hex: "C0C0C0") // Silver
+        case 3: return Color(hex: "CD7F32") // Bronze
+        default: return Theme.accent
         }
     }
 
