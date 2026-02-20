@@ -234,14 +234,16 @@ struct ActiveWorkoutView: View {
     private var statusArea: some View {
         Group {
             if workoutManager.isRecordingMoment {
-                HStack(spacing: 4) {
-                    Circle()
-                        .fill(WatchTheme.accentBright)
-                        .frame(width: 6, height: 6)
-                        .opacity(dotVisible ? 1.0 : 0.0)
-                    Text(formattedRecordingDuration)
-                        .font(.system(.caption, design: .monospaced))
-                        .foregroundStyle(WatchTheme.textPrimary)
+                TimelineView(.periodic(from: .now, by: 0.5)) { _ in
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(WatchTheme.accentBright)
+                            .frame(width: 6, height: 6)
+                            .opacity(dotVisible ? 1.0 : 0.0)
+                        Text(formattedRecordingDuration)
+                            .font(.system(.caption, design: .monospaced))
+                            .foregroundStyle(WatchTheme.textPrimary)
+                    }
                 }
             } else if workoutManager.connectivity.isSending {
                 HStack(spacing: 4) {
@@ -250,13 +252,15 @@ struct ActiveWorkoutView: View {
                         .font(.caption2)
                         .foregroundStyle(WatchTheme.accent)
                 }
+                .frame(maxWidth: .infinity)
             } else {
                 Text("\(workoutManager.momentCount) moment\(workoutManager.momentCount == 1 ? "" : "s")")
                     .font(.caption2)
                     .foregroundStyle(WatchTheme.textSecondary)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .center)
+        .frame(maxWidth: .infinity)
+        .multilineTextAlignment(.center)
     }
 
     // MARK: - Snippet Overlay
