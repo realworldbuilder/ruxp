@@ -134,17 +134,42 @@ class ExerciseSuggestionEngine: ObservableObject {
 
 struct ExerciseSuggestionsView: View {
     let suggestions: [String]
+    @State private var isExpanded = false
 
     var body: some View {
         if !suggestions.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
-                Label("Up Next", systemImage: "sparkles")
-                    .font(.caption.bold())
-                    .foregroundStyle(Theme.textSecondary)
+                HStack {
+                    Text("Up Next")
+                        .font(.headline)
+                        .foregroundColor(Theme.textPrimary)
 
+                    Spacer()
+
+                    Text("Suggestions")
+                        .font(.caption2)
+                        .fontWeight(.medium)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(Theme.accent.opacity(0.2), in: Capsule())
+                        .foregroundColor(Theme.accent)
+                }
+
+                Text(isExpanded ? suggestions.joined(separator: "  •  ") : suggestions.prefix(2).joined(separator: "  •  "))
+                    .font(.subheadline)
+                    .foregroundColor(Theme.textSecondary)
+                    .lineLimit(isExpanded ? nil : 2)
+
+                if suggestions.count > 2 {
+                    Text(isExpanded ? "Show less" : "Show all \(suggestions.count)")
+                        .font(.caption)
+                        .foregroundColor(Theme.accent)
+                }
+
+                // Tappable chips for quick reference
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
-                        ForEach(suggestions, id: \.self) { exercise in
+                        ForEach(isExpanded ? suggestions : Array(suggestions.prefix(4)), id: \.self) { exercise in
                             Text(exercise)
                                 .font(.caption)
                                 .padding(.horizontal, 12)
@@ -155,8 +180,14 @@ struct ExerciseSuggestionsView: View {
                     }
                 }
             }
+            .themeCard()
             .padding(.horizontal)
-            .padding(.vertical, 8)
+            .padding(.vertical, 4)
+            .onTapGesture {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isExpanded.toggle()
+                }
+            }
         }
     }
 }
