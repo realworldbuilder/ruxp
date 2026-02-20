@@ -190,7 +190,6 @@ struct InsightsTab: View {
             }
             .padding(.horizontal)
         }
-        .onTapGesture { showingLifetimeDetail = true }
     }
 
     private func statCard(icon: String, value: String, title: String, subtitle: String?, color: Color) -> some View {

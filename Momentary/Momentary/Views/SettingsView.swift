@@ -3,6 +3,7 @@ import Security
 
 struct SettingsView: View {
     @Environment(WorkoutManager.self) private var workoutManager
+    @Environment(InsightsStore.self) private var insightsStore
 
     @AppStorage("weightUnit") private var weightUnit: String = WeightUnit.lbs.rawValue
     @State private var showDeleteConfirmation = false
@@ -214,6 +215,7 @@ struct SettingsView: View {
         ) {
             Button("Delete Everything", role: .destructive) {
                 workoutManager.workoutStore.deleteAllData()
+                insightsStore.resetAll()
             }
             Button("Cancel", role: .cancel) {}
         } message: {

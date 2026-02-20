@@ -99,6 +99,16 @@ final class InsightsStore {
         Self.logger.info("Ingested workout: \(log.exercises.count) exercises, \(Int(volume)) volume")
     }
 
+    // MARK: - Reset all data
+
+    func resetAll() {
+        lifetimeStats = LifetimeStats()
+        personalRecords = [:]
+        weeklySnapshots = []
+        save()
+        Self.logger.info("All insights data reset")
+    }
+
     // MARK: - Rebuild from all workouts (migration / reset)
 
     func rebuild(from store: WorkoutStore) {
