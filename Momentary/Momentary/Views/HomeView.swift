@@ -86,21 +86,9 @@ struct HomeView: View {
                 Spacer().frame(height: 32)
 
                 // App branding
-                Image("Logo")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 64, height: 64)
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
-                    .padding(.bottom, 10)
-
                 Text("Mind2Muscle")
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .font(.system(size: 32, weight: .bold, design: .rounded))
                     .foregroundStyle(Theme.textPrimary)
-                    .padding(.bottom, 4)
-
-                Text("talk. lift. done.")
-                    .font(.subheadline)
-                    .foregroundStyle(Theme.textSecondary)
                     .padding(.bottom, 28)
 
                 // Start Workout button
