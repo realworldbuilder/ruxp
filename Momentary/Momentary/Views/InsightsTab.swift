@@ -43,6 +43,11 @@ struct InsightsTab: View {
         NavigationStack {
             ScrollView {
                 LazyVStack(spacing: 16) {
+                    // Story Carousel
+                    if !insightsService.stories.isEmpty {
+                        storyCarouselSection
+                    }
+
                     // Time Period Toggle
                     Picker("Time Period", selection: $selectedPeriod) {
                         ForEach(TimePeriod.allCases, id: \.self) { period in
@@ -51,11 +56,6 @@ struct InsightsTab: View {
                     }
                     .pickerStyle(.segmented)
                     .padding(.horizontal)
-
-                    // Story Carousel
-                    if !insightsService.stories.isEmpty {
-                        storyCarouselSection
-                    }
 
                     // Unified Stats Section (one section, controlled by toggle)
                     if periodStats.totalWorkouts > 0 || insightsStore.lifetimeStats.totalWorkouts > 0 {
