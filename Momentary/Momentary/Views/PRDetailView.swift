@@ -4,17 +4,24 @@ struct PRDetailView: View {
     let personalRecords: [String: PRRecord]
     @Environment(\.dismiss) private var dismiss
     @AppStorage("weightUnit") private var weightUnit: String = WeightUnit.lbs.rawValue
+    @State private var showAllRecords = false
     
     private var sortedPRs: [PRRecord] {
         personalRecords.values.sorted { $0.weight > $1.weight }
     }
     
-    private var topThreePRs: [PRRecord] {
-        Array(sortedPRs.prefix(3))
+    private var compoundPRs: [PRRecord] {
+        personalRecords.values.filter { $0.isCompound }.sorted { $0.weight > $1.weight }
     }
     
-    private var remainingPRs: [PRRecord] {
-        Array(sortedPRs.dropFirst(3))
+    private var topThreePRs: [PRRecord] {
+        // Show top 3 compound PRs, or fall back to all PRs if no compounds
+        let prsToUse = compoundPRs.isEmpty ? sortedPRs : compoundPRs
+        return Array(prsToUse.prefix(3))
+    }
+    
+    private var allRecordsForExpansion: [PRRecord] {
+        sortedPRs
     }
 
     var body: some View {
@@ -32,15 +39,15 @@ struct PRDetailView: View {
                 }
                 .padding(.top, 40)
                 
-                // Podium - Top 3 PRs
+                // Podium - Top 3 PRs (Compound PRs or fallback to all)
                 if !topThreePRs.isEmpty {
                     podiumSection
                         .padding(.horizontal)
                 }
                 
-                // Rest of PRs
-                if !remainingPRs.isEmpty {
-                    remainingPRsSection
+                // All Records Section (Expandable)
+                if !allRecordsForExpansion.isEmpty {
+                    allRecordsSection
                         .padding(.horizontal)
                 }
                 
@@ -67,9 +74,17 @@ struct PRDetailView: View {
     
     private var podiumSection: some View {
         VStack(spacing: 20) {
-            Text("🏆 Hall of Fame")
-                .font(.title2.weight(.bold))
-                .foregroundStyle(Theme.textPrimary)
+            VStack(spacing: 4) {
+                Text("🏆 Hall of Fame")
+                    .font(.title2.weight(.bold))
+                    .foregroundStyle(Theme.textPrimary)
+                
+                if !compoundPRs.isEmpty {
+                    Text("Top Compound Lifts")
+                        .font(.caption)
+                        .foregroundStyle(Theme.textSecondary)
+                }
+            }
             
             // Top 3 in podium arrangement: 2nd, 1st, 3rd
             HStack(alignment: .bottom, spacing: 12) {
@@ -166,21 +181,41 @@ struct PRDetailView: View {
         )
     }
     
-    // MARK: - Remaining PRs Section
+    // MARK: - All Records Section (Expandable)
     
-    private var remainingPRsSection: some View {
+    private var allRecordsSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Other Records")
-                .font(.title3.weight(.bold))
-                .foregroundStyle(Theme.textPrimary)
-            
-            LazyVGrid(columns: [
-                GridItem(.flexible(), spacing: 12),
-                GridItem(.flexible(), spacing: 12)
-            ], spacing: 12) {
-                ForEach(remainingPRs) { pr in
-                    prCard(pr: pr)
+            Button(action: {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    showAllRecords.toggle()
                 }
+            }) {
+                HStack {
+                    Text("All Records")
+                        .font(.title3.weight(.bold))
+                        .foregroundStyle(Theme.textPrimary)
+                    
+                    Spacer()
+                    
+                    Image(systemName: showAllRecords ? "chevron.up" : "chevron.down")
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(Theme.textSecondary)
+                        .rotationEffect(.degrees(showAllRecords ? 0 : 0))
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(PlainButtonStyle())
+            
+            if showAllRecords {
+                LazyVGrid(columns: [
+                    GridItem(.flexible(), spacing: 12),
+                    GridItem(.flexible(), spacing: 12)
+                ], spacing: 12) {
+                    ForEach(allRecordsForExpansion) { pr in
+                        prCardWithCompoundIndicator(pr: pr)
+                    }
+                }
+                .transition(.opacity.combined(with: .scale(scale: 0.95)))
             }
         }
     }
@@ -248,6 +283,93 @@ struct PRDetailView: View {
         .overlay(
             RoundedRectangle(cornerRadius: Theme.radiusMedium)
                 .stroke(Color.white.opacity(0.2), lineWidth: 1)
+        )
+    }
+    
+    private func prCardWithCompoundIndicator(pr: PRRecord) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // Exercise name with compound indicator
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(pr.exercise)
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(Theme.textPrimary)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                    
+                    // Compound/Isolation indicator
+                    Text(pr.isCompound ? "Compound" : "Isolation")
+                        .font(.caption2.weight(.medium))
+                        .foregroundStyle(pr.isCompound ? Theme.accent : Theme.textTertiary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 2)
+                        .background(
+                            (pr.isCompound ? Theme.accent : Color.gray)
+                                .opacity(0.15),
+                            in: Capsule()
+                        )
+                }
+                
+                Spacer()
+            }
+            
+            // Weight prominently displayed
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Text("\(Int(pr.weight))")
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .foregroundStyle(Theme.accent)
+                
+                Text(weightUnit)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(Theme.textSecondary)
+            }
+            
+            // Reps and date
+            VStack(alignment: .leading, spacing: 2) {
+                if let reps = pr.reps {
+                    Text("\(reps) rep\(reps == 1 ? "" : "s")")
+                        .font(.caption)
+                        .foregroundStyle(Theme.textSecondary)
+                }
+                
+                Text(pr.date, format: .dateTime.month(.abbreviated).day())
+                    .font(.caption)
+                    .foregroundStyle(Theme.textTertiary)
+            }
+            
+            // Improvement delta
+            if let improvement = pr.improvement, improvement > 0 {
+                HStack(spacing: 2) {
+                    Image(systemName: "arrow.up.right")
+                        .font(.caption2)
+                    Text("+\(Int(improvement)) \(weightUnit)")
+                        .font(.caption.weight(.medium))
+                }
+                .foregroundStyle(.green)
+            }
+            
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(height: 130)
+        .padding(16)
+        .background(
+            LinearGradient(
+                colors: [
+                    Color.white.opacity(pr.isCompound ? 0.12 : 0.08),
+                    Color.white.opacity(pr.isCompound ? 0.06 : 0.04)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            ),
+            in: RoundedRectangle(cornerRadius: Theme.radiusMedium)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.radiusMedium)
+                .stroke(
+                    pr.isCompound ? Theme.accent.opacity(0.3) : Color.white.opacity(0.2),
+                    lineWidth: pr.isCompound ? 1.5 : 1
+                )
         )
     }
 }

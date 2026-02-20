@@ -243,6 +243,19 @@ struct PRRecord: Codable, Identifiable {
         guard let prev = previousWeight else { return nil }
         return weight - prev
     }
+    
+    var isCompound: Bool {
+        let lower = exercise.lowercased()
+        let compoundKeywords = [
+            "bench", "squat", "deadlift", "overhead press", "ohp", "military press",
+            "barbell row", "bent over row", "row", "pull up", "pullup", "pull-up",
+            "chin up", "chinup", "chin-up", "dip", "hip thrust",
+            "clean", "snatch", "jerk", "front squat", "romanian", "rdl",
+            "pendlay", "t-bar", "incline press", "decline press", "leg press",
+            "hack squat", "lunge", "step up", "good morning", "floor press"
+        ]
+        return compoundKeywords.contains(where: { lower.contains($0) })
+    }
 }
 
 struct WeeklySnapshot: Codable, Identifiable {

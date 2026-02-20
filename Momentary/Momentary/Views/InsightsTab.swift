@@ -369,7 +369,14 @@ struct InsightsTab: View {
     }
 
     private var topPRs: [PRRecord] {
-        Array(insightsStore.personalRecords.values.sorted { $0.weight > $1.weight }.prefix(10))
+        let compoundPRs = insightsStore.personalRecords.values.filter { $0.isCompound }.sorted { $0.weight > $1.weight }
+        // Prioritize compound PRs, but if we have fewer than 10, fill with isolation PRs
+        if compoundPRs.count >= 10 {
+            return Array(compoundPRs.prefix(10))
+        } else {
+            let isolationPRs = insightsStore.personalRecords.values.filter { !$0.isCompound }.sorted { $0.weight > $1.weight }
+            return Array((compoundPRs + isolationPRs).prefix(10))
+        }
     }
 
     // MARK: - Computed
