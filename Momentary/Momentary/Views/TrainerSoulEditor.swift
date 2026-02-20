@@ -52,6 +52,20 @@ struct TrainerSoulEditor: View {
                     }
                 }
 
+                // MARK: - Training Split
+                Section {
+                    Picker("Training Split", selection: $draft.trainingSplit) {
+                        ForEach(TrainerSoul.TrainingSplit.allCases) { split in
+                            Text(split.rawValue).tag(split)
+                        }
+                    }
+                } header: {
+                    Text("Training Split")
+                } footer: {
+                    Text(draft.trainingSplit.promptFragment)
+                        .font(.caption2)
+                }
+
                 // MARK: - Coaching Tone
                 Section {
                     ForEach(TrainerSoul.CoachingTone.allCases) { tone in

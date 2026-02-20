@@ -8,6 +8,7 @@ struct TrainerSoul: Codable, Equatable {
     var experienceLevel: ExperienceLevel
     var trainingStyle: TrainingStyle
     var coachingTone: CoachingTone
+    var trainingSplit: TrainingSplit
     var customPrompt: String  // free-text "soul" override — the power-user field
 
     // MARK: - Enums
@@ -83,6 +84,30 @@ struct TrainerSoul: Codable, Equatable {
         }
     }
 
+    enum TrainingSplit: String, Codable, CaseIterable, Identifiable {
+        case pushPullLegs = "Push/Pull/Legs"
+        case upperLower = "Upper/Lower"
+        case fullBody = "Full Body"
+        case broSplit = "Bro Split"
+        case arnoldSplit = "Arnold Split"
+        case phat = "PHAT"
+        case custom = "Custom"
+        
+        var id: String { rawValue }
+        
+        var promptFragment: String {
+            switch self {
+            case .pushPullLegs: return "Running a Push/Pull/Legs split — suggest exercises that fit the current day's push, pull, or leg focus."
+            case .upperLower: return "Running an Upper/Lower split — alternate between upper body and lower body days."
+            case .fullBody: return "Running a Full Body split — hit all major muscle groups each session."
+            case .broSplit: return "Running a Bro Split — one major muscle group per day (chest day, back day, etc)."
+            case .arnoldSplit: return "Running an Arnold Split — Chest/Back, Shoulders/Arms, Legs rotation."
+            case .phat: return "Running PHAT — alternating power and hypertrophy days."
+            case .custom: return "Running a custom split."
+            }
+        }
+    }
+
     // MARK: - Defaults
 
     static let `default` = TrainerSoul(
@@ -90,6 +115,7 @@ struct TrainerSoul: Codable, Equatable {
         experienceLevel: .intermediate,
         trainingStyle: .bodybuilding,
         coachingTone: .bro,
+        trainingSplit: .pushPullLegs,
         customPrompt: ""
     )
 
@@ -102,6 +128,7 @@ struct TrainerSoul: Codable, Equatable {
         parts.append("You are \(fitnessGoal.promptFragment).")
         parts.append(experienceLevel.promptFragment)
         parts.append("Training style: \(trainingStyle.rawValue).")
+        parts.append("Training split: \(trainingSplit.promptFragment)")
         parts.append(coachingTone.promptFragment)
 
         if !customPrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
