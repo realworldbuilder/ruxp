@@ -61,8 +61,14 @@ final class WatchWorkoutManager {
         Self.logger.info("Started workout \(workoutID)")
     }
 
+    /// Ends the workout, waits for HealthKit stats, then signals ready for summary.
+    var isEndingWorkout = false
+
     func endWorkout() {
-        guard let workoutID = currentWorkoutID else { return }
+        guard let workoutID = currentWorkoutID, !isEndingWorkout else { return }
+        isEndingWorkout = true
+
+        stopElapsedTimer()
 
         // End HealthKit workout FIRST to capture final stats, then send to phone
         Task {
@@ -77,13 +83,17 @@ final class WatchWorkoutManager {
             )
             connectivity.sendWorkoutCommand(message)
             connectivity.updateWorkoutContext(workoutID: workoutID, isActive: false, startedAt: nil)
+
+            extendedSession.endSession()
+            isEndingWorkout = false
+            workoutEndReady = true
+
+            Self.logger.info("Ended workout \(workoutID)")
         }
-
-        stopElapsedTimer()
-        extendedSession.endSession()
-
-        Self.logger.info("Ended workout \(workoutID)")
     }
+
+    /// Set to true once HealthKit stats are captured and summary is safe to show.
+    var workoutEndReady = false
 
     func completeWorkoutDismissal() {
         isWorkoutActive = false
@@ -93,6 +103,8 @@ final class WatchWorkoutManager {
         latestTranscriptSnippet = nil
         workoutStartTime = nil
         didReceiveRemoteStop = false
+        workoutEndReady = false
+        isEndingWorkout = false
     }
 
     // MARK: - Moment Recording

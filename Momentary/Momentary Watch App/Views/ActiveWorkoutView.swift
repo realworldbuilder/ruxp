@@ -46,6 +46,12 @@ struct ActiveWorkoutView: View {
                 stopAnimations()
             }
         }
+        .onChange(of: workoutManager.workoutEndReady) {
+            if workoutManager.workoutEndReady {
+                workoutManager.workoutEndReady = false
+                showSummary = true
+            }
+        }
         .onChange(of: workoutManager.didReceiveRemoteStop) {
             if workoutManager.didReceiveRemoteStop { showSummary = true }
         }
@@ -96,16 +102,24 @@ struct ActiveWorkoutView: View {
             // End workout
             Button {
                 workoutManager.endWorkout()
-                showSummary = true
             } label: {
-                Text("End")
-                    .font(.system(.footnote, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
-                    .background(.red.opacity(0.8), in: RoundedRectangle(cornerRadius: 10))
+                if workoutManager.isEndingWorkout {
+                    ProgressView()
+                        .tint(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background(.red.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
+                } else {
+                    Text("End")
+                        .font(.system(.footnote, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background(.red.opacity(0.8), in: RoundedRectangle(cornerRadius: 10))
+                }
             }
             .buttonStyle(.plain)
+            .disabled(workoutManager.isEndingWorkout)
         }
         .padding(.horizontal, 8)
         .overlay(alignment: .bottom) {
