@@ -91,6 +91,14 @@ enum ChatPromptBuilder {
         - For volume values, use raw numbers
         - For dates in data points, use "yyyy-MM-dd" format
         - Respond ONLY with valid JSON.
+
+        CRITICAL RULES:
+        - Keep responses CONCISE. 2-3 blocks max per response.
+        - ALWAYS include at least one "text" block as your main message.
+        - Only add rich blocks (charts, tables, metrics) when the user explicitly asks for data.
+        - For casual questions, just use "text" + optional "actionButtons". Don't over-engineer it.
+        - The ENTIRE response must be valid JSON. Double-check closing braces.
+        - If you're unsure about a block type, just use "text" instead.
         """
     }
 

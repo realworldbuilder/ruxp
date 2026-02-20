@@ -156,10 +156,47 @@ final class ChatEngine {
         return apiMessages
     }
 
+    // MARK: - JSON Repair
+
+    private func repairTruncatedJSON(_ json: String) -> String {
+        var repaired = json
+        // Count unclosed braces/brackets
+        let openBraces = repaired.filter { $0 == "{" }.count
+        let closeBraces = repaired.filter { $0 == "}" }.count
+        let openBrackets = repaired.filter { $0 == "[" }.count
+        let closeBrackets = repaired.filter { $0 == "]" }.count
+        
+        // Close unclosed strings (rough heuristic)
+        let quoteCount = repaired.filter { $0 == "\"" }.count
+        if quoteCount % 2 != 0 {
+            repaired += "\""
+        }
+        
+        // Close arrays then objects
+        for _ in 0..<(openBrackets - closeBrackets) {
+            repaired += "]"
+        }
+        for _ in 0..<(openBraces - closeBraces) {
+            repaired += "}"
+        }
+        
+        return repaired
+    }
+
     // MARK: - Parse Response
 
     private func parseResponse(_ json: String) -> [ChatBlock] {
         var cleaned = json.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        // Check if response was truncated and remove the marker
+        let wasTruncated = cleaned.hasSuffix("[TRUNCATED_RESPONSE]")
+        if wasTruncated {
+            cleaned = cleaned.replacingOccurrences(of: "\n\n[TRUNCATED_RESPONSE]", with: "")
+                             .replacingOccurrences(of: "[TRUNCATED_RESPONSE]", with: "")
+                             .trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        
+        // Remove code block markers
         if cleaned.hasPrefix("```") {
             if let firstNewline = cleaned.firstIndex(of: "\n") {
                 cleaned = String(cleaned[cleaned.index(after: firstNewline)...])
@@ -170,9 +207,10 @@ final class ChatEngine {
         }
 
         guard let data = cleaned.data(using: .utf8) else {
-            return [ChatBlock(type: .text, payload: ChatBlockPayload(text: cleaned))]
+            return [ChatBlock(type: .text, payload: ChatBlockPayload(text: stripJSONArtifacts(from: cleaned)))]
         }
 
+        // Try normal parsing first
         if let response = try? JSONDecoder().decode(ChatAPIResponse.self, from: data),
            let blocks = response.blocks?.compactMap({ $0.toChatBlock() }),
            !blocks.isEmpty {
@@ -201,8 +239,45 @@ final class ChatEngine {
             if !result.isEmpty { return result }
         }
 
+        // If truncated or initial parsing failed, try to repair JSON
+        if wasTruncated || cleaned.contains("\"text\"") {
+            let repairedJSON = repairTruncatedJSON(cleaned)
+            if let repairedData = repairedJSON.data(using: .utf8) {
+                // Try parsing the repaired JSON
+                if let response = try? JSONDecoder().decode(ChatAPIResponse.self, from: repairedData),
+                   let blocks = response.blocks?.compactMap({ $0.toChatBlock() }),
+                   !blocks.isEmpty {
+                    return blocks
+                }
+                
+                if let jsonObj = try? JSONSerialization.jsonObject(with: repairedData) as? [String: Any],
+                   let blocksArray = jsonObj["blocks"] as? [[String: Any]] {
+                    var result: [ChatBlock] = []
+                    for blockDict in blocksArray {
+                        if let typeStr = blockDict["type"] as? String,
+                           let blockType = ChatBlockType(rawValue: typeStr) {
+                            if let payloadDict = blockDict["payload"] as? [String: Any],
+                               let payloadData = try? JSONSerialization.data(withJSONObject: payloadDict),
+                               let payload = try? JSONDecoder().decode(ChatBlockPayload.self, from: payloadData) {
+                                result.append(ChatBlock(type: blockType, payload: payload))
+                            } else {
+                                let text = blockDict["text"] as? String
+                                    ?? (blockDict["payload"] as? [String: Any])?["text"] as? String
+                                if let text {
+                                    result.append(ChatBlock(type: .text, payload: ChatBlockPayload(text: text)))
+                                }
+                            }
+                        }
+                    }
+                    if !result.isEmpty { return result }
+                }
+            }
+        }
+
+        // Try to extract text from broken JSON
         if cleaned.contains("\"text\"") {
-            if let jsonObj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            if let data = cleaned.data(using: .utf8),
+               let jsonObj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
                 var extractedTexts: [String] = []
                 extractTextsRecursive(from: jsonObj, into: &extractedTexts)
                 if !extractedTexts.isEmpty {
@@ -211,8 +286,39 @@ final class ChatEngine {
             }
         }
 
-        Self.logger.warning("Failed to parse chat response, showing as text")
-        return [ChatBlock(type: .text, payload: ChatBlockPayload(text: cleaned))]
+        Self.logger.warning("Failed to parse chat response, showing cleaned text")
+        return [ChatBlock(type: .text, payload: ChatBlockPayload(text: stripJSONArtifacts(from: cleaned)))]
+    }
+
+    private func stripJSONArtifacts(from text: String) -> String {
+        var cleaned = text
+        
+        // Remove JSON structure characters that shouldn't appear in user-facing text
+        let jsonChars = CharacterSet(charactersIn: "{}[]\"")
+        let lines = cleaned.components(separatedBy: .newlines)
+        let filteredLines = lines.compactMap { line -> String? in
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            
+            // Skip obviously JSON-looking lines
+            if trimmed.hasPrefix("{") || trimmed.hasPrefix("[") || trimmed.hasPrefix("\"") ||
+               trimmed.hasSuffix("}") || trimmed.hasSuffix("]") || trimmed.hasSuffix("\"") ||
+               trimmed == "," || trimmed == "}" || trimmed == "]" {
+                return nil
+            }
+            
+            // Extract content from quoted strings
+            if trimmed.hasPrefix("\"text\":") {
+                let content = trimmed.replacingOccurrences(of: "\"text\":", with: "")
+                                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                                    .trimmingCharacters(in: jsonChars)
+                return content.isEmpty ? nil : content
+            }
+            
+            return trimmed.isEmpty ? nil : trimmed
+        }
+        
+        let result = filteredLines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+        return result.isEmpty ? "I encountered an error parsing the response. Please try again." : result
     }
 
     private func extractTextsRecursive(from obj: Any, into texts: inout [String]) {
