@@ -10,6 +10,7 @@ final class AIService {
 
     private let chatEndpoint = URL(string: "https://api.openai.com/v1/chat/completions")!
     private let whisperEndpoint = URL(string: "https://api.openai.com/v1/audio/transcriptions")!
+    // TODO: Cost audit — consider gpt-4o-mini for insights/analysis, keep gpt-4o for Trainer chat
     private let model = "gpt-4o"
 
     // MARK: - Chat Completion

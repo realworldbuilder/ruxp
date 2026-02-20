@@ -85,26 +85,22 @@ struct HomeView: View {
             VStack(spacing: 0) {
                 Spacer().frame(height: 32)
 
-                // App logo
+                // App branding
                 Image("Logo")
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 80, height: 80)
-                    .clipShape(RoundedRectangle(cornerRadius: 18))
-                    .padding(.bottom, 20)
+                    .frame(width: 64, height: 64)
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .padding(.bottom, 10)
 
-                // Tagline
-                Text("talk. lift. done.")
-                    .font(.system(size: 30, weight: .bold))
-                    .multilineTextAlignment(.center)
+                Text("Mind2Muscle")
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundStyle(Theme.textPrimary)
-                    .padding(.bottom, 6)
+                    .padding(.bottom, 4)
 
-                Text("Hit the mic, say what you did, and your workout is logged. That's it.")
+                Text("talk. lift. done.")
                     .font(.subheadline)
                     .foregroundStyle(Theme.textSecondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 40)
                     .padding(.bottom, 28)
 
                 // Start Workout button
