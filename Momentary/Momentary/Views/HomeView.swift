@@ -85,12 +85,6 @@ struct HomeView: View {
             VStack(spacing: 0) {
                 Spacer().frame(height: 32)
 
-                // App branding
-                Text("Mind2Muscle")
-                    .font(.system(size: 32, weight: .bold, design: .rounded))
-                    .foregroundStyle(Theme.textPrimary)
-                    .padding(.bottom, 28)
-
                 // Start Workout button
                 Button { workoutManager.startWorkout() } label: {
                     HStack(spacing: 10) {
