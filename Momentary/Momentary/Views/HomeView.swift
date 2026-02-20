@@ -12,7 +12,7 @@ struct HomeView: View {
     var body: some View {
         NavigationStack {
             Group { mainContent }
-                .navigationTitle("")
+                .navigationTitle("Mind2Muscle")
                 .toolbarBackground(Theme.background, for: .navigationBar)
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
