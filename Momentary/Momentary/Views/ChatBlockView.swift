@@ -238,6 +238,7 @@ private struct ChartBlockView_Inner: View {
 
 private struct InsightBlockView: View {
     let payload: ChatBlockPayload
+    @State private var isExpanded = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -266,9 +267,21 @@ private struct InsightBlockView: View {
                 Text(body)
                     .font(.subheadline)
                     .foregroundColor(Theme.textSecondary)
+                    .lineLimit(isExpanded ? nil : 3)
+            }
+
+            if let body = payload.body, body.count > 100 {
+                Text(isExpanded ? "Show less" : "Show more")
+                    .font(.caption)
+                    .foregroundColor(Theme.accent)
             }
         }
         .themeCard()
+        .onTapGesture {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                isExpanded.toggle()
+            }
+        }
     }
 }
 
