@@ -4,6 +4,7 @@ import SwiftUI
 @MainActor
 class ExerciseSuggestionEngine: ObservableObject {
     @Published var suggestions: [String] = []
+    @Published var suggestionReason: String = ""
 
     func update(currentTranscripts: [String], workoutStore: WorkoutStore) {
         let currentExercises = extractExercises(from: currentTranscripts)
@@ -28,8 +29,10 @@ class ExerciseSuggestionEngine: ObservableObject {
 
         if !historySuggestions.isEmpty {
             suggestions = historySuggestions
+            suggestionReason = "Based on your history"
         } else {
             suggestions = getDefaultSuggestions(currentExercises: currentExercises)
+            suggestionReason = "Suggested for your split"
         }
     }
 
@@ -134,42 +137,26 @@ class ExerciseSuggestionEngine: ObservableObject {
 
 struct ExerciseSuggestionsView: View {
     let suggestions: [String]
-    @State private var isExpanded = false
+    var reason: String = "Suggested for your split"
 
     var body: some View {
         if !suggestions.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 10) {
                 HStack {
                     Text("Up Next")
                         .font(.headline)
                         .foregroundColor(Theme.textPrimary)
-
+                    
                     Spacer()
-
-                    Text("Suggestions")
+                    
+                    Text(reason)
                         .font(.caption2)
-                        .fontWeight(.medium)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .background(Theme.accent.opacity(0.2), in: Capsule())
-                        .foregroundColor(Theme.accent)
+                        .foregroundColor(Theme.textSecondary)
                 }
 
-                Text(isExpanded ? suggestions.joined(separator: "  •  ") : suggestions.prefix(2).joined(separator: "  •  "))
-                    .font(.subheadline)
-                    .foregroundColor(Theme.textSecondary)
-                    .lineLimit(isExpanded ? nil : 2)
-
-                if suggestions.count > 2 {
-                    Text(isExpanded ? "Show less" : "Show all \(suggestions.count)")
-                        .font(.caption)
-                        .foregroundColor(Theme.accent)
-                }
-
-                // Tappable chips for quick reference
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
-                        ForEach(isExpanded ? suggestions : Array(suggestions.prefix(4)), id: \.self) { exercise in
+                        ForEach(suggestions, id: \.self) { exercise in
                             Text(exercise)
                                 .font(.caption)
                                 .padding(.horizontal, 12)
@@ -183,11 +170,6 @@ struct ExerciseSuggestionsView: View {
             .themeCard()
             .padding(.horizontal)
             .padding(.vertical, 4)
-            .onTapGesture {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    isExpanded.toggle()
-                }
-            }
         }
     }
 }
@@ -208,8 +190,13 @@ struct ActiveWorkoutTab: View {
         NavigationStack {
             VStack(spacing: 0) {
                 timerHeader
-                ExerciseSuggestionsView(suggestions: suggestionEngine.suggestions)
                 momentsFeed
+                if workoutManager.activeSession?.moments.isEmpty == false {
+                    ExerciseSuggestionsView(
+                        suggestions: suggestionEngine.suggestions,
+                        reason: suggestionEngine.suggestionReason
+                    )
+                }
                 Spacer()
                 bottomControls
             }
@@ -334,10 +321,41 @@ struct ActiveWorkoutTab: View {
                     }
                 }
             } else {
-                ContentUnavailableView {
-                    Label("No Moments Yet", systemImage: "mic.slash")
-                } description: {
-                    Text("Tap the microphone button to record a moment.")
+                VStack(spacing: 20) {
+                    Spacer()
+                    
+                    Image(systemName: "mic.fill")
+                        .font(.system(size: 40))
+                        .foregroundColor(Theme.textTertiary)
+                    
+                    Text("Tap the mic to start logging")
+                        .font(.subheadline)
+                        .foregroundColor(Theme.textSecondary)
+                    
+                    if !suggestionEngine.suggestions.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Start with")
+                                .font(.caption)
+                                .foregroundColor(Theme.textTertiary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 8) {
+                                    ForEach(suggestionEngine.suggestions, id: \.self) { exercise in
+                                        Text(exercise)
+                                            .font(.caption)
+                                            .padding(.horizontal, 12)
+                                            .padding(.vertical, 8)
+                                            .background(Theme.accentSubtle, in: Capsule())
+                                            .foregroundStyle(Theme.accent)
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 32)
+                    }
+                    
+                    Spacer()
                 }
             }
         }
