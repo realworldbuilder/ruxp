@@ -171,26 +171,24 @@ struct InsightsTab: View {
             }
             .padding(.horizontal)
 
-            // Streak row (only on All-Time)
-            if selectedPeriod == .allTime {
-                HStack(spacing: 12) {
-                    statCard(
-                        icon: "flame.fill",
-                        value: "\(insightsStore.lifetimeStats.currentStreak)",
-                        title: "Day Streak",
-                        subtitle: "current",
-                        color: .red
-                    )
-                    statCard(
-                        icon: "trophy.fill",
-                        value: "\(insightsStore.lifetimeStats.longestStreak)",
-                        title: "Best Streak",
-                        subtitle: "all-time",
-                        color: .yellow
-                    )
-                }
-                .padding(.horizontal)
+            // Streak row
+            HStack(spacing: 12) {
+                statCard(
+                    icon: "flame.fill",
+                    value: "\(insightsStore.lifetimeStats.currentStreak)",
+                    title: "Day Streak",
+                    subtitle: "current",
+                    color: .red
+                )
+                statCard(
+                    icon: "trophy.fill",
+                    value: "\(insightsStore.lifetimeStats.longestStreak)",
+                    title: "Best Streak",
+                    subtitle: "all-time",
+                    color: .yellow
+                )
             }
+            .padding(.horizontal)
         }
         .onTapGesture { showingLifetimeDetail = true }
     }
