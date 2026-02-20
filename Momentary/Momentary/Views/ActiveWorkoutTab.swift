@@ -4,15 +4,13 @@ import SwiftUI
 @MainActor
 class ExerciseSuggestionEngine: ObservableObject {
     @Published var suggestions: [String] = []
-    
+
     func update(currentTranscripts: [String], workoutStore: WorkoutStore) {
-        // 1. Extract exercise names mentioned in current transcripts
         let currentExercises = extractExercises(from: currentTranscripts)
-        
-        // 2. Look at past workouts that contained similar exercises
+
+        // Look at past workouts for co-occurrence patterns
         let historicalPairs = buildExercisePairings(from: workoutStore)
-        
-        // 3. Find exercises that commonly follow the current ones
+
         var scores: [String: Int] = [:]
         for exercise in currentExercises {
             if let paired = historicalPairs[exercise.lowercased()] {
@@ -23,20 +21,19 @@ class ExerciseSuggestionEngine: ObservableObject {
                 }
             }
         }
-        
-        // 4. Sort by frequency and take top 4
-        suggestions = scores.sorted { $0.value > $1.value }
+
+        let historySuggestions = scores.sorted { $0.value > $1.value }
             .prefix(4)
             .map(\.key)
-        
-        // 5. If no history-based suggestions, use split-based defaults
-        if suggestions.isEmpty {
+
+        if !historySuggestions.isEmpty {
+            suggestions = historySuggestions
+        } else {
             suggestions = getDefaultSuggestions(currentExercises: currentExercises)
         }
     }
-    
+
     private func extractExercises(from transcripts: [String]) -> [String] {
-        // Simple keyword extraction — look for common exercise names in transcripts
         let knownExercises = [
             "bench press", "incline bench", "incline dumbbell press", "dumbbell press",
             "squat", "front squat", "back squat", "goblet squat",
@@ -52,17 +49,16 @@ class ExerciseSuggestionEngine: ObservableObject {
             "calf raise", "hip thrust",
             "lunges", "walking lunges", "bulgarian split squat"
         ]
-        
+
         let combined = transcripts.joined(separator: " ").lowercased()
         return knownExercises.filter { combined.contains($0) }
             .map { $0.split(separator: " ").map { $0.capitalized }.joined(separator: " ") }
     }
-    
+
     private func buildExercisePairings(from store: WorkoutStore) -> [String: [String: Int]] {
-        // Build a map: exercise → [co-occurring exercise: frequency]
         var pairings: [String: [String: Int]] = [:]
-        
-        for entry in store.index.prefix(20) { // Last 20 workouts
+
+        for entry in store.index.prefix(20) {
             let exercises = entry.exerciseNames
             for exercise in exercises {
                 for other in exercises where other != exercise {
@@ -70,53 +66,82 @@ class ExerciseSuggestionEngine: ObservableObject {
                 }
             }
         }
-        
+
         return pairings
     }
-    
+
     private func getDefaultSuggestions(currentExercises: [String]) -> [String] {
         let soul = TrainerSoul.load()
-        // Based on split, suggest common exercises
+        let current = currentExercises.joined(separator: " ").lowercased()
+
+        func filterDone(_ list: [String]) -> [String] {
+            let done = Set(currentExercises.map { $0.lowercased() })
+            return list.filter { !done.contains($0.lowercased()) }
+        }
+
         switch soul.trainingSplit {
         case .pushPullLegs:
-            let pushExercises = ["Bench Press", "Overhead Press", "Incline Dumbbell Press", "Lateral Raise", "Tricep Pushdown", "Cable Fly"]
-            let pullExercises = ["Barbell Row", "Pull-Ups", "Face Pulls", "Hammer Curl", "Lat Pulldown", "Cable Row"]
-            let legExercises = ["Squat", "Romanian Deadlift", "Leg Press", "Leg Curl", "Calf Raise", "Bulgarian Split Squat"]
-            
-            // Guess which day based on current exercises
-            let current = currentExercises.joined(separator: " ").lowercased()
-            if current.contains("bench") || current.contains("press") || current.contains("fly") || current.contains("tricep") {
-                return pushExercises.filter { !currentExercises.map { $0.lowercased() }.contains($0.lowercased()) }.prefix(4).map { $0 }
-            } else if current.contains("row") || current.contains("pull") || current.contains("curl") || current.contains("lat") {
-                return pullExercises.filter { !currentExercises.map { $0.lowercased() }.contains($0.lowercased()) }.prefix(4).map { $0 }
-            } else if current.contains("squat") || current.contains("deadlift") || current.contains("leg") || current.contains("calf") {
-                return legExercises.filter { !currentExercises.map { $0.lowercased() }.contains($0.lowercased()) }.prefix(4).map { $0 }
+            let push = ["Bench Press", "Overhead Press", "Incline Dumbbell Press", "Lateral Raise", "Tricep Pushdown", "Cable Fly"]
+            let pull = ["Barbell Row", "Pull-Ups", "Face Pulls", "Hammer Curl", "Lat Pulldown", "Cable Row"]
+            let legs = ["Squat", "Romanian Deadlift", "Leg Press", "Leg Curl", "Calf Raise", "Bulgarian Split Squat"]
+
+            if current.contains("bench") || current.contains("fly") || current.contains("tricep") || current.contains("shoulder") || current.contains("lateral") {
+                return Array(filterDone(push).prefix(4))
+            } else if current.contains("row") || current.contains("pull") || current.contains("curl") || current.contains("lat") || current.contains("face") {
+                return Array(filterDone(pull).prefix(4))
+            } else if current.contains("squat") || current.contains("deadlift") || current.contains("leg") || current.contains("calf") || current.contains("lunge") {
+                return Array(filterDone(legs).prefix(4))
             }
+            // No moments yet — show all three categories as starting points
             return ["Bench Press", "Squat", "Barbell Row", "Overhead Press"]
+
         case .upperLower:
             let upper = ["Bench Press", "Overhead Press", "Barbell Row", "Pull-Ups", "Lateral Raise", "Bicep Curl"]
             let lower = ["Squat", "Romanian Deadlift", "Leg Press", "Hip Thrust", "Leg Curl", "Calf Raise"]
-            let current = currentExercises.joined(separator: " ").lowercased()
-            if current.contains("squat") || current.contains("deadlift") || current.contains("leg") || current.contains("hip") {
-                return lower.filter { !currentExercises.map { $0.lowercased() }.contains($0.lowercased()) }.prefix(4).map { $0 }
+            if current.contains("squat") || current.contains("deadlift") || current.contains("leg") || current.contains("hip") || current.contains("lunge") {
+                return Array(filterDone(lower).prefix(4))
+            } else if !current.isEmpty {
+                return Array(filterDone(upper).prefix(4))
             }
-            return upper.filter { !currentExercises.map { $0.lowercased() }.contains($0.lowercased()) }.prefix(4).map { $0 }
-        default:
-            return ["Bench Press", "Squat", "Deadlift", "Overhead Press"]
+            return ["Bench Press", "Squat", "Overhead Press", "Barbell Row"]
+
+        case .fullBody:
+            return Array(filterDone(["Squat", "Bench Press", "Barbell Row", "Overhead Press", "Romanian Deadlift", "Pull-Ups"]).prefix(4))
+
+        case .broSplit:
+            if current.contains("bench") || current.contains("fly") || current.contains("chest") {
+                return Array(filterDone(["Incline Dumbbell Press", "Cable Fly", "Dumbbell Press", "Chest Fly"]).prefix(4))
+            } else if current.contains("row") || current.contains("lat") || current.contains("back") {
+                return Array(filterDone(["Barbell Row", "Lat Pulldown", "Cable Row", "Pull-Ups"]).prefix(4))
+            }
+            return ["Bench Press", "Squat", "Barbell Row", "Overhead Press"]
+
+        case .arnoldSplit:
+            if current.contains("bench") || current.contains("row") || current.contains("back") || current.contains("chest") {
+                return Array(filterDone(["Bench Press", "Barbell Row", "Incline Dumbbell Press", "Cable Row", "Cable Fly", "Lat Pulldown"]).prefix(4))
+            } else if current.contains("curl") || current.contains("tricep") || current.contains("lateral") || current.contains("shoulder") {
+                return Array(filterDone(["Overhead Press", "Lateral Raise", "Bicep Curl", "Tricep Pushdown", "Hammer Curl"]).prefix(4))
+            }
+            return ["Bench Press", "Barbell Row", "Overhead Press", "Squat"]
+
+        case .phat, .custom:
+            return Array(filterDone(["Bench Press", "Squat", "Deadlift", "Overhead Press", "Barbell Row", "Pull-Ups"]).prefix(4))
         }
     }
 }
 
+// MARK: - Suggestions View
+
 struct ExerciseSuggestionsView: View {
     let suggestions: [String]
-    
+
     var body: some View {
         if !suggestions.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
                 Label("Up Next", systemImage: "sparkles")
                     .font(.caption.bold())
                     .foregroundStyle(Theme.textSecondary)
-                
+
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
                         ForEach(suggestions, id: \.self) { exercise in
@@ -136,12 +161,17 @@ struct ExerciseSuggestionsView: View {
     }
 }
 
+// MARK: - Active Workout Tab
+
 struct ActiveWorkoutTab: View {
     @Environment(WorkoutManager.self) private var workoutManager
     @StateObject private var recorder = PhoneAudioRecorderService()
     @StateObject private var suggestionEngine = ExerciseSuggestionEngine()
     @State private var showMicPermissionDenied = false
     @State private var showEndConfirmation = false
+    @State private var showDiscardStep1 = false
+    @State private var discardConfirmText = ""
+    @State private var showDiscardStep2 = false
 
     var body: some View {
         NavigationStack {
@@ -157,6 +187,13 @@ struct ActiveWorkoutTab: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(Theme.background, for: .navigationBar)
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button { showDiscardStep1 = true } label: {
+                        Image(systemName: "xmark")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(Theme.textSecondary)
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showEndConfirmation = true } label: {
                         Text("End")
@@ -184,15 +221,42 @@ struct ActiveWorkoutTab: View {
             } message: {
                 Text("This will end the current workout and begin AI processing.")
             }
+            // Discard Step 1: "Are you sure?"
+            .alert("Discard Workout?", isPresented: $showDiscardStep1) {
+                Button("Yes, Discard", role: .destructive) {
+                    discardConfirmText = ""
+                    showDiscardStep2 = true
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This will throw away all recorded moments. This cannot be undone.")
+            }
+            // Discard Step 2: Type "DISCARD" to confirm
+            .alert("Type DISCARD to confirm", isPresented: $showDiscardStep2) {
+                TextField("DISCARD", text: $discardConfirmText)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.characters)
+                Button("Confirm", role: .destructive) {
+                    if discardConfirmText.uppercased() == "DISCARD" {
+                        workoutManager.discardWorkout()
+                    }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Type DISCARD to permanently delete this workout.")
+            }
             .onChange(of: workoutManager.activeSession?.moments.count) { _, _ in
-                let transcripts = workoutManager.activeSession?.moments.map(\.transcript) ?? []
-                suggestionEngine.update(currentTranscripts: transcripts, workoutStore: workoutManager.workoutStore)
+                updateSuggestions()
             }
             .onAppear {
-                let transcripts = workoutManager.activeSession?.moments.map(\.transcript) ?? []
-                suggestionEngine.update(currentTranscripts: transcripts, workoutStore: workoutManager.workoutStore)
+                updateSuggestions()
             }
         }
+    }
+
+    private func updateSuggestions() {
+        let transcripts = workoutManager.activeSession?.moments.map(\.transcript) ?? []
+        suggestionEngine.update(currentTranscripts: transcripts, workoutStore: workoutManager.workoutStore)
     }
 
     private var timerHeader: some View {

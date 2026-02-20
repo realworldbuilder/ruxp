@@ -94,6 +94,22 @@ final class WorkoutManager {
         Self.logger.info("Started workout \(session.id)")
     }
 
+    func discardWorkout() {
+        guard let session = activeSession else { return }
+        activeSession = nil
+        isProcessingMoment = false
+        persistActiveWorkoutID(nil)
+
+        // Delete the session file entirely
+        workoutStore.deleteSession(id: session.id)
+
+        let message = WorkoutMessage(command: .stop, workoutID: session.id)
+        connectivity.sendWorkoutMessage(message)
+        connectivity.updateWorkoutContext(workoutID: nil, isActive: false, startedAt: nil)
+
+        Self.logger.info("Discarded workout \(session.id)")
+    }
+
     func endWorkout() {
         guard var session = activeSession else { return }
         session.endedAt = Date()
