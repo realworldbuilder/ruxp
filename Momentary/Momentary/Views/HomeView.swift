@@ -25,14 +25,19 @@ struct HomeView: View {
                         }
                     }
                 }
-                .toolbar {
+                .safeAreaInset(edge: .bottom) {
                     if editMode.isEditing && !selectedWorkouts.isEmpty {
-                        ToolbarItemGroup(placement: .bottomBar) {
-                            Spacer()
-                            Button(role: .destructive) { showDeleteConfirmation = true } label: {
-                                Label("Delete", systemImage: "trash")
-                            }
+                        Button(role: .destructive) { showDeleteConfirmation = true } label: {
+                            Label("Delete \(selectedWorkouts.count) Workout\(selectedWorkouts.count == 1 ? "" : "s")", systemImage: "trash")
+                                .font(.headline)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
                         }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.red)
+                        .padding(.horizontal)
+                        .padding(.bottom, 8)
+                        .background(Theme.background)
                     }
                 }
                 .environment(\.editMode, $editMode)
