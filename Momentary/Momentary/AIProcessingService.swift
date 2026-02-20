@@ -29,7 +29,7 @@ final class AIService {
             "model": model,
             "messages": messages,
             "temperature": 0.7,
-            "max_tokens": 4096
+            "max_tokens": 8192
         ]
         if jsonMode {
             requestBody["response_format"] = ["type": "json_object"]
@@ -64,6 +64,11 @@ final class AIService {
               let message = firstChoice["message"] as? [String: Any],
               let content = message["content"] as? String else {
             throw AIError.invalidResponse
+        }
+
+        // Log if response was truncated
+        if let finishReason = firstChoice["finish_reason"] as? String, finishReason == "length" {
+            Self.logger.warning("Response truncated (finish_reason=length). Consider increasing max_tokens.")
         }
 
         return content
