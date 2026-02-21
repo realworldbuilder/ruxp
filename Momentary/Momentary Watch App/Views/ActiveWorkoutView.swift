@@ -267,6 +267,24 @@ struct ActiveWorkoutView: View {
                         .foregroundStyle(WatchTheme.accent)
                 }
                 .frame(maxWidth: .infinity)
+            } else if workoutManager.isRestTimerActive {
+                // Smart rest timer display
+                Button {
+                    workoutManager.stopRestTimer()
+                } label: {
+                    TimelineView(.periodic(from: .now, by: 1.0)) { _ in
+                        HStack(spacing: 4) {
+                            Image(systemName: "timer")
+                                .font(.caption2)
+                                .foregroundStyle(WatchTheme.accent)
+                            Text("Rest: \(formattedRestTime)")
+                                .font(.system(.caption, design: .monospaced))
+                                .foregroundStyle(WatchTheme.accent)
+                        }
+                    }
+                }
+                .buttonStyle(.plain)
+                .frame(maxWidth: .infinity)
             } else {
                 Text("\(workoutManager.momentCount) moment\(workoutManager.momentCount == 1 ? "" : "s")")
                     .font(.caption2)
@@ -281,21 +299,37 @@ struct ActiveWorkoutView: View {
 
     @ViewBuilder
     private var snippetOverlay: some View {
-        if let snippet = workoutManager.latestTranscriptSnippet, showSnippet {
-            Text(snippet.prefix(80) + (snippet.count > 80 ? "..." : ""))
-                .font(.caption2)
-                .foregroundStyle(WatchTheme.textPrimary.opacity(0.8))
-                .lineLimit(2)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 6)
-                .frame(maxWidth: .infinity)
-                .background(RoundedRectangle(cornerRadius: 8).fill(WatchTheme.surface.opacity(0.95)))
-                .transition(.move(edge: .bottom).combined(with: .opacity))
-        }
-        if let error = workoutManager.lastError {
-            Label(error, systemImage: "exclamationmark.triangle.fill")
-                .font(.caption2).foregroundStyle(.red).padding(.horizontal, 8)
+        VStack(spacing: 6) {
+            // Post-set feedback (shows after transcript fades)
+            if let feedback = workoutManager.postSetFeedback, workoutManager.showPostSetFeedback {
+                Text(feedback)
+                    .font(.caption)
+                    .foregroundStyle(WatchTheme.accentBright)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(RoundedRectangle(cornerRadius: 6).fill(WatchTheme.accent.opacity(0.15)))
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+            
+            // Transcript snippet
+            if let snippet = workoutManager.latestTranscriptSnippet, showSnippet {
+                Text(snippet.prefix(80) + (snippet.count > 80 ? "..." : ""))
+                    .font(.caption2)
+                    .foregroundStyle(WatchTheme.textPrimary.opacity(0.8))
+                    .lineLimit(2)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 6)
+                    .frame(maxWidth: .infinity)
+                    .background(RoundedRectangle(cornerRadius: 8).fill(WatchTheme.surface.opacity(0.95)))
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+            
+            if let error = workoutManager.lastError {
+                Label(error, systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption2).foregroundStyle(.red).padding(.horizontal, 8)
+            }
         }
     }
 
@@ -309,6 +343,11 @@ struct ActiveWorkoutView: View {
 
     private var formattedRecordingDuration: String {
         let s = Int(workoutManager.recorder.recordingDuration)
+        return String(format: "%d:%02d", s / 60, s % 60)
+    }
+    
+    private var formattedRestTime: String {
+        let s = Int(workoutManager.restTimerRemaining)
         return String(format: "%d:%02d", s / 60, s % 60)
     }
 

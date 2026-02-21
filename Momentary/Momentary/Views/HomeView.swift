@@ -8,6 +8,10 @@ struct HomeView: View {
     @State private var selectedWorkouts = Set<UUID>()
     @State private var showMicPermissionDenied = false
     @AppStorage("weightUnit") private var weightUnit: String = WeightUnit.lbs.rawValue
+    
+    private var intelligenceEngine: HomeIntelligenceEngine {
+        HomeIntelligenceEngine(workoutStore: workoutManager.workoutStore)
+    }
 
     var body: some View {
         NavigationStack {
@@ -202,28 +206,45 @@ struct HomeView: View {
 
     private var workoutListView: some View {
         List(selection: editMode.isEditing ? $selectedWorkouts : nil) {
+            // Smart greeting section
+            smartGreetingSection
+            
             if workoutManager.activeSession != nil {
                 activeWorkoutBanner
             } else {
-                startWorkoutCompactCard
+                // Workout suggestion or today's summary
+                workoutSuggestionCard
             }
 
+            // Weekly streak
             if !workoutManager.workoutStore.index.isEmpty {
-                weeklySummaryCard
+                weeklyStreakCard
             }
+            
+            // Smart nudges
+            smartNudgesSection
 
-            Section("Workout History") {
-                ForEach(workoutManager.workoutStore.index) { entry in
-                    NavigationLink(value: entry.id) {
-                        workoutRow(entry)
+            // Recent workouts with AI summaries
+            if !intelligenceEngine.recentWorkoutCards.isEmpty {
+                recentWorkoutsSection
+            }
+            
+            // Full workout history (if more than 3 workouts)
+            if workoutManager.workoutStore.index.count > 3 {
+                Section("All Workouts") {
+                    ForEach(Array(workoutManager.workoutStore.index.dropFirst(3))) { entry in
+                        NavigationLink(value: entry.id) {
+                            workoutRow(entry)
+                        }
+                        .listRowBackground(Theme.cardBackground)
+                        .listRowSeparatorTint(Theme.divider)
                     }
-                    .listRowBackground(Theme.cardBackground)
-                    .listRowSeparatorTint(Theme.divider)
-                }
-                .onDelete { offsets in
-                    let ids = offsets.map { workoutManager.workoutStore.index[$0].id }
-                    for id in ids { workoutManager.workoutStore.deleteSession(id: id) }
-                    NotificationCenter.default.post(name: .workoutsDidChange, object: nil)
+                    .onDelete { offsets in
+                        let adjustedOffsets = IndexSet(offsets.map { $0 + 3 })
+                        let ids = adjustedOffsets.map { workoutManager.workoutStore.index[$0].id }
+                        for id in ids { workoutManager.workoutStore.deleteSession(id: id) }
+                        NotificationCenter.default.post(name: .workoutsDidChange, object: nil)
+                    }
                 }
             }
         }
@@ -313,6 +334,163 @@ struct HomeView: View {
         }
     }
 
+    // MARK: - Smart Intelligence Components
+    
+    private var smartGreetingSection: some View {
+        Section {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(intelligenceEngine.smartGreeting)
+                    .font(.title2.weight(.medium))
+                    .foregroundStyle(Theme.textPrimary)
+                    .multilineTextAlignment(.leading)
+            }
+            .padding(.vertical, 8)
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+        }
+    }
+    
+    private var workoutSuggestionCard: some View {
+        Section {
+            Group {
+                if let summary = intelligenceEngine.todaysWorkoutSummary {
+                    // Today's workout summary
+                    HStack(spacing: 12) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.title2)
+                            .foregroundStyle(Theme.accent)
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Workout Complete")
+                                .font(.headline)
+                                .foregroundStyle(Theme.textPrimary)
+                            Text(summary)
+                                .font(.subheadline)
+                                .foregroundStyle(Theme.textSecondary)
+                        }
+                        
+                        Spacer()
+                    }
+                    .padding(.vertical, 4)
+                } else if let suggestion = intelligenceEngine.workoutSuggestion {
+                    // Workout suggestion
+                    Button { workoutManager.startWorkout() } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "brain.head.profile")
+                                .font(.title2)
+                                .foregroundStyle(Theme.accent)
+                                .frame(width: 32)
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(suggestion.title)
+                                    .font(.headline)
+                                    .foregroundStyle(Theme.textPrimary)
+                                Text(suggestion.reason)
+                                    .font(.caption)
+                                    .foregroundStyle(Theme.textSecondary)
+                            }
+                            
+                            Spacer()
+                            
+                            Text("Start")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                                .background(Theme.accent, in: Capsule())
+                        }
+                        .padding(.vertical, 4)
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    startWorkoutCompactCard
+                }
+            }
+            .listRowBackground(Theme.cardBackground)
+        }
+    }
+    
+    private var weeklyStreakCard: some View {
+        Section {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("This Week")
+                    .font(.headline)
+                    .foregroundStyle(Theme.textPrimary)
+                
+                let streak = intelligenceEngine.weeklyStreak
+                
+                // Day dots (Mon-Sun)
+                HStack(spacing: 8) {
+                    ForEach(0..<7, id: \.self) { dayIndex in
+                        let isToday = dayIndex == streak.currentDayIndex
+                        let hasWorkout = streak.workoutDays[dayIndex]
+                        
+                        Circle()
+                            .fill(hasWorkout ? Theme.accent : Theme.surface)
+                            .frame(width: 24, height: 24)
+                            .overlay(
+                                Circle()
+                                    .stroke(isToday ? Theme.accent : Color.clear, lineWidth: 2)
+                            )
+                            .overlay(
+                                Text(dayAbbreviation(for: dayIndex))
+                                    .font(.caption2.weight(.medium))
+                                    .foregroundStyle(hasWorkout ? .white : Theme.textSecondary)
+                            )
+                    }
+                    
+                    Spacer()
+                }
+                
+                Text(streak.streakText)
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.textSecondary)
+            }
+            .padding(.vertical, 4)
+            .listRowBackground(Theme.cardBackground)
+        }
+    }
+    
+    private var smartNudgesSection: some View {
+        let nudges = intelligenceEngine.smartNudges
+        
+        return Group {
+            if !nudges.isEmpty {
+                Section {
+                    ForEach(Array(nudges.enumerated()), id: \.offset) { _, nudge in
+                        HStack(spacing: 12) {
+                            Image(systemName: nudgeIcon(for: nudge.type))
+                                .font(.body)
+                                .foregroundStyle(nudgeColor(for: nudge.type))
+                                .frame(width: 24)
+                            
+                            Text(nudge.message)
+                                .font(.subheadline)
+                                .foregroundStyle(Theme.textSecondary)
+                            
+                            Spacer()
+                        }
+                        .padding(.vertical, 2)
+                    }
+                    .listRowBackground(Theme.cardBackground)
+                    .listRowSeparator(.hidden)
+                }
+            }
+        }
+    }
+    
+    private var recentWorkoutsSection: some View {
+        Section("Recent") {
+            ForEach(intelligenceEngine.recentWorkoutCards, id: \.workoutIndex.id) { card in
+                NavigationLink(value: card.workoutIndex.id) {
+                    enhancedWorkoutRow(card.workoutIndex, summary: card.aiSummary)
+                }
+                .listRowBackground(Theme.cardBackground)
+                .listRowSeparatorTint(Theme.divider)
+            }
+        }
+    }
+    
     // MARK: - Weekly Summary
 
     private var weeklySummaryCard: some View {
@@ -437,6 +615,101 @@ struct HomeView: View {
         let streak = insightsStore.lifetimeStats.currentStreak
 
         return WeeklyStatsResult(workoutCount: thisWeek.count, totalVolume: totalVolume, topExercises: top3, streak: streak)
+    }
+
+    // MARK: - Enhanced Workout Row
+
+    private func enhancedWorkoutRow(_ entry: WorkoutSessionIndex, summary: String) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(entry.title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Theme.textPrimary)
+                HStack(spacing: 8) {
+                    Text(entry.startedAt, style: .date)
+                        .font(.caption)
+                        .foregroundStyle(Theme.textSecondary)
+                    if let duration = entry.duration {
+                        Text(formatDuration(duration))
+                            .font(.caption)
+                            .foregroundStyle(Theme.textTertiary)
+                    }
+                }
+                
+                // AI-generated summary
+                Text(summary)
+                    .font(.caption)
+                    .foregroundStyle(Theme.accent.opacity(0.8))
+                    .lineLimit(1)
+                
+                // Health data badges
+                let hasHealth = entry.averageHeartRate != nil || entry.activeCalories != nil
+                if hasHealth {
+                    HStack(spacing: 10) {
+                        if let hr = entry.averageHeartRate, hr > 0 {
+                            HStack(spacing: 3) {
+                                Image(systemName: "heart.fill")
+                                    .font(.caption2)
+                                    .foregroundStyle(.red)
+                                Text("\(Int(hr)) bpm")
+                                    .font(.caption2.monospacedDigit())
+                                    .foregroundStyle(Theme.textSecondary)
+                            }
+                        }
+                        if let cal = entry.activeCalories, cal > 0 {
+                            HStack(spacing: 3) {
+                                Image(systemName: "flame.fill")
+                                    .font(.caption2)
+                                    .foregroundStyle(.orange)
+                                Text("\(Int(cal)) cal")
+                                    .font(.caption2.monospacedDigit())
+                                    .foregroundStyle(Theme.textSecondary)
+                            }
+                        }
+                    }
+                }
+            }
+            Spacer()
+            if entry.totalVolume > 0 {
+                Text("\(formatVolume(entry.totalVolume))")
+                    .font(.subheadline.weight(.bold).monospacedDigit())
+                    .foregroundStyle(Theme.accent)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+    
+    // MARK: - Helper Functions for Intelligence Components
+    
+    private func dayAbbreviation(for dayIndex: Int) -> String {
+        let days = ["M", "T", "W", "T", "F", "S", "S"] // Mon-Sun
+        return days[dayIndex]
+    }
+    
+    private func nudgeIcon(for type: HomeIntelligenceEngine.NudgeType) -> String {
+        switch type {
+        case .missedMuscleGroup:
+            return "exclamationmark.triangle"
+        case .streak:
+            return "flame.fill"
+        case .volumeTrend:
+            return "chart.line.uptrend.xyaxis"
+        case .restDay:
+            return "bed.double"
+        }
+    }
+    
+    private func nudgeColor(for type: HomeIntelligenceEngine.NudgeType) -> Color {
+        switch type {
+        case .missedMuscleGroup:
+            return .orange
+        case .streak:
+            return .red
+        case .volumeTrend:
+            return Theme.accent
+        case .restDay:
+            return .blue
+        }
     }
 
     // MARK: - Helpers

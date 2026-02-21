@@ -35,6 +35,20 @@ enum ChatPromptBuilder {
         - Track muscle group frequency — flag if they're hitting chest 3x/week but skipping legs
         - Suggest deloads every 4-6 weeks of hard training
 
+        PROACTIVE COACHING:
+        - If the user hasn't worked out in 3+ days, acknowledge it and motivate them
+        - If they're stuck at a weight for 3+ sessions, offer a periodization plan to break through
+        - Always reference their ACTUAL numbers — never be vague
+        - After prescribing a workout, end with actionButtons that include "Start Workout" so it flows into the active workout
+        - When you prescribe specific exercises, format them as exerciseTable blocks so the app can extract them as planned exercises
+        - Be specific about progressive overload: "Last time you did 185×8. Today: 190×7, then 185×8, then 175×10. That's wave loading."
+        
+        PERSONALITY:
+        - Be direct and confident, like a coach who knows their stuff
+        - Use short sentences. No fluff.
+        - Reference data like you've been watching: "Your bench has gone up 15 lbs in 4 weeks. That's solid."
+        - Occasional motivation, never corny: "Strong session yesterday" not "You're doing amazing sweetie!"
+
         \(bodyProfile)
 
         \(programContext)
@@ -127,29 +141,65 @@ enum ChatPromptBuilder {
         let recentWorkouts = index.filter { $0.startedAt >= twoWeeksAgo }
 
         let allExercises = recentWorkouts.flatMap(\.exerciseNames)
-        var frequency: [String: Int] = [:]
+        var exerciseFrequency: [String: Int] = [:]
         for ex in allExercises {
-            frequency[ex, default: 0] += 1
+            exerciseFrequency[ex, default: 0] += 1
         }
 
-        let sorted = frequency.sorted { $0.value > $1.value }
-        let topExercises = sorted.prefix(10).map { "\($0.key): \($0.value)x in 14 days" }
+        // Map exercises to muscle groups
+        let muscleGroupFrequency = buildMuscleGroupFrequency(from: exerciseFrequency)
+        
+        let sorted = exerciseFrequency.sorted { $0.value > $1.value }
+        let topExercises = sorted.prefix(8).map { "\($0.key): \($0.value)x" }
 
         let totalWorkouts14d = recentWorkouts.count
         let avgPerWeek = Double(totalWorkouts14d) / 2.0
 
+        let muscleGroupAnalysis = muscleGroupFrequency.map { group, count in
+            let frequency = Double(count) / 2.0 // Per week
+            let warning = frequency < 1.0 ? " ⚠️" : ""
+            return "\(group): \(String(format: "%.1f", frequency))x/week\(warning)"
+        }.joined(separator: ", ")
+
         return """
         PROGRAM ANALYSIS (last 14 days):
         Training frequency: \(String(format: "%.1f", avgPerWeek)) sessions/week
-        Exercise frequency:\n\(topExercises.joined(separator: "\n"))
+        Muscle group frequency: \(muscleGroupAnalysis)
+        Top exercises: \(topExercises.joined(separator: ", "))
         Total workouts: \(totalWorkouts14d)
         """
+    }
+    
+    private static func buildMuscleGroupFrequency(from exerciseFrequency: [String: Int]) -> [String: Int] {
+        var muscleGroups: [String: Int] = [:]
+        
+        let muscleGroupMapping: [String: [String]] = [
+            "Chest": ["bench", "press", "fly", "dip", "pushup", "push-up", "chest"],
+            "Back": ["row", "pull", "lat", "deadlift", "pulldown", "chin", "back"],
+            "Legs": ["squat", "lunge", "leg", "calf", "quad", "hamstring", "glute"],
+            "Shoulders": ["shoulder", "deltoid", "overhead", "lateral", "front raise", "rear"],
+            "Arms": ["bicep", "tricep", "curl", "extension", "arm"]
+        ]
+        
+        for (exercise, count) in exerciseFrequency {
+            let exerciseLower = exercise.lowercased()
+            
+            for (muscleGroup, keywords) in muscleGroupMapping {
+                if keywords.contains(where: { exerciseLower.contains($0) }) {
+                    muscleGroups[muscleGroup, default: 0] += count
+                    break // Only assign to first matching group
+                }
+            }
+        }
+        
+        return muscleGroups
     }
 
     private static func buildWorkoutContext(workoutStore: WorkoutStore) -> String {
         let index = workoutStore.index
         guard !index.isEmpty else { return "No workouts recorded yet." }
 
+        // Recent workouts
         let recent = index.prefix(5)
         let dateFormatter = DateFormatter()
         dateFormatter.dateStyle = .medium
@@ -164,7 +214,100 @@ enum ChatPromptBuilder {
             let analysis = entry.hasStructuredLog ? "analyzed" : "not analyzed"
             lines.append("- [\(entry.id.uuidString)] \(dateStr) | \(durationMin) | \(entry.exerciseCount) exercises (\(exercises)) | \(entry.totalSets) sets | \(volume) | \(analysis)")
         }
+        
+        // Personal Records and Progression
+        lines.append("\nPROGRESSION DATA:")
+        let prData = buildProgressionData(workoutStore: workoutStore)
+        lines.append(prData)
+        
+        // Recovery patterns
+        lines.append("\nRECOVERY PATTERNS:")
+        let recoveryData = buildRecoveryData(workoutStore: workoutStore)
+        lines.append(recoveryData)
+        
         return lines.joined(separator: "\n")
+    }
+
+    private static func buildProgressionData(workoutStore: WorkoutStore) -> String {
+        let index = workoutStore.index
+        guard index.count >= 2 else { return "Not enough data for progression analysis." }
+        
+        // Analyze exercise progression over time
+        var exerciseProgressions: [String: [(Date, Double)]] = [:]
+        
+        for workout in index.reversed() { // Chronological order
+            for exerciseName in workout.exerciseNames {
+                if exerciseProgressions[exerciseName] == nil {
+                    exerciseProgressions[exerciseName] = []
+                }
+                exerciseProgressions[exerciseName]?.append((workout.startedAt, workout.totalVolume))
+            }
+        }
+        
+        var progressionLines: [String] = []
+        let fourWeeksAgo = Calendar.current.date(byAdding: .day, value: -28, to: Date())!
+        
+        // Get progression trends for top exercises
+        let topExercises = exerciseProgressions.keys
+            .sorted { exerciseProgressions[$0]?.count ?? 0 > exerciseProgressions[$1]?.count ?? 0 }
+            .prefix(5)
+        
+        for exercise in topExercises {
+            guard let sessions = exerciseProgressions[exercise],
+                  sessions.count >= 2 else { continue }
+                  
+            let recentSessions = sessions.filter { $0.0 >= fourWeeksAgo }
+            if recentSessions.count >= 2 {
+                let firstVolume = recentSessions.first?.1 ?? 0
+                let lastVolume = recentSessions.last?.1 ?? 0
+                let change = lastVolume - firstVolume
+                let weeks = max(1, recentSessions.count / 2) // Rough weeks estimate
+                
+                if change > 0 {
+                    progressionLines.append("\(exercise): +\(String(format: "%.0f", change)) lbs over \(weeks) weeks ↗️")
+                } else if change < 0 {
+                    progressionLines.append("\(exercise): \(String(format: "%.0f", change)) lbs over \(weeks) weeks ↘️")
+                } else {
+                    progressionLines.append("\(exercise): No change over \(weeks) weeks →")
+                }
+            }
+        }
+        
+        return progressionLines.isEmpty ? "No clear progression trends yet." : progressionLines.joined(separator: "\n")
+    }
+    
+    private static func buildRecoveryData(workoutStore: WorkoutStore) -> String {
+        let index = workoutStore.index.prefix(10) // Recent 10 workouts
+        guard index.count >= 2 else { return "Not enough data for recovery analysis." }
+        
+        var restDays: [Int] = []
+        let sortedWorkouts = Array(index).sorted { $0.startedAt < $1.startedAt }
+        
+        for i in 1..<sortedWorkouts.count {
+            let previousDate = sortedWorkouts[i-1].startedAt
+            let currentDate = sortedWorkouts[i].startedAt
+            let daysBetween = Calendar.current.dateComponents([.day], from: previousDate, to: currentDate).day ?? 0
+            if daysBetween > 0 {
+                restDays.append(daysBetween)
+            }
+        }
+        
+        guard !restDays.isEmpty else { return "Recovery patterns unclear." }
+        
+        let avgRestDays = Double(restDays.reduce(0, +)) / Double(restDays.count)
+        let lastRestDays = restDays.last ?? 0
+        let calendar = Calendar.current
+        let daysSinceLastWorkout = calendar.dateComponents([.day], from: index.first?.startedAt ?? Date(), to: Date()).day ?? 0
+        
+        var recoveryLines: [String] = []
+        recoveryLines.append("Average rest between sessions: \(String(format: "%.1f", avgRestDays)) days")
+        recoveryLines.append("Days since last workout: \(daysSinceLastWorkout)")
+        
+        if daysSinceLastWorkout >= 3 {
+            recoveryLines.append("⚠️ It's been 3+ days since your last workout")
+        }
+        
+        return recoveryLines.joined(separator: "\n")
     }
 
     private static func buildWeeklyStats(workoutStore: WorkoutStore) -> String {

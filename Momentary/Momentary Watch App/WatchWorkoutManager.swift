@@ -20,9 +20,16 @@ final class WatchWorkoutManager {
     var isRecordingMoment = false
     var lastError: String?
     var didReceiveRemoteStop = false
+    
+    // AI Intelligence features
+    var restTimerRemaining: TimeInterval = 0
+    var isRestTimerActive = false
+    var postSetFeedback: String?
+    var showPostSetFeedback = false
 
     private var workoutStartTime: Date?
     private var elapsedTimer: Timer?
+    private var restTimer: Timer?
 
     init() {
         setupConnectivityCallbacks()
@@ -105,6 +112,9 @@ final class WatchWorkoutManager {
         didReceiveRemoteStop = false
         workoutEndReady = false
         isEndingWorkout = false
+        stopRestTimer()
+        postSetFeedback = nil
+        showPostSetFeedback = false
     }
 
     // MARK: - Moment Recording
@@ -112,6 +122,7 @@ final class WatchWorkoutManager {
     func recordMoment() {
         guard isWorkoutActive, !isRecordingMoment else { return }
         isRecordingMoment = true
+        stopRestTimer() // Dismiss rest timer when recording starts
         _ = recorder.startRecording()
     }
 
@@ -133,6 +144,83 @@ final class WatchWorkoutManager {
         connectivity.sendWorkoutCommand(message)
 
         WKInterfaceDevice.current().play(.success)
+        
+        // Start smart rest timer and show feedback
+        startRestTimer(seconds: determineRestTime())
+        showMotivationalFeedback()
+    }
+    
+    // MARK: - AI Intelligence Features
+    
+    private func determineRestTime() -> TimeInterval {
+        // Smart rest timer based on exercise detection from transcript
+        if let transcript = latestTranscriptSnippet {
+            let lowercased = transcript.lowercased()
+            
+            // Compound movements - longer rest
+            let compoundKeywords = ["bench", "squat", "deadlift", "row", "press", "pullup", "pull up", "chin up", "dip"]
+            if compoundKeywords.contains(where: { lowercased.contains($0) }) {
+                return 150 // 2.5 min for compounds
+            }
+            
+            // Isolation - shorter rest
+            let isolationKeywords = ["curl", "extension", "raise", "lateral", "fly", "tricep", "bicep"]
+            if isolationKeywords.contains(where: { lowercased.contains($0) }) {
+                return 75 // 1:15 for isolation
+            }
+        }
+        
+        // Default to 2 minutes
+        return 120
+    }
+    
+    func startRestTimer(seconds: TimeInterval) {
+        restTimerRemaining = seconds
+        isRestTimerActive = true
+        restTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                self.restTimerRemaining -= 1
+                if self.restTimerRemaining <= 0 {
+                    self.stopRestTimer()
+                    WKInterfaceDevice.current().play(.notification)
+                }
+            }
+        }
+    }
+    
+    func stopRestTimer() {
+        restTimer?.invalidate()
+        restTimer = nil
+        isRestTimerActive = false
+        restTimerRemaining = 0
+    }
+    
+    private func showMotivationalFeedback() {
+        postSetFeedback = generatePostSetFeedback()
+        if postSetFeedback != nil {
+            showPostSetFeedback = true
+            
+            // Auto-dismiss after 2 seconds
+            Task {
+                try? await Task.sleep(for: .seconds(2))
+                showPostSetFeedback = false
+                postSetFeedback = nil
+            }
+        }
+    }
+    
+    func generatePostSetFeedback() -> String? {
+        switch momentCount {
+        case 1: return "First set ✓"
+        case 2: return "Let's go"
+        case 3: return "Getting warm 🔥"
+        case 5: return "Solid session building"
+        case 8: return "Beast mode 💪"
+        case 10: return "Double digits 🔟"
+        case 15: return "Marathon session!"
+        default: return nil
+        }
     }
 
     // MARK: - Elapsed Timer

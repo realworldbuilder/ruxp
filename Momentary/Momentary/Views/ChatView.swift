@@ -5,6 +5,7 @@ struct ChatView: View {
     @Environment(ConversationStore.self) private var conversationStore
     @Environment(WorkoutManager.self) private var workoutManager
     @Environment(WorkoutProcessor.self) private var aiPipeline
+    @Environment(WorkoutStore.self) private var workoutStore
     @State private var inputText = ""
     @State private var navigationPath = NavigationPath()
     @State private var showExportSheet = false
@@ -62,6 +63,55 @@ struct ChatView: View {
                 }
             }
         }
+    }
+
+    // MARK: - Contextual Chips
+
+    private var contextualChips: [(text: String, icon: String, message: String)] {
+        let calendar = Calendar.current
+        let now = Date()
+        
+        // Check for recent workouts
+        let recentWorkouts = workoutStore.index.filter {
+            calendar.isDateInToday($0.startedAt)
+        }
+        
+        let lastWorkout = workoutStore.index.first
+        let daysSinceLastWorkout: Int = {
+            guard let lastWorkoutDate = lastWorkout?.startedAt else { return 999 }
+            return calendar.dateComponents([.day], from: lastWorkoutDate, to: now).day ?? 999
+        }()
+        
+        // Check for workout completed in last hour
+        let recentlyCompleted = workoutStore.index.first?.endedAt.map {
+            now.timeIntervalSince($0) < 3600 // Less than 1 hour ago
+        } ?? false
+        
+        var chips: [(text: String, icon: String, message: String)] = []
+        
+        // Contextual first chip
+        if recentlyCompleted {
+            chips.append(("Analyze my workout", "chart.line.uptrend.xyaxis", "Analyze my last workout"))
+        } else if recentWorkouts.isEmpty && daysSinceLastWorkout < 1 {
+            chips.append(("Plan today's workout", "calendar.badge.plus", "Plan my workout for today"))
+        } else if daysSinceLastWorkout >= 3 {
+            chips.append(("Get back on track", "figure.run", "I haven't worked out in a few days, help me get back on track"))
+        } else {
+            chips.append(("Plan workout", "calendar.badge.plus", "Plan my next workout"))
+        }
+        
+        // Always include these core chips
+        chips.append(("What should I focus on?", "target", "What should I focus on?"))
+        chips.append(("Check my progress", "chart.line.uptrend.xyaxis", "How's my progress?"))
+        
+        // Fourth chip based on context
+        if workoutStore.index.count >= 7 {
+            chips.append(("Weekly summary", "calendar.day.timeline.leading", "Give me a weekly summary"))
+        } else {
+            chips.append(("Training tips", "lightbulb", "Give me some training tips"))
+        }
+        
+        return chips
     }
 
     // MARK: - History List
@@ -133,17 +183,10 @@ struct ChatView: View {
                 .multilineTextAlignment(.center)
 
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
-                SuggestedChip(text: "Plan workout", icon: "calendar.badge.plus") {
-                    sendMessage("Plan my next workout")
-                }
-                SuggestedChip(text: "My progress", icon: "chart.line.uptrend.xyaxis") {
-                    sendMessage("How's my progress?")
-                }
-                SuggestedChip(text: "Weekly summary", icon: "calendar.day.timeline.leading") {
-                    sendMessage("Give me a weekly summary")
-                }
-                SuggestedChip(text: "Focus areas", icon: "target") {
-                    sendMessage("What should I focus on?")
+                ForEach(contextualChips, id: \.text) { chip in
+                    SuggestedChip(text: chip.text, icon: chip.icon) {
+                        sendMessage(chip.message)
+                    }
                 }
             }
             .padding(.horizontal, 24)

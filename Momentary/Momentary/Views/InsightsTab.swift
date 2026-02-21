@@ -31,6 +31,7 @@ struct InsightsTab: View {
     @State private var showingPRDetail = false
     @State private var selectedPeriod: TimePeriod = .weekly
     @State private var shareItem: ShareableImageItem? = nil
+    @State private var intelligenceEngine: InsightsIntelligenceEngine?
 
     private struct LinkedInsight: Identifiable {
         let id: UUID
@@ -43,9 +44,19 @@ struct InsightsTab: View {
         NavigationStack {
             ScrollView {
                 LazyVStack(spacing: 16) {
+                    // AI Progress Summary (NEW)
+                    if let engine = intelligenceEngine, !engine.aiProgressSummary.isEmpty {
+                        aiProgressSummarySection
+                    }
+                    
                     // Story Carousel
                     if !insightsService.stories.isEmpty {
                         storyCarouselSection
+                    }
+                    
+                    // Weekly Comparison (NEW)
+                    if let engine = intelligenceEngine {
+                        weeklyComparisonSection
                     }
 
                     // Time Period Toggle
@@ -61,10 +72,25 @@ struct InsightsTab: View {
                     if periodStats.totalWorkouts > 0 || insightsStore.lifetimeStats.totalWorkouts > 0 {
                         statsSection
                     }
+                    
+                    // PR Predictions (NEW)
+                    if let engine = intelligenceEngine, !engine.prPredictions.isEmpty {
+                        prPredictionsSection
+                    }
 
                     // Persistent PRs
                     if !insightsStore.personalRecords.isEmpty {
                         prSection
+                    }
+                    
+                    // Muscle Balance Visualization (NEW)
+                    if let engine = intelligenceEngine, !engine.muscleBalance.muscleGroups.isEmpty {
+                        muscleBalanceSection
+                    }
+                    
+                    // Smart Insight Cards (NEW)
+                    if let engine = intelligenceEngine, !engine.smartInsights.isEmpty {
+                        smartInsightsSection
                     }
 
                     // Recent per-workout insights
@@ -109,10 +135,22 @@ struct InsightsTab: View {
                     .presentationDetents([.medium])
             }
             .task {
+                // Initialize intelligence engine
+                if intelligenceEngine == nil {
+                    intelligenceEngine = InsightsIntelligenceEngine(
+                        insightsStore: insightsStore,
+                        workoutStore: workoutManager.workoutStore
+                    )
+                }
+                
                 await insightsService.generateInsights()
+                await intelligenceEngine?.generateIntelligence()
             }
             .onReceive(NotificationCenter.default.publisher(for: .workoutsDidChange)) { _ in
-                Task { await insightsService.generateInsights() }
+                Task { 
+                    await insightsService.generateInsights()
+                    await intelligenceEngine?.generateIntelligence()
+                }
             }
         }
     }
