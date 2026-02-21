@@ -26,13 +26,13 @@ private struct UserBubble: View {
 
     var body: some View {
         HStack {
-            Spacer()
+            Spacer(minLength: 60)
             Text(message.blocks.first?.payload.text ?? "")
                 .font(.body)
-                .foregroundColor(Theme.textPrimary)
+                .foregroundColor(.white)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
-                .background(Theme.cardBackground, in: RoundedRectangle(cornerRadius: Theme.radiusMedium))
+                .background(Theme.accent, in: RoundedRectangle(cornerRadius: Theme.radiusMedium))
         }
     }
 }

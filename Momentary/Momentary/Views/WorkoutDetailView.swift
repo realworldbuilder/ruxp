@@ -30,7 +30,7 @@ struct WorkoutDetailView: View {
             if let session { detailContent(session) }
             else { ProgressView() }
         }
-        .navigationTitle("Workout")
+        .navigationTitle(session?.structuredLog.map { WorkoutTitleGenerator.generate(from: $0.exercises.map(\.exerciseName)) } ?? "Workout")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Theme.background, for: .navigationBar)
         .onAppear { session = workoutManager.workoutStore.loadSession(id: workoutID) }

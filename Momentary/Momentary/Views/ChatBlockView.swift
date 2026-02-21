@@ -37,6 +37,7 @@ private struct TextBlockView: View {
         Text(payload.text ?? "")
             .foregroundColor(Theme.textPrimary)
             .font(.body)
+            .lineSpacing(2)
     }
 }
 
@@ -48,6 +49,14 @@ private struct WorkoutSummaryBlockView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
+            // Smart workout title
+            if let names = payload.exerciseNames, !names.isEmpty {
+                Text(WorkoutTitleGenerator.generate(from: names))
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .foregroundColor(Theme.textPrimary)
+            }
+            
             if let date = payload.date {
                 Text(date)
                     .font(.headline)
@@ -138,7 +147,7 @@ private struct ExerciseTableBlockView: View {
             Divider().overlay(Theme.divider)
 
             if let sets = payload.sets {
-                ForEach(Array(sets.enumerated()), id: \.offset) { _, set in
+                ForEach(Array(sets.enumerated()), id: \.offset) { index, set in
                     HStack {
                         Text("\(set.setNumber ?? 0)")
                             .frame(width: 36, alignment: .leading)
@@ -149,6 +158,23 @@ private struct ExerciseTableBlockView: View {
                     }
                     .font(.callout)
                     .foregroundColor(Theme.textPrimary)
+                    .padding(.vertical, 4)
+                    .background(index % 2 == 0 ? Color.clear : Theme.surface.opacity(0.3))
+                }
+                
+                // Volume total
+                let totalVolume = sets.reduce(0.0) { total, set in
+                    total + Double(set.reps ?? 0) * (set.weight ?? 0)
+                }
+                if totalVolume > 0 {
+                    Divider().overlay(Theme.divider)
+                    HStack {
+                        Spacer()
+                        Text("Volume: \(formatVolume(totalVolume))")
+                            .font(.caption)
+                            .fontWeight(.medium)
+                            .foregroundColor(Theme.accent)
+                    }
                 }
             }
         }
@@ -158,6 +184,13 @@ private struct ExerciseTableBlockView: View {
     private func formatWeight(_ weight: Double?, unit: String?) -> String {
         guard let w = weight else { return "-" }
         return "\(Int(w)) \(unit ?? "lbs")"
+    }
+    
+    private func formatVolume(_ volume: Double) -> String {
+        if volume >= 1000 {
+            return String(format: "%.1fK lbs", volume / 1000)
+        }
+        return String(format: "%.0f lbs", volume)
     }
 }
 

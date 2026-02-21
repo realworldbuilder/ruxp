@@ -173,16 +173,16 @@ struct ChatView: View {
         VStack(spacing: 24) {
             Spacer()
 
-            Image(systemName: "bubble.left.and.bubble.right")
+            Image(systemName: "figure.strengthtraining.traditional")
                 .font(.system(size: 48))
                 .foregroundColor(Theme.textTertiary)
 
-            Text("Your AI training coach. Ask about your workouts, plan your next session, or get form tips.")
+            Text("Your AI coach. Ask anything about training.")
                 .font(.title3)
                 .foregroundColor(Theme.textSecondary)
                 .multilineTextAlignment(.center)
 
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
+            LazyVGrid(columns: [GridItem(.flexible())], spacing: 10) {
                 ForEach(contextualChips, id: \.text) { chip in
                     SuggestedChip(text: chip.text, icon: chip.icon) {
                         sendMessage(chip.message)
@@ -226,22 +226,24 @@ struct ChatView: View {
     // MARK: - Input Bar
 
     private var inputBar: some View {
-        HStack(spacing: 10) {
-            TextField("Ask your trainer...", text: $inputText, axis: .vertical)
-                .lineLimit(1...4)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(Theme.cardBackground, in: RoundedRectangle(cornerRadius: Theme.radiusMedium))
-                .foregroundColor(Theme.textPrimary)
-
-            Button {
-                sendMessage(inputText)
-            } label: {
-                Image(systemName: "arrow.up.circle.fill")
-                    .font(.title2)
-                    .foregroundColor(inputText.trimmingCharacters(in: .whitespaces).isEmpty ? Theme.textTertiary : Theme.accent)
+        HStack {
+            HStack(spacing: 8) {
+                TextField("Ask your trainer...", text: $inputText, axis: .vertical)
+                    .lineLimit(1...4)
+                    .foregroundColor(Theme.textPrimary)
+                
+                Button {
+                    sendMessage(inputText)
+                } label: {
+                    Image(systemName: "arrow.up.circle.fill")
+                        .font(.title2)
+                        .foregroundColor(inputText.trimmingCharacters(in: .whitespaces).isEmpty ? Theme.textTertiary : Theme.accent)
+                }
+                .disabled(inputText.trimmingCharacters(in: .whitespaces).isEmpty || chatService.isResponding)
             }
-            .disabled(inputText.trimmingCharacters(in: .whitespaces).isEmpty || chatService.isResponding)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .background(Theme.cardBackground, in: RoundedRectangle(cornerRadius: Theme.radiusPill))
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
