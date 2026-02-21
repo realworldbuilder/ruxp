@@ -26,6 +26,7 @@ struct ExerciseTag: Identifiable, Equatable {
     let name: String
     var source: TagSource
     var isCompleted: Bool = false
+    var priority: Int = 0
     
     enum TagSource {
         case planned    // From trainer chat workout plan
@@ -248,7 +249,10 @@ struct TagChip: View {
                         .font(.system(size: 9))
                 }
                 Text(tag.name)
-                    .font(.system(size: 14, weight: tag.source == .planned ? .semibold : .medium))
+                    .font(.system(
+                        size: tag.priority > 2 ? 15 : 14, // Highest priority exercises slightly larger
+                        weight: tag.source == .planned ? .semibold : .medium
+                    ))
                     .multilineTextAlignment(.center)
             }
             .foregroundStyle(chipStyle.fg)

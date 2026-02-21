@@ -131,6 +131,49 @@ class ExerciseSuggestionEngine: ObservableObject {
             return Array(filterDone(["Bench Press", "Squat", "Deadlift", "Overhead Press", "Barbell Row", "Pull-Ups", "Lateral Raise", "Romanian Deadlift"]).prefix(6))
         }
     }
+    
+    func getLastPerformance(exercise: String, workoutStore: WorkoutStore) -> (weight: Double, reps: Int)? {
+        for entry in workoutStore.index.prefix(10) {
+            if let session = workoutStore.loadSession(id: entry.id),
+               let group = session.structuredLog?.exercises.first(where: { 
+                   $0.exerciseName.lowercased().contains(exercise.lowercased()) 
+               }),
+               let lastSet = group.sets.last,
+               let weight = lastSet.weight,
+               let reps = lastSet.reps {
+                return (weight, reps)
+            }
+        }
+        return nil
+    }
+    
+    func getSmartOrderedSuggestions(currentTranscripts: [String], workoutStore: WorkoutStore) -> [(exercise: String, priority: Int)] {
+        let currentExercises = extractExercises(from: currentTranscripts)
+        let historicalPairs = buildExercisePairings(from: workoutStore)
+        
+        var scores: [String: Int] = [:]
+        
+        // Score based on historical co-occurrence patterns
+        for exercise in currentExercises {
+            if let paired = historicalPairs[exercise.lowercased()] {
+                for (pairedExercise, count) in paired {
+                    if !currentExercises.map({ $0.lowercased() }).contains(pairedExercise.lowercased()) {
+                        scores[pairedExercise, default: 0] += count * 3 // Historical patterns get high priority
+                    }
+                }
+            }
+        }
+        
+        // Add base suggestions with lower scores
+        let baseSuggestions = getDefaultSuggestions(currentExercises: currentExercises)
+        for suggestion in baseSuggestions {
+            scores[suggestion, default: 0] += 1
+        }
+        
+        // Return sorted by priority (score)
+        return scores.map { (exercise: $0.key, priority: $0.value) }
+            .sorted { $0.priority > $1.priority }
+    }
 }
 
 // MARK: - Active Workout Tab
@@ -157,21 +200,34 @@ struct ActiveWorkoutTab: View {
         
         var tags: [ExerciseTag] = []
         
+        // Get smart-ordered suggestions
+        let smartSuggestions = suggestionEngine.getSmartOrderedSuggestions(
+            currentTranscripts: workoutManager.activeSession?.moments.map(\.transcript) ?? [],
+            workoutStore: workoutManager.workoutStore
+        )
+        
         // Planned exercises first (from trainer)
+        let plannedNames = Set(plannedWorkoutStore.plannedExercises.map { $0.lowercased() })
         for exercise in plannedWorkoutStore.plannedExercises {
             let isCompleted = completedExercises.contains(where: { exercise.lowercased().contains($0) })
-            tags.append(ExerciseTag(name: exercise, source: .planned, isCompleted: isCompleted))
+            let priority = smartSuggestions.first(where: { $0.exercise.lowercased() == exercise.lowercased() })?.priority ?? 0
+            tags.append(ExerciseTag(name: exercise, source: .planned, isCompleted: isCompleted, priority: priority))
         }
         
-        // Then suggestions (skip if already in planned)
-        let plannedNames = Set(plannedWorkoutStore.plannedExercises.map { $0.lowercased() })
-        for suggestion in suggestionEngine.suggestions {
-            if !plannedNames.contains(suggestion.lowercased()) {
-                tags.append(ExerciseTag(name: suggestion, source: .suggested))
+        // Then smart suggestions (skip if already in planned)
+        for suggestion in smartSuggestions.prefix(8) {
+            if !plannedNames.contains(suggestion.exercise.lowercased()) {
+                tags.append(ExerciseTag(name: suggestion.exercise, source: .suggested, priority: suggestion.priority))
             }
         }
         
-        return tags
+        // Sort all tags by priority (highest first)
+        return tags.sorted { $0.priority > $1.priority }
+    }
+    
+    private var workoutElapsedTime: TimeInterval {
+        guard let session = workoutManager.activeSession else { return 0 }
+        return Date().timeIntervalSince(session.startedAt)
     }
 
     var body: some View {
@@ -202,7 +258,11 @@ struct ActiveWorkoutTab: View {
                                         ? suggestionEngine.suggestionReason 
                                         : plannedWorkoutStore.planSource,
                                     selectedTag: $selectedTag,
-                                    momentsCount: workoutManager.activeSession?.moments.count ?? 0
+                                    momentsCount: workoutManager.activeSession?.moments.count ?? 0,
+                                    workoutElapsed: workoutElapsedTime,
+                                    workoutStore: workoutManager.workoutStore,
+                                    suggestionEngine: suggestionEngine,
+                                    currentSession: workoutManager.activeSession
                                 )
                             }
                             .frame(maxWidth: .infinity)
@@ -291,6 +351,13 @@ struct ActiveWorkoutTab: View {
     private func updateSuggestions() {
         let transcripts = workoutManager.activeSession?.moments.map(\.transcript) ?? []
         suggestionEngine.update(currentTranscripts: transcripts, workoutStore: workoutManager.workoutStore)
+        
+        // Update suggestions with smart ordering
+        let smartSuggestions = suggestionEngine.getSmartOrderedSuggestions(
+            currentTranscripts: transcripts, 
+            workoutStore: workoutManager.workoutStore
+        )
+        suggestionEngine.suggestions = smartSuggestions.prefix(8).map(\.exercise)
     }
 
     private var timerHeader: some View {

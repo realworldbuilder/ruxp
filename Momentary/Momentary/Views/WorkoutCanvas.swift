@@ -48,24 +48,60 @@ struct WorkoutCanvas: View {
     var reason: String = ""
     @Binding var selectedTag: String?
     let momentsCount: Int
+    let workoutElapsed: TimeInterval
+    let workoutStore: WorkoutStore
+    let suggestionEngine: ExerciseSuggestionEngine
+    let currentSession: WorkoutSession?
     @State private var showInsight = false
     @State private var currentInsight: (text: String, icon: String, color: Color)?
+    @State private var showOverloadHint = false
+    @State private var overloadHint: String?
     
-    init(tags: [ExerciseTag], reason: String = "", selectedTag: Binding<String?>, momentsCount: Int = 0) {
+    init(
+        tags: [ExerciseTag], 
+        reason: String = "", 
+        selectedTag: Binding<String?>, 
+        momentsCount: Int = 0,
+        workoutElapsed: TimeInterval = 0,
+        workoutStore: WorkoutStore,
+        suggestionEngine: ExerciseSuggestionEngine,
+        currentSession: WorkoutSession? = nil
+    ) {
         self.tags = tags
         self.reason = reason
         self._selectedTag = selectedTag
         self.momentsCount = momentsCount
+        self.workoutElapsed = workoutElapsed
+        self.workoutStore = workoutStore
+        self.suggestionEngine = suggestionEngine
+        self.currentSession = currentSession
     }
     
     var body: some View {
         VStack(spacing: 16) {
+            // Phase-aware header
+            workoutPhaseHeader
+            
             ExerciseTagCloud(
                 tags: tags, 
                 reason: reason,
                 selectedTag: $selectedTag
             )
             
+            // Progressive overload hint (when tag selected)
+            if let hint = overloadHint, showOverloadHint {
+                CanvasInsightBubble(
+                    text: hint,
+                    icon: "arrow.up.right",
+                    color: Theme.accent
+                )
+                .transition(.asymmetric(
+                    insertion: .scale(scale: 0.8).combined(with: .opacity),
+                    removal: .opacity
+                ))
+            }
+            
+            // General insights
             if let insight = currentInsight, showInsight {
                 CanvasInsightBubble(
                     text: insight.text,
@@ -77,12 +113,117 @@ struct WorkoutCanvas: View {
                     removal: .opacity
                 ))
             }
+            
+            Spacer(minLength: 16)
+            
+            // Volume tracker at bottom
+            volumeTracker
         }
         .onAppear {
             showWorkoutStartInsight()
         }
         .onChange(of: momentsCount) { oldValue, newValue in
             showInsightForMoments(newValue, oldValue: oldValue)
+            showPhaseAwareness()
+        }
+        .onChange(of: selectedTag) { oldValue, newValue in
+            showProgressiveOverloadHint(for: newValue)
+        }
+        .onChange(of: workoutElapsed) { _, _ in
+            showPhaseAwareness()
+        }
+    }
+    
+    private var workoutPhaseHeader: some View {
+        Group {
+            if workoutElapsed < 300 { // 0-5 min
+                Text("WARM UP")
+                    .font(.caption2)
+                    .foregroundColor(Theme.warning)
+                    .textCase(.uppercase)
+                    .tracking(1.5)
+            } else if workoutElapsed > 3600 { // 60+ min
+                Text("FINISHING UP")
+                    .font(.caption2)
+                    .foregroundColor(Theme.textTertiary)
+                    .textCase(.uppercase)
+                    .tracking(1.5)
+            } else if workoutElapsed > 2400 { // 40+ min
+                Text("FINISHING UP")
+                    .font(.caption2)
+                    .foregroundColor(Theme.textSecondary)
+                    .textCase(.uppercase)
+                    .tracking(1.5)
+            }
+        }
+    }
+    
+    private var volumeTracker: some View {
+        Group {
+            if let volume = calculateTotalVolume() {
+                Text("~\(Int(volume).formatted()) lbs total volume")
+                    .font(.caption2)
+                    .foregroundColor(Theme.textTertiary.opacity(momentsCount > 0 ? 0.8 : 0.3))
+                    .tracking(0.5)
+            } else if momentsCount > 0 {
+                Text("Volume tracking...")
+                    .font(.caption2)
+                    .foregroundColor(Theme.textTertiary.opacity(0.4))
+                    .tracking(0.5)
+            }
+        }
+    }
+    
+    private func calculateTotalVolume() -> Double? {
+        guard let session = currentSession,
+              let structuredLog = session.structuredLog else { return nil }
+        
+        var totalVolume: Double = 0
+        
+        for exercise in structuredLog.exercises {
+            for set in exercise.sets {
+                if let weight = set.weight, let reps = set.reps {
+                    totalVolume += weight * Double(reps)
+                }
+            }
+        }
+        
+        return totalVolume > 0 ? totalVolume : nil
+    }
+    
+    private func showProgressiveOverloadHint(for exercise: String?) {
+        guard let exercise = exercise else {
+            withAnimation(.opacity) {
+                showOverloadHint = false
+            }
+            return
+        }
+        
+        if let performance = suggestionEngine.getLastPerformance(exercise: exercise, workoutStore: workoutStore) {
+            let suggestedWeight = performance.weight + (performance.weight * 0.025) // 2.5% increase
+            let formattedWeight = suggestedWeight.truncatingRemainder(dividingBy: 1) == 0 
+                ? String(format: "%.0f", suggestedWeight) 
+                : String(format: "%.1f", suggestedWeight)
+            
+            overloadHint = "Last time: \(Int(performance.weight)) × \(performance.reps) → Try \(formattedWeight) × \(performance.reps)"
+            
+            withAnimation(.spring(response: 0.5)) {
+                showOverloadHint = true
+            }
+        } else {
+            withAnimation(.opacity) {
+                showOverloadHint = false
+            }
+        }
+    }
+    
+    private func showPhaseAwareness() {
+        let elapsedMinutes = workoutElapsed / 60
+        
+        // Only show phase insights when crossing major thresholds
+        if elapsedMinutes >= 60 && momentsCount > 8 {
+            currentInsight = ("Great session, consider wrapping up", "checkmark.circle", Theme.success)
+            showTimedInsight()
         }
     }
     
@@ -117,11 +258,15 @@ struct WorkoutCanvas: View {
         }()
         
         currentInsight = insight
+        showTimedInsight()
+    }
+    
+    private func showTimedInsight(duration: Double = 2.5) {
         withAnimation(.spring(response: 0.5)) {
             showInsight = true
         }
         
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + duration) {
             withAnimation(.opacity) {
                 showInsight = false
             }
