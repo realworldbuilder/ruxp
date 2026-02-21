@@ -333,16 +333,14 @@ struct HomeView: View {
     
     private var smartGreetingSection: some View {
         Section {
-            VStack(spacing: 8) {
-                Text(intelligenceEngine.smartGreeting)
-                    .font(.title2.weight(.medium))
-                    .foregroundStyle(Theme.textPrimary)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: .infinity)
-            }
-            .padding(.vertical, 8)
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
+            Text(intelligenceEngine.smartGreeting)
+                .font(.title3.weight(.medium))
+                .foregroundStyle(Theme.textPrimary)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
         }
     }
     

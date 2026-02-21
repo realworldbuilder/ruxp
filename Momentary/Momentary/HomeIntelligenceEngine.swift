@@ -27,15 +27,73 @@ final class HomeIntelligenceEngine {
     }
     
     private func timeBasedGreeting(for hour: Int) -> String {
+        // Rotate greetings based on day-of-year for variety
+        let dayOfYear = calendar.ordinality(of: .day, in: .year, for: Date()) ?? 1
+        
         switch hour {
-        case 5..<12:
-            return "Good morning."
-        case 12..<17:
-            return "Good afternoon."
-        case 17..<22:
-            return "Evening session?"
+        case 5..<8:
+            let options = [
+                "Rise and grind.",
+                "Early bird gets the gains.",
+                "Up before the sun. Respect.",
+                "Morning iron awaits.",
+                "Dawn patrol. Let's get it."
+            ]
+            return options[dayOfYear % options.count]
+        case 8..<12:
+            let options = [
+                "Time to move some weight.",
+                "Morning. Let's build something.",
+                "Fuel up. Lift heavy.",
+                "The iron's been waiting.",
+                "Good morning. Gains o'clock."
+            ]
+            return options[dayOfYear % options.count]
+        case 12..<15:
+            let options = [
+                "Lunch lift?",
+                "Afternoon session incoming.",
+                "Mid-day muscle check.",
+                "Perfect time to train.",
+                "Afternoon. Time to work."
+            ]
+            return options[dayOfYear % options.count]
+        case 15..<17:
+            let options = [
+                "Peak performance hours.",
+                "Your body's strongest right now.",
+                "Prime time. Let's go.",
+                "Afternoon power window.",
+                "Science says train now. 🧪"
+            ]
+            return options[dayOfYear % options.count]
+        case 17..<20:
+            let options = [
+                "Evening session?",
+                "Time to decompress with iron.",
+                "End the day stronger.",
+                "Gym > couch. Always.",
+                "Clock out. Lock in."
+            ]
+            return options[dayOfYear % options.count]
+        case 20..<22:
+            let options = [
+                "Night owl gains.",
+                "Late session? No excuses.",
+                "The gym's emptier now. Go.",
+                "Nighttime grinder.",
+                "Still time to get it in."
+            ]
+            return options[dayOfYear % options.count]
         default:
-            return "Late night training?"
+            let options = [
+                "Can't sleep? Might as well lift.",
+                "Midnight iron. Different breed.",
+                "The 2 AM crew hits different.",
+                "Late night. No witnesses.",
+                "Nocturnal gains mode."
+            ]
+            return options[dayOfYear % options.count]
         }
     }
     
@@ -44,23 +102,31 @@ final class HomeIntelligenceEngine {
         
         let now = Date()
         let lastWorkout = workoutStore.index.first
-        let hour = calendar.component(.hour, from: now)
+        let dayOfYear = calendar.ordinality(of: .day, in: .year, for: now) ?? 1
         
         // If they trained today already, acknowledge it
         if let lastWorkout = lastWorkout,
            calendar.isDate(lastWorkout.startedAt, inSameDayAs: now) {
-            return hour < 17 ? "Great session today." : "Nice work today."
+            let options = [
+                "Already put in work today. 💪",
+                "Today's session is in the books.",
+                "Checked that box today.",
+                "You showed up. That's the hard part."
+            ]
+            return options[dayOfYear % options.count]
         }
         
         // Check days since last workout and muscle group
         if let daysSinceLast = daysSinceLastWorkout(),
            let lastMuscleGroup = lastWorkout?.muscleGroupFocus {
             
-            if daysSinceLast >= 3 {
+            if daysSinceLast >= 5 {
+                return "It's been \(daysSinceLast) days. The weights miss you."
+            } else if daysSinceLast >= 3 {
                 let suggestedGroup = suggestNextMuscleGroup(lastGroup: lastMuscleGroup, daysSince: daysSinceLast)
-                return "Last \(lastMuscleGroup.lowercased()) was \(daysSinceLast) days ago — \(suggestedGroup.lowercased())?"
-            } else if daysSinceLast == 1 && hour >= 17 {
-                return "Your best workouts happen around this time."
+                return "\(suggestedGroup) is overdue."
+            } else if daysSinceLast == 2 {
+                return "Yesterday was rest. Today we go."
             }
         }
         
