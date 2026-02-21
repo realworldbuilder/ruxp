@@ -216,11 +216,6 @@ struct HomeView: View {
                 workoutSuggestionCard
             }
 
-            // Weekly streak
-            if !workoutManager.workoutStore.index.isEmpty {
-                weeklyStreakCard
-            }
-            
             // Smart nudges
             smartNudgesSection
 
@@ -338,11 +333,12 @@ struct HomeView: View {
     
     private var smartGreetingSection: some View {
         Section {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(spacing: 8) {
                 Text(intelligenceEngine.smartGreeting)
                     .font(.title2.weight(.medium))
                     .foregroundStyle(Theme.textPrimary)
-                    .multilineTextAlignment(.leading)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
             }
             .padding(.vertical, 8)
             .listRowBackground(Color.clear)
