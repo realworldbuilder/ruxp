@@ -27,6 +27,92 @@ final class ChatEngine {
             conversationStore.activeConversationId = latest.id
             messages = conversationStore.loadMessages(for: latest.id)
         }
+        
+        // Check for post-workout auto-prompt
+        checkForPostWorkoutContext()
+    }
+    
+    // MARK: - Post-Workout Context
+    
+    func checkForPostWorkoutContext() {
+        guard messages.isEmpty else { return } // Only for new conversations
+        
+        let now = Date()
+        let calendar = Calendar.current
+        
+        // Find workouts completed in the last hour
+        let recentWorkout = workoutStore.index.first { workout in
+            guard let endedAt = workout.endedAt else { return false }
+            return now.timeIntervalSince(endedAt) < 3600 // Less than 1 hour ago
+        }
+        
+        guard let workout = recentWorkout else { return }
+        
+        // Check if this workout has already been discussed in recent conversations
+        let hasBeenDiscussed = conversationStore.conversations.contains { conversation in
+            let conversationMessages = conversationStore.loadMessages(for: conversation.id)
+            return conversationMessages.contains { message in
+                message.blocks.contains { block in
+                    block.payload.text?.contains(workout.id.uuidString) == true ||
+                    block.payload.workoutId == workout.id.uuidString
+                }
+            }
+        }
+        
+        guard !hasBeenDiscussed else { return }
+        
+        // Generate post-workout context message
+        Task {
+            await generatePostWorkoutAnalysis(for: workout)
+        }
+    }
+    
+    private func generatePostWorkoutAnalysis(for workout: WorkoutSessionIndex) async {
+        // Auto-create conversation for this analysis
+        if conversationStore.activeConversationId == nil {
+            _ = conversationStore.newConversation()
+        }
+        
+        let durationStr = workout.duration.map { "\(Int($0 / 60)) minutes" } ?? "unknown duration"
+        let exerciseStr = workout.exerciseNames.isEmpty ? "exercises" : workout.exerciseNames.joined(separator: ", ")
+        let volumeStr = workout.totalVolume > 0 ? "\(Int(workout.totalVolume)) lbs total volume" : "no volume recorded"
+        
+        let contextPrompt = """
+        User just completed a workout: \(durationStr), \(workout.exerciseCount) exercises (\(exerciseStr)), \(workout.totalSets) sets, \(volumeStr). 
+        
+        Proactively analyze this workout. Acknowledge what they accomplished, note any standout performances, and offer specific insights about their training.
+        """
+        
+        isResponding = true
+        
+        do {
+            let systemPrompt = ChatPromptBuilder.buildSystemPrompt(
+                workoutStore: workoutStore,
+                insightsEngine: insightsEngine
+            )
+            
+            let conversationMessages = [
+                ["role": "system", "content": systemPrompt],
+                ["role": "user", "content": contextPrompt]
+            ]
+            
+            let responseJSON = try await aiService.complete(messages: conversationMessages)
+            let blocks = parseResponse(responseJSON)
+            
+            // Extract planned exercises from trainer response
+            extractPlannedExercises(from: blocks)
+            
+            let assistantMessage = ChatMessage(role: .assistant, blocks: blocks)
+            messages.append(assistantMessage)
+            
+            // Auto-save the analysis
+            conversationStore.save(messages: messages)
+            
+        } catch {
+            Self.logger.error("Post-workout analysis error: \(error.localizedDescription)")
+        }
+        
+        isResponding = false
     }
 
     // MARK: - Conversation Management
@@ -353,6 +439,7 @@ final class ChatEngine {
     private func extractPlannedExercises(from blocks: [ChatBlock]) {
         var exercises: [String] = []
         var planTitle = ""
+        var hasStartWorkoutButton = false
         
         for block in blocks {
             switch block.type {
@@ -363,7 +450,35 @@ final class ChatEngine {
             case .actionButtons:
                 if let actions = block.payload.actions {
                     for action in actions where action.actionType == .startWorkout {
-                        planTitle = "Trainer Plan"
+                        hasStartWorkoutButton = true
+                        planTitle = planTitle.isEmpty ? "Trainer Plan" : planTitle
+                    }
+                }
+            case .text:
+                // Scan text blocks for exercise mentions and workout plan indicators
+                if let text = block.payload.text {
+                    let lowerText = text.lowercased()
+                    
+                    // Identify this as a workout plan
+                    if lowerText.contains("workout plan") || lowerText.contains("today's workout") || 
+                       lowerText.contains("here's your") || lowerText.contains("try this") ||
+                       lowerText.contains("program") || lowerText.contains("routine") {
+                        planTitle = planTitle.isEmpty ? "Trainer Suggestion" : planTitle
+                    }
+                    
+                    // Extract exercise names from text (backup for when exerciseTable blocks aren't used)
+                    if hasStartWorkoutButton || !planTitle.isEmpty {
+                        let exerciseKeywords = [
+                            "bench press", "squat", "deadlift", "pull-up", "push-up", "row",
+                            "overhead press", "lateral raise", "bicep curl", "tricep extension",
+                            "leg press", "calf raise", "plank", "lunge", "dip"
+                        ]
+                        
+                        for exercise in exerciseKeywords {
+                            if lowerText.contains(exercise) && !exercises.contains { $0.lowercased() == exercise } {
+                                exercises.append(exercise.capitalized)
+                            }
+                        }
                     }
                 }
             default:
@@ -371,17 +486,13 @@ final class ChatEngine {
             }
         }
         
-        // Also scan text blocks for exercise mentions in workout plans
-        for block in blocks where block.type == .text {
-            if let text = block.payload.text?.lowercased(),
-               (text.contains("workout plan") || text.contains("today's workout") || text.contains("here's your") || text.contains("try this")) {
-                planTitle = planTitle.isEmpty ? "Trainer Suggestion" : planTitle
-            }
-        }
-        
-        if !exercises.isEmpty {
+        // Only save if we have exercises and this looks like a planned workout
+        if !exercises.isEmpty && (hasStartWorkoutButton || !planTitle.isEmpty) {
             let store = PlannedWorkoutStore()
-            store.setPlan(exercises: exercises, source: planTitle.isEmpty ? "" : "★ \(planTitle)")
+            let source = planTitle.isEmpty ? "★ Trainer: Custom Plan" : "★ \(planTitle)"
+            store.setPlan(exercises: exercises, source: source)
+            
+            Self.logger.info("Extracted planned exercises: \(exercises) with source: \(source)")
         }
     }
 }
