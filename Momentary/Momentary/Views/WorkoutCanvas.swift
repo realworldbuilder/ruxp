@@ -35,7 +35,7 @@ struct CanvasInsightBubble: View {
     }
     
     func hide() {
-        withAnimation(.opacity.delay(0.1)) {
+        withAnimation(.easeOut.delay(0.1)) {
             isVisible = false
         }
     }
@@ -198,7 +198,7 @@ struct WorkoutCanvas: View {
     
     private func showProgressiveOverloadHint(for exercise: String?) {
         guard let exercise = exercise else {
-            withAnimation(.opacity) {
+            withAnimation(.easeOut) {
                 showOverloadHint = false
             }
             return
@@ -218,7 +218,7 @@ struct WorkoutCanvas: View {
                 showOverloadHint = true
             }
         } else {
-            withAnimation(.opacity) {
+            withAnimation(.easeOut) {
                 showOverloadHint = false
             }
         }
@@ -240,7 +240,6 @@ struct WorkoutCanvas: View {
             return (weight, reps + 1)
         }
     }
-    }
     
     private func showPhaseAwareness() {
         let elapsedMinutes = workoutElapsed / 60
@@ -260,7 +259,7 @@ struct WorkoutCanvas: View {
         }
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-            withAnimation(.opacity) {
+            withAnimation(.easeOut) {
                 showInsight = false
             }
         }
@@ -292,7 +291,7 @@ struct WorkoutCanvas: View {
         }
         
         DispatchQueue.main.asyncAfter(deadline: .now() + duration) {
-            withAnimation(.opacity) {
+            withAnimation(.easeOut) {
                 showInsight = false
             }
         }

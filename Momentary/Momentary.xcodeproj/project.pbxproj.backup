@@ -41,13 +41,6 @@
 		A1000034 /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000034 /* ChatView.swift */; };
 		A1000035 /* ChatMessageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000035 /* ChatMessageView.swift */; };
 		A1000036 /* ChatBlockView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000036 /* ChatBlockView.swift */; };
-		A1CDD45A /* ExerciseTagCloud.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1CDD45A /* ExerciseTagCloud.swift */; };
-		A142478E /* WorkoutCanvas.swift in Sources */ = {isa = PBXBuildFile; fileRef = B142478E /* WorkoutCanvas.swift */; };
-		A1B435A6 /* PlannedWorkoutStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B435A6 /* PlannedWorkoutStore.swift */; };
-		A148580C /* HomeIntelligenceEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B148580C /* HomeIntelligenceEngine.swift */; };
-		A163B712 /* InsightsIntelligenceEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B163B712 /* InsightsIntelligenceEngine.swift */; };
-		A125EB16 /* LifetimeDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B125EB16 /* LifetimeDetailView.swift */; };
-		A13B5B3B /* PRDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B13B5B3B /* PRDetailView.swift */; };
 		A2000001 /* MomentaryWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000001 /* MomentaryWatchApp.swift */; };
 		A2000003 /* AudioRecorderService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000003 /* AudioRecorderService.swift */; };
 		A2000004 /* WatchConnectivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000004 /* WatchConnectivityManager.swift */; };
@@ -130,13 +123,6 @@
 		B1000034 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
 		B1000035 /* ChatMessageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatMessageView.swift; sourceTree = "<group>"; };
 		B1000036 /* ChatBlockView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatBlockView.swift; sourceTree = "<group>"; };
-		B1CDD45A /* ExerciseTagCloud.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseTagCloud.swift; sourceTree = "<group>"; };
-		B142478E /* WorkoutCanvas.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutCanvas.swift; sourceTree = "<group>"; };
-		B1B435A6 /* PlannedWorkoutStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlannedWorkoutStore.swift; sourceTree = "<group>"; };
-		B148580C /* HomeIntelligenceEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeIntelligenceEngine.swift; sourceTree = "<group>"; };
-		B163B712 /* InsightsIntelligenceEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsIntelligenceEngine.swift; sourceTree = "<group>"; };
-		B125EB16 /* LifetimeDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LifetimeDetailView.swift; sourceTree = "<group>"; };
-		B13B5B3B /* PRDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PRDetailView.swift; sourceTree = "<group>"; };
 		B2000001 /* MomentaryWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MomentaryWatchApp.swift; sourceTree = "<group>"; };
 		B2000003 /* AudioRecorderService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRecorderService.swift; sourceTree = "<group>"; };
 		B2000004 /* WatchConnectivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchConnectivityManager.swift; sourceTree = "<group>"; };
@@ -213,9 +199,6 @@
 				B1000031 /* ChatModels.swift */,
 				B1000032 /* ChatPromptBuilder.swift */,
 				B1000033 /* ChatService.swift */,
-				B1B435A6 /* PlannedWorkoutStore.swift */,
-				B148580C /* HomeIntelligenceEngine.swift */,
-				B163B712 /* InsightsIntelligenceEngine.swift */,
 				F2000002 /* Views */,
 				B1000007 /* Assets.xcassets */,
 				E978F0CC76B8482FBC4A79C7 /* TrainerSoul.swift */,
@@ -242,10 +225,6 @@
 				B1000034 /* ChatView.swift */,
 				B1000035 /* ChatMessageView.swift */,
 				B1000036 /* ChatBlockView.swift */,
-				B1CDD45A /* ExerciseTagCloud.swift */,
-				B142478E /* WorkoutCanvas.swift */,
-				B125EB16 /* LifetimeDetailView.swift */,
-				B13B5B3B /* PRDetailView.swift */,
 				AD351910FDA64E408F948152 /* TrainerSoulEditor.swift */,
 				F32CA92DB2D52BB5BA25593D /* InsightDetailView.swift */,
 			);
@@ -419,13 +398,6 @@
 				A1000034 /* ChatView.swift in Sources */,
 				A1000035 /* ChatMessageView.swift in Sources */,
 				A1000036 /* ChatBlockView.swift in Sources */,
-				A1CDD45A /* ExerciseTagCloud.swift in Sources */,
-				A142478E /* WorkoutCanvas.swift in Sources */,
-				A1B435A6 /* PlannedWorkoutStore.swift in Sources */,
-				A148580C /* HomeIntelligenceEngine.swift in Sources */,
-				A163B712 /* InsightsIntelligenceEngine.swift in Sources */,
-				A125EB16 /* LifetimeDetailView.swift in Sources */,
-				A13B5B3B /* PRDetailView.swift in Sources */,
 				40533A7B62684C9486E76BA4 /* TrainerSoul.swift in Sources */,
 				E6C79CAC9B32429DA84CFBF4 /* TrainerSoulEditor.swift in Sources */,
 				CC641F3B7AF2A8BBC0E29956 /* ConversationStore.swift in Sources */,

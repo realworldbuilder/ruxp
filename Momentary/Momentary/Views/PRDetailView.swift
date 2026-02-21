@@ -63,7 +63,7 @@ struct PRDetailView: View {
                     .foregroundStyle(Theme.textSecondary)
                     .frame(width: 32, height: 32)
                     .background(Theme.surface.opacity(0.8), in: Circle())
-                    .backdrop(Material.ultraThinMaterial)
+                    .background(Material.ultraThinMaterial, in: Circle())
             }
             .padding(.top, 60)
             .padding(.trailing, 20)
@@ -413,5 +413,5 @@ struct PRDetailView: View {
         )
     ]
     
-    return PRDetailView(personalRecords: samplePRs)
+    PRDetailView(personalRecords: samplePRs)
 }
