@@ -24,7 +24,7 @@ class ExerciseSuggestionEngine: ObservableObject {
         }
 
         let historySuggestions = scores.sorted { $0.value > $1.value }
-            .prefix(4)
+            .prefix(8)
             .map(\.key)
 
         if !historySuggestions.isEmpty {
@@ -89,46 +89,46 @@ class ExerciseSuggestionEngine: ObservableObject {
             let legs = ["Squat", "Romanian Deadlift", "Leg Press", "Leg Curl", "Calf Raise", "Bulgarian Split Squat"]
 
             if current.contains("bench") || current.contains("fly") || current.contains("tricep") || current.contains("shoulder") || current.contains("lateral") {
-                return Array(filterDone(push).prefix(4))
+                return Array(filterDone(push).prefix(6))
             } else if current.contains("row") || current.contains("pull") || current.contains("curl") || current.contains("lat") || current.contains("face") {
-                return Array(filterDone(pull).prefix(4))
+                return Array(filterDone(pull).prefix(6))
             } else if current.contains("squat") || current.contains("deadlift") || current.contains("leg") || current.contains("calf") || current.contains("lunge") {
-                return Array(filterDone(legs).prefix(4))
+                return Array(filterDone(legs).prefix(6))
             }
             // No moments yet — show all three categories as starting points
-            return ["Bench Press", "Squat", "Barbell Row", "Overhead Press"]
+            return ["Bench Press", "Squat", "Barbell Row", "Overhead Press", "Lateral Raise", "Romanian Deadlift"]
 
         case .upperLower:
             let upper = ["Bench Press", "Overhead Press", "Barbell Row", "Pull-Ups", "Lateral Raise", "Bicep Curl"]
             let lower = ["Squat", "Romanian Deadlift", "Leg Press", "Hip Thrust", "Leg Curl", "Calf Raise"]
             if current.contains("squat") || current.contains("deadlift") || current.contains("leg") || current.contains("hip") || current.contains("lunge") {
-                return Array(filterDone(lower).prefix(4))
+                return Array(filterDone(lower).prefix(6))
             } else if !current.isEmpty {
-                return Array(filterDone(upper).prefix(4))
+                return Array(filterDone(upper).prefix(6))
             }
-            return ["Bench Press", "Squat", "Overhead Press", "Barbell Row"]
+            return ["Bench Press", "Squat", "Overhead Press", "Barbell Row", "Romanian Deadlift", "Pull-Ups"]
 
         case .fullBody:
-            return Array(filterDone(["Squat", "Bench Press", "Barbell Row", "Overhead Press", "Romanian Deadlift", "Pull-Ups"]).prefix(4))
+            return Array(filterDone(["Squat", "Bench Press", "Barbell Row", "Overhead Press", "Romanian Deadlift", "Pull-Ups", "Lateral Raise", "Bicep Curl"]).prefix(6))
 
         case .broSplit:
             if current.contains("bench") || current.contains("fly") || current.contains("chest") {
-                return Array(filterDone(["Incline Dumbbell Press", "Cable Fly", "Dumbbell Press", "Chest Fly"]).prefix(4))
+                return Array(filterDone(["Incline Dumbbell Press", "Cable Fly", "Dumbbell Press", "Chest Fly", "Tricep Pushdown", "Dips"]).prefix(6))
             } else if current.contains("row") || current.contains("lat") || current.contains("back") {
-                return Array(filterDone(["Barbell Row", "Lat Pulldown", "Cable Row", "Pull-Ups"]).prefix(4))
+                return Array(filterDone(["Barbell Row", "Lat Pulldown", "Cable Row", "Pull-Ups", "Face Pulls", "Hammer Curl"]).prefix(6))
             }
-            return ["Bench Press", "Squat", "Barbell Row", "Overhead Press"]
+            return ["Bench Press", "Squat", "Barbell Row", "Overhead Press", "Lateral Raise", "Leg Press"]
 
         case .arnoldSplit:
             if current.contains("bench") || current.contains("row") || current.contains("back") || current.contains("chest") {
-                return Array(filterDone(["Bench Press", "Barbell Row", "Incline Dumbbell Press", "Cable Row", "Cable Fly", "Lat Pulldown"]).prefix(4))
+                return Array(filterDone(["Bench Press", "Barbell Row", "Incline Dumbbell Press", "Cable Row", "Cable Fly", "Lat Pulldown"]).prefix(6))
             } else if current.contains("curl") || current.contains("tricep") || current.contains("lateral") || current.contains("shoulder") {
-                return Array(filterDone(["Overhead Press", "Lateral Raise", "Bicep Curl", "Tricep Pushdown", "Hammer Curl"]).prefix(4))
+                return Array(filterDone(["Overhead Press", "Lateral Raise", "Bicep Curl", "Tricep Pushdown", "Hammer Curl", "Face Pulls"]).prefix(6))
             }
-            return ["Bench Press", "Barbell Row", "Overhead Press", "Squat"]
+            return ["Bench Press", "Barbell Row", "Overhead Press", "Squat", "Lateral Raise", "Bicep Curl"]
 
         case .phat, .custom:
-            return Array(filterDone(["Bench Press", "Squat", "Deadlift", "Overhead Press", "Barbell Row", "Pull-Ups"]).prefix(4))
+            return Array(filterDone(["Bench Press", "Squat", "Deadlift", "Overhead Press", "Barbell Row", "Pull-Ups", "Lateral Raise", "Romanian Deadlift"]).prefix(6))
         }
     }
 }
@@ -145,6 +145,7 @@ struct ActiveWorkoutTab: View {
     @State private var showDiscardStep1 = false
     @State private var discardConfirmText = ""
     @State private var showDiscardStep2 = false
+    @State private var selectedTag: String?
 
     private var allTags: [ExerciseTag] {
         let completedExercises = Set(
@@ -176,17 +177,43 @@ struct ActiveWorkoutTab: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
+                // Compact timer header
                 timerHeader
-                momentsFeed
-                if !allTags.isEmpty {
-                    WorkoutCanvas(
-                        tags: allTags,
-                        reason: plannedWorkoutStore.planSource.isEmpty 
-                            ? suggestionEngine.suggestionReason 
-                            : plannedWorkoutStore.planSource
-                    )
+                
+                // Main canvas area - always visible
+                ScrollView {
+                    VStack(spacing: 20) {
+                        // Moments feed (when exists)
+                        if let session = workoutManager.activeSession, !session.moments.isEmpty {
+                            momentsFeedContent(session: session)
+                        }
+                        
+                        // The tag cloud is ALWAYS the main interface
+                        if !allTags.isEmpty {
+                            VStack(spacing: 12) {
+                                // Workout type header
+                                if let session = workoutManager.activeSession, session.moments.isEmpty {
+                                    workoutTypeHeader
+                                }
+                                
+                                WorkoutCanvas(
+                                    tags: allTags,
+                                    reason: plannedWorkoutStore.planSource.isEmpty 
+                                        ? suggestionEngine.suggestionReason 
+                                        : plannedWorkoutStore.planSource,
+                                    selectedTag: $selectedTag,
+                                    momentsCount: workoutManager.activeSession?.moments.count ?? 0
+                                )
+                            }
+                            .frame(maxWidth: .infinity)
+                        }
+                        
+                        Spacer(minLength: 120) // Space for mic button
+                    }
                 }
-                Spacer()
+                .background(Theme.background)
+                
+                // Bottom mic button (always visible)
                 bottomControls
             }
             .background(Theme.background)
@@ -267,14 +294,14 @@ struct ActiveWorkoutTab: View {
     }
 
     private var timerHeader: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 6) {
             Text(formattedElapsed)
-                .font(.system(size: 48, weight: .medium, design: .monospaced))
+                .font(.system(size: 36, weight: .medium, design: .monospaced))
                 .foregroundStyle(.primary)
 
             HStack(spacing: 16) {
                 Label("\(workoutManager.activeSession?.moments.count ?? 0) \((workoutManager.activeSession?.moments.count ?? 0) == 1 ? "moment" : "moments")", systemImage: "waveform")
-                    .font(.subheadline).foregroundStyle(Theme.textSecondary)
+                    .font(.caption).foregroundStyle(Theme.textSecondary)
 
                 if workoutManager.isProcessingMoment {
                     HStack(spacing: 4) {
@@ -284,56 +311,60 @@ struct ActiveWorkoutTab: View {
                 }
             }
         }
-        .padding(.vertical, 20)
+        .padding(.vertical, 16)
         .frame(maxWidth: .infinity)
         .background(Theme.cardBackground)
     }
+    
+    private var workoutTypeHeader: some View {
+        VStack(spacing: 4) {
+            Text("YOUR WORKOUT")
+                .font(.caption2)
+                .foregroundColor(Theme.textTertiary)
+                .textCase(.uppercase)
+                .tracking(1.5)
+            
+            if !plannedWorkoutStore.planSource.isEmpty {
+                Text(plannedWorkoutStore.planSource)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundColor(Theme.textSecondary)
+            }
+        }
+        .padding(.top, 8)
+    }
 
-    private var momentsFeed: some View {
-        Group {
-            if let session = workoutManager.activeSession, !session.moments.isEmpty {
-                ScrollView {
-                    LazyVStack(spacing: 1) {
-                        ForEach(session.moments.reversed()) { moment in
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(moment.transcript).font(.body)
-                                HStack {
-                                    Text(moment.timestamp, style: .time).font(.caption).foregroundStyle(Theme.textSecondary)
-                                    if moment.source == .watch {
-                                        Image(systemName: "applewatch").font(.caption2).foregroundStyle(Theme.textSecondary)
-                                    }
-                                }
-                            }
-                            .padding(.horizontal).padding(.vertical, 10)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+    private func momentsFeedContent(session: WorkoutSession) -> some View {
+        VStack(spacing: 0) {
+            ForEach(session.moments.reversed()) { moment in
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(moment.transcript)
+                        .font(.body)
+                        .foregroundColor(.primary)
+                    
+                    HStack {
+                        Text(moment.timestamp, style: .time)
+                            .font(.caption)
+                            .foregroundStyle(Theme.textSecondary)
+                        
+                        if moment.source == .watch {
+                            Image(systemName: "applewatch")
+                                .font(.caption2)
+                                .foregroundStyle(Theme.textSecondary)
                         }
                     }
                 }
-            } else {
-                VStack(spacing: 20) {
-                    Spacer()
-                    
-                    Image(systemName: "mic.fill")
-                        .font(.system(size: 40))
-                        .foregroundColor(Theme.textTertiary)
-                    
-                    Text("Tap the mic to start logging")
-                        .font(.subheadline)
-                        .foregroundColor(Theme.textSecondary)
-                    
-                    if !allTags.isEmpty {
-                        WorkoutCanvas(
-                            tags: allTags,
-                            reason: plannedWorkoutStore.planSource.isEmpty 
-                                ? suggestionEngine.suggestionReason 
-                                : plannedWorkoutStore.planSource
-                        )
-                    }
-                    
-                    Spacer()
-                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Theme.cardBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Theme.border, lineWidth: 0.5)
+                )
             }
         }
+        .padding(.horizontal, 16)
     }
 
     private var bottomControls: some View {

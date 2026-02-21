@@ -113,6 +113,7 @@ struct FlowLayout: Layout {
 struct ExerciseTagCloud: View, WorkoutCanvasComponent {
     let tags: [ExerciseTag]
     var reason: String = ""
+    @Binding var selectedTag: String?
     @State private var animationPhase: CGFloat = 0
     
     // MARK: - WorkoutCanvasComponent
@@ -130,37 +131,74 @@ struct ExerciseTagCloud: View, WorkoutCanvasComponent {
     }
     
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 16) {
             if !reason.isEmpty {
                 Text(reason)
                     .font(.caption2)
                     .foregroundColor(Theme.textTertiary)
                     .textCase(.uppercase)
-                    .tracking(1)
+                    .tracking(1.2)
             }
             
-            FlowLayout(spacing: 10, alignment: .center) {
+            FlowLayout(spacing: 12, alignment: .center) {
                 ForEach(Array(tags.enumerated()), id: \.element.id) { index, tag in
-                    TagChip(tag: tag)
-                        .offset(y: floatOffset(for: index))
-                        .animation(
-                            .easeInOut(duration: Double.random(in: 2.5...4.0))
-                            .repeatForever(autoreverses: true)
-                            .delay(Double(index) * 0.15),
-                            value: animationPhase
-                        )
+                    TagChip(
+                        tag: tag,
+                        isSelected: selectedTag == tag.name,
+                        isDimmed: selectedTag != nil && selectedTag != tag.name
+                    ) {
+                        handleTagTap(tag.name)
+                    }
+                    .offset(y: floatOffset(for: index))
+                    .animation(
+                        .easeInOut(duration: Double.random(in: 2.5...4.0))
+                        .repeatForever(autoreverses: true)
+                        .delay(Double(index) * 0.15),
+                        value: animationPhase
+                    )
                 }
             }
+            
+            // Show selected exercise name prominently
+            if let selected = selectedTag {
+                VStack(spacing: 8) {
+                    Text("CURRENT EXERCISE")
+                        .font(.caption2)
+                        .foregroundColor(Theme.textTertiary)
+                        .textCase(.uppercase)
+                        .tracking(1.2)
+                    
+                    Text(selected)
+                        .font(.title3.weight(.semibold))
+                        .foregroundColor(Theme.accent)
+                        .transition(.scale.combined(with: .opacity))
+                }
+                .padding(.top, 8)
+            }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
         .onAppear {
             animationPhase = 1
         }
     }
     
+    private func handleTagTap(_ tagName: String) {
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+            if selectedTag == tagName {
+                selectedTag = nil // Deselect if already selected
+            } else {
+                selectedTag = tagName // Select new tag
+            }
+        }
+        
+        // Add haptic feedback
+        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+        impactFeedback.impactOccurred()
+    }
+    
     private func floatOffset(for index: Int) -> CGFloat {
-        let base: CGFloat = animationPhase == 0 ? 0 : CGFloat.random(in: -3...3)
+        let base: CGFloat = animationPhase == 0 ? 0 : CGFloat.random(in: -2...2)
         return base
     }
 }
@@ -169,49 +207,96 @@ struct ExerciseTagCloud: View, WorkoutCanvasComponent {
 
 struct TagChip: View {
     let tag: ExerciseTag
-    @State private var isHovered = false
+    let isSelected: Bool
+    let isDimmed: Bool
+    let onTap: () -> Void
+    @State private var isPressed = false
+    @State private var pulsePhase: CGFloat = 0
     
-    private var chipStyle: (bg: Color, fg: Color, border: Color, opacity: Double) {
+    private var chipStyle: (bg: Color, fg: Color, border: Color, opacity: Double, scale: CGFloat) {
+        let baseOpacity: Double = isDimmed ? 0.4 : 1.0
+        let scale: CGFloat = isSelected ? 1.08 : (isPressed ? 0.96 : 1.0)
+        
         if tag.isCompleted {
-            return (Theme.surface, Theme.textTertiary, Theme.textTertiary, 0.5)
+            return (Theme.surface, Theme.textTertiary, Theme.textTertiary, 0.5 * baseOpacity, scale)
         }
+        
+        if isSelected {
+            // Selected state - glowing accent
+            return (Theme.accent, .white, Theme.accent, baseOpacity, scale)
+        }
+        
         switch tag.source {
         case .planned:
-            return (Theme.accent, .white, Theme.accent, 1.0)
+            return (Theme.accent, .white, Theme.accent, baseOpacity, scale)
         case .suggested:
-            return (Theme.accentSubtle, Theme.accent, Theme.accent.opacity(0.3), 1.0)
+            return (Theme.accentSubtle, Theme.accent, Theme.accent.opacity(0.3), baseOpacity, scale)
         case .history:
-            return (Color.white.opacity(0.08), Theme.textSecondary, Color.white.opacity(0.15), 0.85)
+            return (Color.white.opacity(0.08), Theme.textSecondary, Color.white.opacity(0.15), 0.85 * baseOpacity, scale)
         }
     }
     
     var body: some View {
-        HStack(spacing: 5) {
-            if tag.isCompleted {
-                Image(systemName: "checkmark")
-                    .font(.system(size: 9, weight: .bold))
+        Button(action: onTap) {
+            HStack(spacing: 6) {
+                if tag.isCompleted {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 10, weight: .bold))
+                }
+                if tag.source == .planned && !tag.isCompleted {
+                    Image(systemName: "star.fill")
+                        .font(.system(size: 9))
+                }
+                Text(tag.name)
+                    .font(.system(size: 14, weight: tag.source == .planned ? .semibold : .medium))
+                    .multilineTextAlignment(.center)
             }
-            if tag.source == .planned && !tag.isCompleted {
-                Image(systemName: "star.fill")
-                    .font(.system(size: 8))
+            .foregroundStyle(chipStyle.fg)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(chipStyle.bg, in: Capsule())
+            .overlay(
+                Capsule()
+                    .stroke(
+                        isSelected ? Theme.accent : chipStyle.border,
+                        lineWidth: isSelected ? 2.0 : (tag.source == .planned ? 1.5 : 0.5)
+                    )
+                    .opacity(isSelected ? pulsePhase : 1.0)
+            )
+            .opacity(chipStyle.opacity)
+            .scaleEffect(chipStyle.scale)
+            .if(isSelected) { view in
+                view.shadow(color: Theme.accent.opacity(0.4), radius: 8, y: 3)
             }
-            Text(tag.name)
-                .font(.system(size: 13, weight: tag.source == .planned ? .semibold : .medium))
+            .if(tag.source == .planned && !tag.isCompleted && !isSelected) { view in
+                view.shadow(color: Theme.accent.opacity(0.2), radius: 4, y: 2)
+            }
+            .strikethrough(tag.isCompleted, color: chipStyle.fg)
         }
-        .foregroundStyle(chipStyle.fg)
-        .padding(.horizontal, 14)
-        .padding(.vertical, 9)
-        .background(chipStyle.bg, in: Capsule())
-        .overlay(
-            Capsule()
-                .stroke(chipStyle.border, lineWidth: tag.source == .planned ? 1.5 : 0.5)
-        )
-        .opacity(chipStyle.opacity)
-        .scaleEffect(isHovered ? 1.05 : 1.0)
-        .if(tag.source == .planned && !tag.isCompleted) { view in
-            view.shadow(color: Theme.accent.opacity(0.3), radius: 6, y: 2)
+        .buttonStyle(PlainButtonStyle())
+        .onLongPressGesture(minimumDuration: 0, maximumDistance: .infinity, pressing: { pressing in
+            withAnimation(.easeInOut(duration: 0.1)) {
+                isPressed = pressing
+            }
+        }, perform: {})
+        .onAppear {
+            if isSelected {
+                startPulseAnimation()
+            }
         }
-        .strikethrough(tag.isCompleted, color: chipStyle.fg)
+        .onChange(of: isSelected) { _, selected in
+            if selected {
+                startPulseAnimation()
+            } else {
+                pulsePhase = 0
+            }
+        }
+    }
+    
+    private func startPulseAnimation() {
+        withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
+            pulsePhase = 0.3
+        }
     }
 }
 
