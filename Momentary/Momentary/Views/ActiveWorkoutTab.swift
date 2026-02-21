@@ -179,7 +179,7 @@ struct ActiveWorkoutTab: View {
                 timerHeader
                 momentsFeed
                 if !allTags.isEmpty {
-                    ExerciseTagCloud(
+                    WorkoutCanvas(
                         tags: allTags,
                         reason: plannedWorkoutStore.planSource.isEmpty 
                             ? suggestionEngine.suggestionReason 
@@ -322,7 +322,7 @@ struct ActiveWorkoutTab: View {
                         .foregroundColor(Theme.textSecondary)
                     
                     if !allTags.isEmpty {
-                        ExerciseTagCloud(
+                        WorkoutCanvas(
                             tags: allTags,
                             reason: plannedWorkoutStore.planSource.isEmpty 
                                 ? suggestionEngine.suggestionReason 

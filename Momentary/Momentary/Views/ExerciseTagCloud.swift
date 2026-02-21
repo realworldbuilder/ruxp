@@ -1,5 +1,24 @@
 import SwiftUI
 
+// MARK: - Workout Canvas Component Protocol
+
+protocol WorkoutCanvasComponent: View {
+    var componentID: UUID { get }
+    var priority: ComponentPriority { get }
+}
+
+enum ComponentPriority: Int, Comparable {
+    case ambient = 0    // background, subtle
+    case suggested = 1  // AI suggestions
+    case planned = 2    // trainer-planned
+    case active = 3     // currently relevant
+    case urgent = 4     // PR alert, rest timer, etc.
+    
+    static func < (lhs: ComponentPriority, rhs: ComponentPriority) -> Bool {
+        lhs.rawValue < rhs.rawValue
+    }
+}
+
 // MARK: - Tag Model
 
 struct ExerciseTag: Identifiable, Equatable {
@@ -91,10 +110,24 @@ struct FlowLayout: Layout {
 
 // MARK: - Exercise Tag Cloud View
 
-struct ExerciseTagCloud: View {
+struct ExerciseTagCloud: View, WorkoutCanvasComponent {
     let tags: [ExerciseTag]
     var reason: String = ""
     @State private var animationPhase: CGFloat = 0
+    
+    // MARK: - WorkoutCanvasComponent
+    let componentID = UUID()
+    
+    var priority: ComponentPriority {
+        // Determine priority based on tag contents
+        if tags.contains(where: { $0.source == .planned }) {
+            return .planned
+        } else if tags.contains(where: { $0.source == .suggested }) {
+            return .suggested
+        } else {
+            return .ambient
+        }
+    }
     
     var body: some View {
         VStack(spacing: 12) {
