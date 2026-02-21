@@ -22,8 +22,8 @@ final class PhoneAudioRecorderService: NSObject, ObservableObject {
     func startRecording() {
         let session = AVAudioSession.sharedInstance()
         do {
-            try session.setCategory(.playAndRecord, mode: .default)
-            try session.setActive(true)
+            try session.setCategory(.playAndRecord, mode: .default, options: [.mixWithOthers, .defaultToSpeaker, .allowBluetooth])
+            try session.setActive(true, options: .notifyOthersOnDeactivation)
         } catch {
             Self.logger.error("Failed to configure audio session: \(error)")
             return
@@ -58,6 +58,9 @@ final class PhoneAudioRecorderService: NSObject, ObservableObject {
         audioRecorder = nil
         isRecording = false
         stopTimer()
+        
+        // Deactivate audio session so other audio (music) resumes normally
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
 
         guard let url = currentRecordingURL,
               FileManager.default.fileExists(atPath: url.path) else { return nil }

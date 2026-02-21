@@ -28,8 +28,8 @@ final class AudioRecorderService: NSObject, ObservableObject {
 
         let session = AVAudioSession.sharedInstance()
         do {
-            try session.setCategory(.record, mode: .default)
-            try session.setActive(true)
+            try session.setCategory(.record, mode: .default, options: [.mixWithOthers])
+            try session.setActive(true, options: .notifyOthersOnDeactivation)
         } catch {
             Self.logger.error("Failed to configure audio session: \(error)")
             return momentID
@@ -65,6 +65,7 @@ final class AudioRecorderService: NSObject, ObservableObject {
         audioRecorder = nil
         isRecording = false
         stopTimer()
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
 
         guard
             let url = currentRecordingURL,
