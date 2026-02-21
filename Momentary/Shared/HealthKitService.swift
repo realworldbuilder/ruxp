@@ -78,6 +78,7 @@ final class HealthKitService: NSObject {
             self.workoutSession = session
             self.workoutBuilder = builder
 
+            session.delegate = self
             session.startActivity(with: workoutStartDate!)
             try await builder.beginCollection(at: workoutStartDate!)
 
@@ -209,6 +210,20 @@ final class HealthKitService: NSObject {
 // MARK: - HKLiveWorkoutBuilderDelegate
 
 #if os(watchOS)
+extension HealthKitService: HKWorkoutSessionDelegate {
+    nonisolated func workoutSession(_ workoutSession: HKWorkoutSession, didChangeTo toState: HKWorkoutSessionState, from fromState: HKWorkoutSessionState, date: Date) {
+        Task { @MainActor in
+            Self.logger.info("HealthKit session state: \(String(describing: fromState.rawValue)) → \(String(describing: toState.rawValue))")
+        }
+    }
+    
+    nonisolated func workoutSession(_ workoutSession: HKWorkoutSession, didFailWithError error: Error) {
+        Task { @MainActor in
+            Self.logger.error("HealthKit session failed: \(error.localizedDescription)")
+        }
+    }
+}
+
 extension HealthKitService: HKLiveWorkoutBuilderDelegate {
     nonisolated func workoutBuilderDidCollectEvent(_ workoutBuilder: HKLiveWorkoutBuilder) {
         // No-op: we don't track workout events
