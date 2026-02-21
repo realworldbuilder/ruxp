@@ -28,7 +28,9 @@ final class HealthKitService: NSObject {
         guard isHealthKitAvailable else { return }
 
         let typesToWrite: Set<HKSampleType> = [
-            HKQuantityType.workoutType()
+            HKQuantityType.workoutType(),
+            HKQuantityType(.activeEnergyBurned),
+            HKQuantityType(.heartRate)
         ]
 
         let typesToRead: Set<HKObjectType> = [
@@ -100,6 +102,8 @@ final class HealthKitService: NSObject {
             return
         }
 
+        let endDate = Date()
+        
         // Capture final stats before cleanup
         let hrType = HKQuantityType(.heartRate)
         let calType = HKQuantityType(.activeEnergyBurned)
@@ -110,11 +114,14 @@ final class HealthKitService: NSObject {
         if let totalCal = builder.statistics(for: calType)?.sumQuantity() {
             totalActiveCalories = totalCal.doubleValue(for: .kilocalorie())
         }
+        
+        Self.logger.info("Ending workout — avgHR: \(self.averageHeartRate), totalCal: \(self.totalActiveCalories)")
 
         session.end()
 
         do {
-            try await builder.endCollection(at: Date())
+            try await builder.endCollection(at: endDate)
+            try await Task.sleep(for: .milliseconds(500)) // Give HealthKit a moment to finalize
             let workout = try await builder.finishWorkout()
             if let workout {
                 Self.logger.info("HealthKit workout saved: \(workout.uuid)")
@@ -157,14 +164,37 @@ final class HealthKitService: NSObject {
     }
     #else
     func startWorkout() async {
-        guard isHealthKitAvailable else {
-            if !isAuthorized { await requestAuthorization() }
-            return
-        }
+        guard isHealthKitAvailable else { return }
+        if !isAuthorized { await requestAuthorization() }
+        workoutStartDate = Date()
     }
 
     func endWorkout() async {
-        // On iPhone without watch, no live workout to end
+        // On iPhone without watch, save a manual workout so it appears in Apple Health
+        await saveManualWorkout()
+    }
+    
+    private func saveManualWorkout() async {
+        guard let startDate = workoutStartDate else { return }
+        let endDate = Date()
+
+        let workout = HKWorkout(
+            activityType: .traditionalStrengthTraining,
+            start: startDate,
+            end: endDate,
+            duration: endDate.timeIntervalSince(startDate),
+            totalEnergyBurned: totalActiveCalories > 0 ? HKQuantity(unit: .kilocalorie(), doubleValue: totalActiveCalories) : nil,
+            totalDistance: nil,
+            metadata: nil
+        )
+
+        do {
+            try await healthStore.save(workout)
+            workoutUUID = workout.uuid
+            Self.logger.info("Manual workout saved to HealthKit: \(workout.uuid)")
+        } catch {
+            Self.logger.error("Failed to save manual workout: \(error)")
+        }
     }
     #endif
 

@@ -91,6 +91,9 @@ final class WorkoutManager {
         connectivity.sendWorkoutMessage(message)
         connectivity.updateWorkoutContext(workoutID: session.id, isActive: true, startedAt: session.startedAt)
 
+        // Start HealthKit tracking (on phone, just records start time for manual save)
+        Task { await healthKit.startWorkout() }
+
         Self.logger.info("Started workout \(session.id)")
     }
 
@@ -125,12 +128,14 @@ final class WorkoutManager {
 
         Self.logger.info("Ended workout \(session.id)")
 
-        // Fetch HealthKit data after a short delay (let Apple Health sync)
+        // Save workout to Apple Health + fetch health data
         let sessionID = session.id
         let startDate = session.startedAt
         let endDate = session.endedAt ?? Date()
         Task {
-            try? await Task.sleep(for: .seconds(5))
+            // Save manual workout to HealthKit (phone-side, covers no-watch case)
+            await healthKit.endWorkout()
+            try? await Task.sleep(for: .seconds(3))
             await self.attachHealthData(workoutID: sessionID, start: startDate, end: endDate)
             self.finalizeEnd(workoutID: sessionID)
         }
