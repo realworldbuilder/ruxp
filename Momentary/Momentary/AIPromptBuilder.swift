@@ -152,6 +152,8 @@ enum AIPromptBuilder {
             typeDescription = "an encouraging note about effort and consistency"
         case .recovery:
             typeDescription = "a note about recovery needs"
+        case .trainerFeedback:
+            typeDescription = "personalized trainer feedback and coaching advice"
         }
 
         return """
