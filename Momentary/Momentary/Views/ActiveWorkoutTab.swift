@@ -133,51 +133,11 @@ class ExerciseSuggestionEngine: ObservableObject {
     }
 }
 
-// MARK: - Suggestions View
-
-struct ExerciseSuggestionsView: View {
-    let suggestions: [String]
-    var reason: String = "Suggested for your split"
-
-    var body: some View {
-        if !suggestions.isEmpty {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    Text("Up Next")
-                        .font(.headline)
-                        .foregroundColor(Theme.textPrimary)
-                    
-                    Spacer()
-                    
-                    Text(reason)
-                        .font(.caption2)
-                        .foregroundColor(Theme.textSecondary)
-                }
-
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(suggestions, id: \.self) { exercise in
-                            Text(exercise)
-                                .font(.caption)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 8)
-                                .background(Theme.accentSubtle, in: Capsule())
-                                .foregroundStyle(Theme.accent)
-                        }
-                    }
-                }
-            }
-            .themeCard()
-            .padding(.horizontal)
-            .padding(.vertical, 4)
-        }
-    }
-}
-
 // MARK: - Active Workout Tab
 
 struct ActiveWorkoutTab: View {
     @Environment(WorkoutManager.self) private var workoutManager
+    @Environment(PlannedWorkoutStore.self) private var plannedWorkoutStore
     @StateObject private var recorder = PhoneAudioRecorderService()
     @StateObject private var suggestionEngine = ExerciseSuggestionEngine()
     @State private var showMicPermissionDenied = false
@@ -186,15 +146,44 @@ struct ActiveWorkoutTab: View {
     @State private var discardConfirmText = ""
     @State private var showDiscardStep2 = false
 
+    private var allTags: [ExerciseTag] {
+        let completedExercises = Set(
+            (workoutManager.activeSession?.moments.map(\.transcript) ?? [])
+                .joined(separator: " ")
+                .lowercased()
+                .components(separatedBy: .whitespaces)
+        )
+        
+        var tags: [ExerciseTag] = []
+        
+        // Planned exercises first (from trainer)
+        for exercise in plannedWorkoutStore.plannedExercises {
+            let isCompleted = completedExercises.contains(where: { exercise.lowercased().contains($0) })
+            tags.append(ExerciseTag(name: exercise, source: .planned, isCompleted: isCompleted))
+        }
+        
+        // Then suggestions (skip if already in planned)
+        let plannedNames = Set(plannedWorkoutStore.plannedExercises.map { $0.lowercased() })
+        for suggestion in suggestionEngine.suggestions {
+            if !plannedNames.contains(suggestion.lowercased()) {
+                tags.append(ExerciseTag(name: suggestion, source: .suggested))
+            }
+        }
+        
+        return tags
+    }
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
                 timerHeader
                 momentsFeed
-                if workoutManager.activeSession?.moments.isEmpty == false {
-                    ExerciseSuggestionsView(
-                        suggestions: suggestionEngine.suggestions,
-                        reason: suggestionEngine.suggestionReason
+                if !allTags.isEmpty {
+                    ExerciseTagCloud(
+                        tags: allTags,
+                        reason: plannedWorkoutStore.planSource.isEmpty 
+                            ? suggestionEngine.suggestionReason 
+                            : plannedWorkoutStore.planSource
                     )
                 }
                 Spacer()
@@ -332,27 +321,13 @@ struct ActiveWorkoutTab: View {
                         .font(.subheadline)
                         .foregroundColor(Theme.textSecondary)
                     
-                    if !suggestionEngine.suggestions.isEmpty {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Start with")
-                                .font(.caption)
-                                .foregroundColor(Theme.textTertiary)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                            
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 8) {
-                                    ForEach(suggestionEngine.suggestions, id: \.self) { exercise in
-                                        Text(exercise)
-                                            .font(.caption)
-                                            .padding(.horizontal, 12)
-                                            .padding(.vertical, 8)
-                                            .background(Theme.accentSubtle, in: Capsule())
-                                            .foregroundStyle(Theme.accent)
-                                    }
-                                }
-                            }
-                        }
-                        .padding(.horizontal, 32)
+                    if !allTags.isEmpty {
+                        ExerciseTagCloud(
+                            tags: allTags,
+                            reason: plannedWorkoutStore.planSource.isEmpty 
+                                ? suggestionEngine.suggestionReason 
+                                : plannedWorkoutStore.planSource
+                        )
                     }
                     
                     Spacer()

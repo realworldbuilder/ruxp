@@ -92,6 +92,9 @@ final class ChatEngine {
             let responseJSON = try await aiService.complete(messages: conversationMessages)
             let blocks = parseResponse(responseJSON)
 
+            // Extract planned exercises from trainer response
+            extractPlannedExercises(from: blocks)
+
             let assistantMessage = ChatMessage(role: .assistant, blocks: blocks)
             if let idx = messages.firstIndex(where: { $0.id == loadingID }) {
                 messages[idx] = assistantMessage
@@ -342,6 +345,43 @@ final class ChatEngine {
             for item in array {
                 extractTextsRecursive(from: item, into: &texts)
             }
+        }
+    }
+    
+    // MARK: - Extract Planned Exercises
+    
+    private func extractPlannedExercises(from blocks: [ChatBlock]) {
+        var exercises: [String] = []
+        var planTitle = ""
+        
+        for block in blocks {
+            switch block.type {
+            case .exerciseTable:
+                if let name = block.payload.exerciseName {
+                    exercises.append(name)
+                }
+            case .actionButtons:
+                if let actions = block.payload.actions {
+                    for action in actions where action.actionType == .startWorkout {
+                        planTitle = "Trainer Plan"
+                    }
+                }
+            default:
+                break
+            }
+        }
+        
+        // Also scan text blocks for exercise mentions in workout plans
+        for block in blocks where block.type == .text {
+            if let text = block.payload.text?.lowercased(),
+               (text.contains("workout plan") || text.contains("today's workout") || text.contains("here's your") || text.contains("try this")) {
+                planTitle = planTitle.isEmpty ? "Trainer Suggestion" : planTitle
+            }
+        }
+        
+        if !exercises.isEmpty {
+            let store = PlannedWorkoutStore()
+            store.setPlan(exercises: exercises, source: planTitle.isEmpty ? "" : "★ \(planTitle)")
         }
     }
 }

@@ -8,6 +8,7 @@ struct Mind2MuscleApp: App {
     @State private var chatEngine: ChatEngine
     @State private var conversationStore: ConversationStore
     @State private var insightsStore: InsightsStore
+    @State private var plannedWorkoutStore = PlannedWorkoutStore()
 
     init() {
         let store = WorkoutStore()
@@ -54,6 +55,7 @@ struct Mind2MuscleApp: App {
                 .environment(chatEngine)
                 .environment(conversationStore)
                 .environment(insightsStore)
+                .environment(plannedWorkoutStore)
                 .preferredColorScheme(.dark)
                 .task {
                     await workoutProcessor.processPendingQueue()
