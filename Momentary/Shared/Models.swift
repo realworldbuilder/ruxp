@@ -404,6 +404,7 @@ enum InsightType: String, Codable, CaseIterable {
     case newPRs
     case trendingUp
     case nextGoals
+    case trainerFeedback
 
     init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
@@ -429,6 +430,8 @@ enum InsightType: String, Codable, CaseIterable {
             self = .trendingUp
         case "nextgoals", "goals":
             self = .nextGoals
+        case "trainerfeedback", "trainer", "feedback":
+            self = .trainerFeedback
         default:
             self = .progressNote
         }
@@ -444,6 +447,7 @@ enum InsightType: String, Codable, CaseIterable {
         case .newPRs: return "New PRs"
         case .trendingUp: return "Trending Up"
         case .nextGoals: return "Next Goals"
+        case .trainerFeedback: return "Trainer"
         }
     }
 
@@ -457,6 +461,7 @@ enum InsightType: String, Codable, CaseIterable {
         case .newPRs: return "trophy.fill"
         case .trendingUp: return "arrow.up.right.circle.fill"
         case .nextGoals: return "flag.fill"
+        case .trainerFeedback: return "bubble.left.and.text.bubble.right.fill"
         }
     }
 
@@ -470,6 +475,7 @@ enum InsightType: String, Codable, CaseIterable {
         case .newPRs: return .yellow
         case .trendingUp: return .mint
         case .nextGoals: return .indigo
+        case .trainerFeedback: return Color(red: 0.06, green: 0.64, blue: 0.50)
         }
     }
 }

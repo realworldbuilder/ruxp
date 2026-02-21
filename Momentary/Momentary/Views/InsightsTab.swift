@@ -44,14 +44,12 @@ struct InsightsTab: View {
         NavigationStack {
             ScrollView {
                 LazyVStack(spacing: 16) {
-                    // AI Progress Summary (NEW)
-                    if let engine = intelligenceEngine, !engine.aiProgressSummary.isEmpty {
-                        aiProgressSummarySection
-                    }
-                    
-                    // Story Carousel
-                    if !insightsService.stories.isEmpty {
-                        storyCarouselSection
+                    // Story Carousel (includes trainer feedback as a story)
+                    if !allStories.isEmpty {
+                        StoryCarouselView(stories: allStories) { index in
+                            storyViewerStartIndex = index
+                            showingStoryViewer = true
+                        }
                     }
                     
                     // Weekly Comparison (NEW)
@@ -124,7 +122,7 @@ struct InsightsTab: View {
             }
             .fullScreenCover(isPresented: $showingStoryViewer) {
                 InsightStoryView(
-                    stories: insightsService.stories,
+                    stories: allStories,
                     startingStoryIndex: storyViewerStartIndex
                 ) {
                     showingStoryViewer = false
@@ -155,12 +153,20 @@ struct InsightsTab: View {
         }
     }
 
-    // MARK: - Story Carousel Section
-    private var storyCarouselSection: some View {
-        StoryCarouselView(stories: insightsService.stories) { index in
-            storyViewerStartIndex = index
-            showingStoryViewer = true
+    // MARK: - All Stories (including trainer feedback)
+    private var allStories: [InsightStory] {
+        var stories = insightsService.stories
+        if let engine = intelligenceEngine, !engine.aiProgressSummary.isEmpty {
+            let trainerStory = InsightStory(
+                title: "Trainer Feedback",
+                body: engine.aiProgressSummary,
+                tags: ["trainer", "ai"],
+                type: .trainerFeedback,
+                preview: String(engine.aiProgressSummary.prefix(60))
+            )
+            stories.insert(trainerStory, at: 0)
         }
+        return stories
     }
 
     // MARK: - Unified Stats Section
