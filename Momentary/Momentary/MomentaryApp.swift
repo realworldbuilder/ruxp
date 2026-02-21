@@ -8,6 +8,7 @@ struct Mind2MuscleApp: App {
     @State private var chatEngine: ChatEngine
     @State private var conversationStore: ConversationStore
     @State private var insightsStore: InsightsStore
+    @State private var workoutStore: WorkoutStore
     @State private var plannedWorkoutStore = PlannedWorkoutStore()
 
     init() {
@@ -37,6 +38,7 @@ struct Mind2MuscleApp: App {
         _chatEngine = State(initialValue: chat)
         _conversationStore = State(initialValue: convoStore)
         _insightsStore = State(initialValue: persistentInsights)
+        _workoutStore = State(initialValue: store)
 
         // Rebuild persistent insights if empty (first launch / migration)
         if persistentInsights.lifetimeStats.totalWorkouts == 0 && !store.index.isEmpty {
@@ -55,6 +57,7 @@ struct Mind2MuscleApp: App {
                 .environment(chatEngine)
                 .environment(conversationStore)
                 .environment(insightsStore)
+                .environment(workoutStore)
                 .environment(plannedWorkoutStore)
                 .preferredColorScheme(.dark)
                 .task {

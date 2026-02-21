@@ -249,15 +249,19 @@ struct InsightsTab: View {
 
             Text(value)
                 .font(.title2.bold())
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
 
             Text(title)
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                .lineLimit(1)
 
             if let subtitle {
                 Text(subtitle)
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
+                    .lineLimit(1)
             } else {
                 Text(" ")
                     .font(.caption2)
@@ -741,17 +745,20 @@ struct InsightsTab: View {
     }
     
     private func comparisonCard(_ title: String, change: WeeklyChange?) -> some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 6) {
             Text(title)
-                .font(.caption)
+                .font(.caption2)
                 .foregroundStyle(.secondary)
+                .lineLimit(1)
             
             Text(change?.displayValue ?? "=")
-                .font(.headline.bold())
+                .font(.subheadline.bold())
                 .foregroundStyle(change?.color ?? .secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
+        .padding(.vertical, 10)
         .themeCard()
     }
     
