@@ -563,6 +563,267 @@ struct InsightsTab: View {
         }
         .themeCard()
     }
+    
+    // MARK: - AI Progress Summary Section
+    private var aiProgressSummarySection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("AI Training Summary", systemImage: "brain.head.profile")
+                .font(.subheadline.bold())
+                .foregroundStyle(.secondary)
+                .padding(.horizontal)
+            
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: "quote.bubble.fill")
+                        .font(.title2)
+                        .foregroundStyle(Theme.accent.opacity(0.7))
+                        .padding(.top, 2)
+                    
+                    Text(intelligenceEngine?.aiProgressSummary ?? "")
+                        .font(.body)
+                        .foregroundStyle(Theme.textPrimary)
+                        .lineSpacing(2)
+                }
+                .padding(16)
+            }
+            .background(
+                LinearGradient(
+                    colors: [Theme.accent.opacity(0.05), Theme.accent.opacity(0.02)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                ),
+                in: RoundedRectangle(cornerRadius: Theme.radiusMedium)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.radiusMedium)
+                    .stroke(Theme.accent.opacity(0.2), lineWidth: 1)
+            )
+            .padding(.horizontal)
+        }
+    }
+    
+    // MARK: - PR Predictions Section
+    private var prPredictionsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("PR Predictions", systemImage: "crystal.ball")
+                .font(.subheadline.bold())
+                .foregroundStyle(.secondary)
+                .padding(.horizontal)
+            
+            LazyVStack(spacing: 8) {
+                ForEach(intelligenceEngine?.prPredictions ?? []) { prediction in
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text("\(Int(prediction.targetWeight))")
+                                    .font(.title2.bold())
+                                    .foregroundStyle(Theme.accent)
+                                Text("lbs")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+                            
+                            Text(prediction.exercise)
+                                .font(.headline)
+                                .foregroundStyle(Theme.textPrimary)
+                            
+                            Text("from \(Int(prediction.currentWeight))lbs")
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
+                        }
+                        
+                        Spacer()
+                        
+                        VStack(alignment: .trailing, spacing: 4) {
+                            Text("~\(prediction.weeksEstimate) weeks")
+                                .font(.subheadline.bold())
+                                .foregroundStyle(Theme.textSecondary)
+                            
+                            HStack(spacing: 4) {
+                                ForEach(0..<5, id: \.self) { index in
+                                    Circle()
+                                        .fill(index < Int(prediction.confidence * 5) ? Theme.accent : Theme.accent.opacity(0.2))
+                                        .frame(width: 6, height: 6)
+                                }
+                            }
+                        }
+                    }
+                    .padding(12)
+                    .themeCard()
+                }
+            }
+            .padding(.horizontal)
+        }
+    }
+    
+    // MARK: - Muscle Balance Section
+    private var muscleBalanceSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Muscle Balance", systemImage: "figure.strengthtraining.traditional")
+                .font(.subheadline.bold())
+                .foregroundStyle(.secondary)
+                .padding(.horizontal)
+            
+            VStack(spacing: 12) {
+                // Horizontal bar chart
+                ForEach(intelligenceEngine?.muscleBalance.muscleGroups ?? []) { muscle in
+                    HStack {
+                        Text(muscle.muscleGroup)
+                            .font(.caption.bold())
+                            .frame(width: 60, alignment: .leading)
+                            .foregroundStyle(Theme.textPrimary)
+                        
+                        GeometryReader { geo in
+                            ZStack(alignment: .leading) {
+                                Rectangle()
+                                    .fill(Theme.cardBackground)
+                                    .frame(height: 8)
+                                    .cornerRadius(4)
+                                
+                                Rectangle()
+                                    .fill(colorForMuscle(muscle.muscleGroup))
+                                    .frame(width: geo.size.width * (muscle.percentage / 100), height: 8)
+                                    .cornerRadius(4)
+                            }
+                        }
+                        .frame(height: 8)
+                        
+                        Text("\(Int(muscle.percentage))%")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .frame(width: 35, alignment: .trailing)
+                    }
+                }
+                
+                // Imbalances warning
+                if !(intelligenceEngine?.muscleBalance.imbalances.isEmpty ?? true) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundStyle(.orange)
+                            Text("Balance Notes")
+                                .font(.caption.bold())
+                                .foregroundStyle(Theme.textPrimary)
+                        }
+                        
+                        ForEach(intelligenceEngine?.muscleBalance.imbalances ?? [], id: \.self) { imbalance in
+                            Text("• \(imbalance)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .padding(12)
+                    .background(Color.orange.opacity(0.05), in: RoundedRectangle(cornerRadius: 8))
+                }
+            }
+            .padding(16)
+            .themeCard()
+            .padding(.horizontal)
+        }
+    }
+    
+    // MARK: - Weekly Comparison Section
+    private var weeklyComparisonSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("This Week vs Last Week", systemImage: "chart.bar.xaxis")
+                .font(.subheadline.bold())
+                .foregroundStyle(.secondary)
+                .padding(.horizontal)
+            
+            HStack(spacing: 12) {
+                comparisonCard("Volume", change: intelligenceEngine?.weeklyComparison.volumeChange)
+                comparisonCard("Workouts", change: intelligenceEngine?.weeklyComparison.workoutChange)
+                comparisonCard("Exercises", change: intelligenceEngine?.weeklyComparison.exerciseChange)
+                comparisonCard("Sets", change: intelligenceEngine?.weeklyComparison.setsChange)
+            }
+            .padding(.horizontal)
+        }
+    }
+    
+    private func comparisonCard(_ title: String, change: WeeklyChange?) -> some View {
+        VStack(spacing: 8) {
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            
+            Text(change?.displayValue ?? "=")
+                .font(.headline.bold())
+                .foregroundStyle(change?.color ?? .secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 12)
+        .themeCard()
+    }
+    
+    // MARK: - Smart Insights Section
+    private var smartInsightsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Smart Insights", systemImage: "lightbulb.2.fill")
+                .font(.subheadline.bold())
+                .foregroundStyle(.secondary)
+                .padding(.horizontal)
+            
+            LazyVStack(spacing: 8) {
+                ForEach(intelligenceEngine?.smartInsights ?? []) { insight in
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Image(systemName: insight.type.icon)
+                                .font(.title3)
+                                .foregroundStyle(insight.type.color)
+                            
+                            Text(insight.title)
+                                .font(.headline)
+                                .foregroundStyle(Theme.textPrimary)
+                            
+                            Spacer()
+                        }
+                        
+                        Text(insight.insight)
+                            .font(.subheadline)
+                            .foregroundStyle(Theme.textSecondary)
+                        
+                        HStack(spacing: 8) {
+                            Image(systemName: "arrow.right.circle.fill")
+                                .font(.caption)
+                                .foregroundStyle(insight.type.color)
+                            
+                            Text(insight.recommendation)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.top, 4)
+                    }
+                    .padding(16)
+                    .background(
+                        LinearGradient(
+                            colors: [insight.type.color.opacity(0.05), insight.type.color.opacity(0.02)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        in: RoundedRectangle(cornerRadius: Theme.radiusMedium)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: Theme.radiusMedium)
+                            .stroke(insight.type.color.opacity(0.2), lineWidth: 1)
+                    )
+                }
+            }
+            .padding(.horizontal)
+        }
+    }
+    
+    // MARK: - Helper Functions
+    private func colorForMuscle(_ muscle: String) -> Color {
+        switch muscle.lowercased() {
+        case "chest": return .red
+        case "back": return .blue
+        case "shoulders": return .orange
+        case "legs": return .green
+        case "arms": return .purple
+        case "core": return .yellow
+        default: return .gray
+        }
+    }
 }
 
 // MARK: - Metric Card

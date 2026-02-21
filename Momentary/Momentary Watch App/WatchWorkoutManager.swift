@@ -103,6 +103,9 @@ final class WatchWorkoutManager {
     var workoutEndReady = false
 
     func completeWorkoutDismissal() {
+        // Save last workout date for home view intelligence
+        UserDefaults.standard.set(Date(), forKey: "lastWorkoutDate")
+        
         isWorkoutActive = false
         currentWorkoutID = nil
         momentCount = 0
