@@ -52,6 +52,13 @@ enum ChatBlockType: String, Codable {
     case insight
     case actionButtons
     case workoutList
+    case workoutPlan
+    case progressCard
+    case splitOverview
+    case prBoard
+    case tipCard
+    case checklist
+    case comparison
 }
 
 // MARK: - Chat Block Payload
@@ -75,6 +82,31 @@ struct ChatBlockPayload: Codable {
     var body: String?
     var actions: [ChatAction]?
     var workouts: [ChatWorkoutListItem]?
+    
+    // New payload properties for rich components
+    var planTitle: String?
+    var estimatedDuration: String?
+    var warmup: String?
+    var exercises: [PlanExercise]?
+    var cooldown: String?
+    
+    var previous: ProgressEntry?
+    var current: ProgressEntry?
+    var volumeChange: String?
+    var trend: String?
+    
+    var days: [SplitDay]?
+    
+    var records: [ChatPRRecord]?
+    
+    var icon: String?
+    var category: String?
+    
+    var items: [ChecklistItem]?
+    
+    var leftLabel: String?
+    var rightLabel: String?
+    var rows: [ComparisonRow]?
 }
 
 // MARK: - Supporting Types
@@ -147,6 +179,52 @@ struct ChatWorkoutListItem: Codable, Identifiable {
     var date: String?
     var summary: String?
     var volume: Double?
+}
+
+// MARK: - Supporting Types for Rich Components
+
+struct PlanExercise: Codable, Identifiable {
+    var id: String { name }
+    var name: String
+    var prescription: String
+    var rest: String?
+    var notes: String?
+    var targetRPE: String?
+}
+
+struct ProgressEntry: Codable {
+    var date: String
+    var topSet: String
+    var totalVolume: Double
+}
+
+struct SplitDay: Codable, Identifiable {
+    var id: String { day }
+    var day: String
+    var focus: String
+    var completed: Bool
+}
+
+struct ChatPRRecord: Codable, Identifiable {
+    var id: String { exercise }
+    var exercise: String
+    var value: String
+    var date: String
+    var isNew: Bool
+}
+
+struct ChecklistItem: Codable, Identifiable {
+    var id: String { text }
+    var text: String
+    var checked: Bool
+}
+
+struct ComparisonRow: Codable, Identifiable {
+    var id: String { label }
+    var label: String
+    var left: String
+    var right: String
+    var trend: String
 }
 
 // MARK: - API Response

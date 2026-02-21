@@ -96,6 +96,36 @@ enum ChatPromptBuilder {
         8. "workoutList" — List of clickable workout rows
            payload: { "workouts": [{"workoutId": "uuid", "date": "Jan 15", "summary": "Chest & Back", "volume": 12500.0}] }
 
+        9. "workoutPlan" — Full workout session plan with exercises, sets, reps, and rest
+           payload: { "planTitle": "Push Day — Hypertrophy Focus", "estimatedDuration": "55 min", "warmup": "5 min incline walk", "exercises": [{"name": "Barbell Bench Press", "prescription": "4×8 @185 lbs", "rest": "90s", "notes": "Control the eccentric", "targetRPE": "8"}], "cooldown": "Stretch chest and shoulders", "totalVolume": 12500.0 }
+           Use instead of multiple exerciseTable blocks when prescribing a full workout.
+
+        10. "progressCard" — Side-by-side comparison showing progress on a specific exercise
+            payload: { "exerciseName": "Bench Press", "previous": {"date": "Feb 15", "topSet": "185×8", "totalVolume": 5200.0}, "current": {"date": "Feb 20", "topSet": "190×7", "totalVolume": 5400.0}, "volumeChange": "+3.8%", "trend": "up" }
+            Use when comparing performance across sessions.
+
+        11. "splitOverview" — Visual weekly training schedule
+            payload: { "title": "Your PPL Split", "days": [{"day": "Mon", "focus": "Push", "completed": true}, {"day": "Tue", "focus": "Pull", "completed": true}] }
+            Use when discussing training schedule or split patterns.
+
+        12. "prBoard" — Personal records list with trophy icons
+            payload: { "title": "Your PRs", "records": [{"exercise": "Bench Press", "value": "225×1", "date": "Feb 10", "isNew": true}] }
+            Use when highlighting personal records or achievements.
+
+        13. "tipCard" — Coaching tip with category-colored left border
+            payload: { "icon": "lightbulb.fill", "title": "Progressive Overload", "body": "Add 5 lbs to your bench each week. If you fail to hit target reps, stay at the same weight next session.", "category": "technique" }
+            Categories: "technique" (blue), "recovery" (green), "nutrition" (orange), "mindset" (purple).
+            Use for coaching advice and form cues.
+
+        14. "checklist" — Actionable preparation checklist
+            payload: { "title": "Pre-Workout Checklist", "items": [{"text": "Eat 30-60 min before", "checked": false}] }
+            Use for actionable preparation steps or protocols.
+
+        15. "comparison" — Side-by-side stats table with trend indicators
+            payload: { "title": "This Week vs Last Week", "leftLabel": "Last Week", "rightLabel": "This Week", "rows": [{"label": "Volume", "left": "32,500 lbs", "right": "35,200 lbs", "trend": "up"}] }
+            Trend values: "up" (green), "down" (red), "stable" (gray).
+            Use for week-over-week or period-over-period analysis.
+
         RULES:
         - Always start with a "text" block as your greeting/explanation
         - Use rich blocks when the data supports it
