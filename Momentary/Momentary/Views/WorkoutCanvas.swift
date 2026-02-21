@@ -161,10 +161,15 @@ struct WorkoutCanvas: View {
     private var volumeTracker: some View {
         Group {
             if let volume = calculateTotalVolume() {
+                let volumeLevel = min(volume / 5000, 1.0) // Scale 0-1 based on 5000 lbs max
+                let opacity = 0.3 + (volumeLevel * 0.5) // More visible as volume grows
+                
                 Text("~\(Int(volume).formatted()) lbs total volume")
                     .font(.caption2)
-                    .foregroundColor(Theme.textTertiary.opacity(momentsCount > 0 ? 0.8 : 0.3))
+                    .foregroundColor(Theme.accent.opacity(opacity))
                     .tracking(0.5)
+                    .scaleEffect(1.0 + (volumeLevel * 0.1)) // Subtle scale increase
+                    .animation(.easeOut(duration: 0.3), value: volume)
             } else if momentsCount > 0 {
                 Text("Volume tracking...")
                     .font(.caption2)
@@ -200,12 +205,14 @@ struct WorkoutCanvas: View {
         }
         
         if let performance = suggestionEngine.getLastPerformance(exercise: exercise, workoutStore: workoutStore) {
-            let suggestedWeight = performance.weight + (performance.weight * 0.025) // 2.5% increase
+            // Smart progression based on rep range
+            let (suggestedWeight, suggestedReps) = calculateProgression(weight: performance.weight, reps: performance.reps)
+            
             let formattedWeight = suggestedWeight.truncatingRemainder(dividingBy: 1) == 0 
                 ? String(format: "%.0f", suggestedWeight) 
                 : String(format: "%.1f", suggestedWeight)
             
-            overloadHint = "Last time: \(Int(performance.weight)) × \(performance.reps) → Try \(formattedWeight) × \(performance.reps)"
+            overloadHint = "Last time: \(Int(performance.weight)) × \(performance.reps) → Try \(formattedWeight) × \(suggestedReps)"
             
             withAnimation(.spring(response: 0.5)) {
                 showOverloadHint = true
@@ -215,6 +222,24 @@ struct WorkoutCanvas: View {
                 showOverloadHint = false
             }
         }
+    }
+    
+    private func calculateProgression(weight: Double, reps: Int) -> (weight: Double, reps: Int) {
+        switch reps {
+        case 1...3: // Strength range - increase weight
+            return (weight * 1.025, reps) // 2.5% weight increase
+        case 4...6: // Power range - small weight increase
+            return (weight * 1.02, reps) // 2% weight increase  
+        case 7...12: // Hypertrophy - increase reps first, then weight
+            if reps < 10 {
+                return (weight, reps + 1) // Add a rep
+            } else {
+                return (weight * 1.02, max(reps - 2, 8)) // Increase weight, drop reps
+            }
+        default: // High rep endurance - add reps
+            return (weight, reps + 1)
+        }
+    }
     }
     
     private func showPhaseAwareness() {

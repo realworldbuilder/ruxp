@@ -6,7 +6,7 @@ class ExerciseSuggestionEngine: ObservableObject {
     @Published var suggestions: [String] = []
     @Published var suggestionReason: String = ""
 
-    func update(currentTranscripts: [String], workoutStore: WorkoutStore) {
+    func update(currentTranscripts: [String], workoutStore: WorkoutStore, elapsedTime: TimeInterval = 0) {
         let currentExercises = extractExercises(from: currentTranscripts)
 
         // Look at past workouts for co-occurrence patterns
@@ -31,8 +31,15 @@ class ExerciseSuggestionEngine: ObservableObject {
             suggestions = historySuggestions
             suggestionReason = "Based on your history"
         } else {
-            suggestions = getDefaultSuggestions(currentExercises: currentExercises)
-            suggestionReason = "Suggested for your split"
+            suggestions = getDefaultSuggestions(currentExercises: currentExercises, elapsedTime: elapsedTime)
+            let elapsedMinutes = elapsedTime / 60
+            if elapsedMinutes < 5 {
+                suggestionReason = "Warm-up movements"
+            } else if elapsedMinutes > 40 {
+                suggestionReason = "Finishing exercises"
+            } else {
+                suggestionReason = "Suggested for your split"
+            }
         }
     }
 
@@ -73,13 +80,25 @@ class ExerciseSuggestionEngine: ObservableObject {
         return pairings
     }
 
-    private func getDefaultSuggestions(currentExercises: [String]) -> [String] {
+    private func getDefaultSuggestions(currentExercises: [String], elapsedTime: TimeInterval = 0) -> [String] {
         let soul = TrainerSoul.load()
         let current = currentExercises.joined(separator: " ").lowercased()
+        let elapsedMinutes = elapsedTime / 60
 
         func filterDone(_ list: [String]) -> [String] {
             let done = Set(currentExercises.map { $0.lowercased() })
             return list.filter { !done.contains($0.lowercased()) }
+        }
+        
+        // Phase-specific suggestions
+        if elapsedMinutes < 5 { // Warm-up phase: lighter compound movements
+            let warmupExercises = ["Bodyweight Squat", "Push-Ups", "Arm Circles", "Leg Swings", "Light Goblet Squat", "Band Pull-Aparts"]
+            return Array(filterDone(warmupExercises).prefix(6))
+        }
+        
+        if elapsedMinutes > 40 { // Finishing phase: isolation/accessory work
+            let finishingExercises = ["Lateral Raise", "Bicep Curl", "Tricep Pushdown", "Calf Raise", "Face Pulls", "Plank", "Hammer Curl", "Cable Fly"]
+            return Array(filterDone(finishingExercises).prefix(6))
         }
 
         switch soul.trainingSplit {
@@ -147,7 +166,7 @@ class ExerciseSuggestionEngine: ObservableObject {
         return nil
     }
     
-    func getSmartOrderedSuggestions(currentTranscripts: [String], workoutStore: WorkoutStore) -> [(exercise: String, priority: Int)] {
+    func getSmartOrderedSuggestions(currentTranscripts: [String], workoutStore: WorkoutStore, elapsedTime: TimeInterval = 0) -> [(exercise: String, priority: Int)] {
         let currentExercises = extractExercises(from: currentTranscripts)
         let historicalPairs = buildExercisePairings(from: workoutStore)
         
@@ -164,8 +183,8 @@ class ExerciseSuggestionEngine: ObservableObject {
             }
         }
         
-        // Add base suggestions with lower scores
-        let baseSuggestions = getDefaultSuggestions(currentExercises: currentExercises)
+        // Add base suggestions with lower scores (phase-aware)
+        let baseSuggestions = getDefaultSuggestions(currentExercises: currentExercises, elapsedTime: elapsedTime)
         for suggestion in baseSuggestions {
             scores[suggestion, default: 0] += 1
         }
@@ -203,7 +222,8 @@ struct ActiveWorkoutTab: View {
         // Get smart-ordered suggestions
         let smartSuggestions = suggestionEngine.getSmartOrderedSuggestions(
             currentTranscripts: workoutManager.activeSession?.moments.map(\.transcript) ?? [],
-            workoutStore: workoutManager.workoutStore
+            workoutStore: workoutManager.workoutStore,
+            elapsedTime: workoutElapsedTime
         )
         
         // Planned exercises first (from trainer)
@@ -350,12 +370,17 @@ struct ActiveWorkoutTab: View {
 
     private func updateSuggestions() {
         let transcripts = workoutManager.activeSession?.moments.map(\.transcript) ?? []
-        suggestionEngine.update(currentTranscripts: transcripts, workoutStore: workoutManager.workoutStore)
+        suggestionEngine.update(
+            currentTranscripts: transcripts, 
+            workoutStore: workoutManager.workoutStore,
+            elapsedTime: workoutElapsedTime
+        )
         
         // Update suggestions with smart ordering
         let smartSuggestions = suggestionEngine.getSmartOrderedSuggestions(
             currentTranscripts: transcripts, 
-            workoutStore: workoutManager.workoutStore
+            workoutStore: workoutManager.workoutStore,
+            elapsedTime: workoutElapsedTime
         )
         suggestionEngine.suggestions = smartSuggestions.prefix(8).map(\.exercise)
     }
