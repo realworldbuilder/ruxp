@@ -323,7 +323,7 @@ private struct SuggestedChip: View {
                     .minimumScaleFactor(0.8)
             }
             .foregroundColor(Theme.textSecondary)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
             .background(

@@ -76,10 +76,7 @@ struct InsightsTab: View {
                         prSection
                     }
                     
-                    // Muscle Balance Visualization (NEW)
-                    if let engine = intelligenceEngine, !engine.muscleBalance.muscleGroups.isEmpty {
-                        muscleBalanceSection
-                    }
+                    // Muscle Balance now lives in story carousel
                     
                     // Smart Insight Cards (NEW)
                     if let engine = intelligenceEngine, !engine.smartInsights.isEmpty {
@@ -173,6 +170,21 @@ struct InsightsTab: View {
                 )
                 stories.insert(weeklyStory, at: 0)
             }
+        }
+        
+        // Add muscle balance story
+        if let engine = intelligenceEngine, !engine.muscleBalance.muscleGroups.isEmpty {
+            let groups = engine.muscleBalance.muscleGroups.map { "\($0.muscleGroup): \(Int($0.percentage))%" }
+            let body = groups.joined(separator: "\n") + (engine.muscleBalance.imbalances.isEmpty ? "" : "\n\n⚠️ " + engine.muscleBalance.imbalances.joined(separator: "\n⚠️ "))
+            let preview = groups.prefix(3).joined(separator: " · ")
+            let balanceStory = InsightStory(
+                title: "Muscle Balance",
+                body: body,
+                tags: ["balance", "muscles"],
+                type: .weeklyReview,
+                preview: preview
+            )
+            stories.append(balanceStory)
         }
         
         // Add trainer feedback story
