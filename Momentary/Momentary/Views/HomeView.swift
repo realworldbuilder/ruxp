@@ -338,24 +338,13 @@ struct HomeView: View {
     
     private var smartGreetingSection: some View {
         Section {
-            VStack(spacing: 16) {
-                // Small logo/icon like ChatGPT's centered circle
-                Image(systemName: "figure.strengthtraining.traditional")
-                    .font(.title)
-                    .foregroundStyle(Theme.accent)
-                    .frame(width: 48, height: 48)
-                    .background(Theme.accent.opacity(0.1), in: Circle())
-                
-                Text(intelligenceEngine.smartGreeting)
-                    .font(.title2.weight(.semibold))
-                    .foregroundStyle(Theme.textPrimary)
-                    .multilineTextAlignment(.center)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 20)
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
-            .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+            Text(intelligenceEngine.smartGreeting)
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(Theme.textSecondary)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
         }
     }
     
