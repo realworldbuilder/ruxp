@@ -20,12 +20,12 @@ struct HomeView: View {
                 .toolbarBackground(Theme.background, for: .navigationBar)
                 .toolbar {
                     ToolbarItem(placement: .principal) {
-                        Text(workoutManager.activeSession != nil ? "Active Workout" : "Mind2Muscle")
+                        Text("Mind2Muscle")
                             .font(.headline.weight(.semibold))
                             .foregroundStyle(Theme.textPrimary)
                     }
                     ToolbarItem(placement: .topBarTrailing) {
-                        if workoutManager.activeSession == nil && !workoutManager.workoutStore.index.isEmpty {
+                        if !workoutManager.workoutStore.index.isEmpty {
                             Button {
                                 withAnimation { editMode = editMode.isEditing ? .inactive : .active }
                             } label: {
@@ -76,9 +76,7 @@ struct HomeView: View {
 
     private var mainContent: some View {
         Group {
-            if workoutManager.activeSession != nil {
-                ActiveWorkoutTab()
-            } else if workoutManager.workoutStore.index.isEmpty {
+            if workoutManager.workoutStore.index.isEmpty && workoutManager.activeSession == nil {
                 emptyStateView
             } else {
                 workoutListView
@@ -87,6 +85,16 @@ struct HomeView: View {
         .navigationDestination(for: UUID.self) { workoutID in
             WorkoutDetailView(workoutID: workoutID)
         }
+        .fullScreenCover(isPresented: isWorkoutActive) {
+            ActiveWorkoutTab()
+        }
+    }
+    
+    private var isWorkoutActive: Binding<Bool> {
+        Binding(
+            get: { workoutManager.activeSession != nil },
+            set: { if !$0 { /* dismiss handled by end/discard */ } }
+        )
     }
 
     // MARK: - Empty State (ChatGPT-inspired onboarding)
