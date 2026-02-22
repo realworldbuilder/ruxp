@@ -3,6 +3,7 @@ import SwiftUI
 struct HomeView: View {
     @Environment(WorkoutManager.self) private var workoutManager
     @Environment(InsightsStore.self) private var insightsStore
+    @Environment(PlannedWorkoutStore.self) private var plannedWorkoutStore
     @State private var editMode: EditMode = .inactive
     @State private var showDeleteConfirmation = false
     @State private var selectedWorkouts = Set<UUID>()
@@ -87,6 +88,8 @@ struct HomeView: View {
         }
         .fullScreenCover(isPresented: isWorkoutActive) {
             ActiveWorkoutTab()
+                .environment(workoutManager)
+                .environment(plannedWorkoutStore)
         }
     }
     
