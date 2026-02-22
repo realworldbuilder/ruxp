@@ -5,13 +5,15 @@ import SwiftUI
 class ExerciseSuggestionEngine: ObservableObject {
     @Published var suggestions: [String] = []
     @Published var suggestionReason: String = ""
+    @Published var todaysFocus: String = "" // e.g. "Pull Day", "Leg Day"
 
     func update(currentTranscripts: [String], workoutStore: WorkoutStore, elapsedTime: TimeInterval = 0) {
         let currentExercises = extractExercises(from: currentTranscripts)
-
-        // Look at past workouts for co-occurrence patterns
+        let focus = determineTodaysFocus(workoutStore: workoutStore, currentExercises: currentExercises)
+        todaysFocus = focus.name
+        
+        // Historical co-occurrence
         let historicalPairs = buildExercisePairings(from: workoutStore)
-
         var scores: [String: Int] = [:]
         for exercise in currentExercises {
             if let paired = historicalPairs[exercise.lowercased()] {
@@ -23,24 +25,114 @@ class ExerciseSuggestionEngine: ObservableObject {
             }
         }
 
-        let historySuggestions = scores.sorted { $0.value > $1.value }
-            .prefix(8)
-            .map(\.key)
+        let historySuggestions = scores.sorted { $0.value > $1.value }.prefix(8).map(\.key)
 
         if !historySuggestions.isEmpty {
             suggestions = historySuggestions
             suggestionReason = "Based on your history"
         } else {
-            suggestions = getDefaultSuggestions(currentExercises: currentExercises, elapsedTime: elapsedTime)
-            let elapsedMinutes = elapsedTime / 60
-            if elapsedMinutes < 5 {
-                suggestionReason = "Warm-up movements"
-            } else if elapsedMinutes > 40 {
-                suggestionReason = "Finishing exercises"
-            } else {
-                suggestionReason = "Suggested for your split"
-            }
+            suggestions = focus.exercises
+            suggestionReason = focus.name
         }
+    }
+
+    // MARK: - Determine Today's Focus
+    
+    struct FocusPlan {
+        let name: String       // "Pull Day", "Upper Body", etc.
+        let exercises: [String] // The main exercises for this focus
+    }
+    
+    private func determineTodaysFocus(workoutStore: WorkoutStore, currentExercises: [String]) -> FocusPlan {
+        let soul = TrainerSoul.load()
+        let current = currentExercises.joined(separator: " ").lowercased()
+        let done = Set(currentExercises.map { $0.lowercased() })
+        
+        func filterDone(_ list: [String]) -> [String] {
+            list.filter { !done.contains($0.lowercased()) }
+        }
+        
+        // If user already started exercises, detect the focus from what they're doing
+        if !current.isEmpty {
+            return detectFocusFromExercises(current: current, soul: soul, filterDone: filterDone)
+        }
+        
+        // Otherwise, determine focus from last workout + split rotation
+        let lastFocus = workoutStore.index.first?.muscleGroupFocus.lowercased() ?? ""
+        
+        switch soul.trainingSplit {
+        case .pushPullLegs:
+            let push = ["Bench Press", "Overhead Press", "Incline Dumbbell Press", "Lateral Raise", "Tricep Pushdown", "Cable Fly"]
+            let pull = ["Deadlift", "Barbell Row", "Pull-Ups", "Face Pulls", "Lat Pulldown", "EZ Bar Curl"]
+            let legs = ["Squat", "Romanian Deadlift", "Leg Press", "Leg Curl", "Calf Raise", "Bulgarian Split Squat"]
+            
+            if lastFocus.contains("push") || lastFocus.contains("chest") {
+                return FocusPlan(name: "Pull Day", exercises: filterDone(pull))
+            } else if lastFocus.contains("pull") || lastFocus.contains("back") {
+                return FocusPlan(name: "Leg Day", exercises: filterDone(legs))
+            } else {
+                return FocusPlan(name: "Push Day", exercises: filterDone(push))
+            }
+            
+        case .upperLower:
+            let upper = ["Bench Press", "Overhead Press", "Barbell Row", "Pull-Ups", "Lateral Raise", "Bicep Curl"]
+            let lower = ["Squat", "Romanian Deadlift", "Leg Press", "Hip Thrust", "Leg Curl", "Calf Raise"]
+            
+            if lastFocus.contains("upper") || lastFocus.contains("chest") || lastFocus.contains("back") || lastFocus.contains("shoulder") {
+                return FocusPlan(name: "Lower Body", exercises: filterDone(lower))
+            } else {
+                return FocusPlan(name: "Upper Body", exercises: filterDone(upper))
+            }
+            
+        case .fullBody:
+            return FocusPlan(name: "Full Body", exercises: filterDone(["Squat", "Bench Press", "Barbell Row", "Overhead Press", "Romanian Deadlift", "Pull-Ups"]))
+            
+        case .broSplit:
+            let splits: [(name: String, exercises: [String])] = [
+                ("Chest Day", ["Bench Press", "Incline Dumbbell Press", "Cable Fly", "Dumbbell Press", "Chest Fly", "Dips"]),
+                ("Back Day", ["Deadlift", "Barbell Row", "Lat Pulldown", "Cable Row", "Pull-Ups", "Face Pulls"]),
+                ("Shoulder Day", ["Overhead Press", "Lateral Raise", "Face Pulls", "Rear Delt Fly", "Shrugs", "Arnold Press"]),
+                ("Leg Day", ["Squat", "Romanian Deadlift", "Leg Press", "Leg Curl", "Calf Raise", "Bulgarian Split Squat"]),
+                ("Arms Day", ["Bicep Curl", "Tricep Pushdown", "Hammer Curl", "Skull Crushers", "Preacher Curl", "Tricep Extension"])
+            ]
+            // Rotate based on last focus
+            let lastIndex = splits.firstIndex(where: { lastFocus.contains($0.name.split(separator: " ").first?.lowercased() ?? "") }) ?? -1
+            let nextIndex = (lastIndex + 1) % splits.count
+            let next = splits[nextIndex]
+            return FocusPlan(name: next.name, exercises: filterDone(next.exercises))
+            
+        case .arnoldSplit:
+            let chestBack = ["Bench Press", "Barbell Row", "Incline Dumbbell Press", "Cable Row", "Cable Fly", "Lat Pulldown"]
+            let shouldersArms = ["Overhead Press", "Lateral Raise", "Bicep Curl", "Tricep Pushdown", "Hammer Curl", "Face Pulls"]
+            let legs = ["Squat", "Romanian Deadlift", "Leg Press", "Leg Curl", "Calf Raise", "Bulgarian Split Squat"]
+            
+            if lastFocus.contains("chest") || lastFocus.contains("back") {
+                return FocusPlan(name: "Shoulders & Arms", exercises: filterDone(shouldersArms))
+            } else if lastFocus.contains("shoulder") || lastFocus.contains("arm") {
+                return FocusPlan(name: "Leg Day", exercises: filterDone(legs))
+            } else {
+                return FocusPlan(name: "Chest & Back", exercises: filterDone(chestBack))
+            }
+            
+        case .phat, .custom:
+            return FocusPlan(name: "Workout", exercises: filterDone(["Bench Press", "Squat", "Deadlift", "Overhead Press", "Barbell Row", "Pull-Ups"]))
+        }
+    }
+    
+    private func detectFocusFromExercises(current: String, soul: TrainerSoul, filterDone: ([String]) -> [String]) -> FocusPlan {
+        // Detect what they're already doing and suggest more of the same
+        let push = ["Bench Press", "Overhead Press", "Incline Dumbbell Press", "Lateral Raise", "Tricep Pushdown", "Cable Fly"]
+        let pull = ["Deadlift", "Barbell Row", "Pull-Ups", "Face Pulls", "Lat Pulldown", "EZ Bar Curl"]
+        let legs = ["Squat", "Romanian Deadlift", "Leg Press", "Leg Curl", "Calf Raise", "Bulgarian Split Squat"]
+        
+        if current.contains("bench") || current.contains("fly") || current.contains("tricep") || current.contains("shoulder") || current.contains("lateral") || current.contains("push") {
+            return FocusPlan(name: "Push Day", exercises: filterDone(push))
+        } else if current.contains("row") || current.contains("pull") || current.contains("curl") || current.contains("lat") || current.contains("face") || current.contains("deadlift") {
+            return FocusPlan(name: "Pull Day", exercises: filterDone(pull))
+        } else if current.contains("squat") || current.contains("leg") || current.contains("calf") || current.contains("lunge") || current.contains("hip") {
+            return FocusPlan(name: "Leg Day", exercises: filterDone(legs))
+        }
+        return FocusPlan(name: "Workout", exercises: filterDone(push + pull + legs))
     }
 
     private func extractExercises(from transcripts: [String]) -> [String] {
@@ -52,7 +144,7 @@ class ExerciseSuggestionEngine: ObservableObject {
             "barbell row", "bent over row", "cable row", "dumbbell row",
             "pull-ups", "pull ups", "chin-ups", "chin ups", "lat pulldown",
             "leg press", "leg extension", "leg curl", "hamstring curl",
-            "bicep curl", "hammer curl", "preacher curl",
+            "bicep curl", "hammer curl", "preacher curl", "ez bar curl",
             "tricep pushdown", "skull crushers", "tricep extension",
             "lateral raise", "face pulls", "face pull",
             "cable fly", "dumbbell fly", "chest fly",
@@ -67,7 +159,6 @@ class ExerciseSuggestionEngine: ObservableObject {
 
     private func buildExercisePairings(from store: WorkoutStore) -> [String: [String: Int]] {
         var pairings: [String: [String: Int]] = [:]
-
         for entry in store.index.prefix(20) {
             let exercises = entry.exerciseNames
             for exercise in exercises {
@@ -76,79 +167,7 @@ class ExerciseSuggestionEngine: ObservableObject {
                 }
             }
         }
-
         return pairings
-    }
-
-    private func getDefaultSuggestions(currentExercises: [String], elapsedTime: TimeInterval = 0) -> [String] {
-        let soul = TrainerSoul.load()
-        let current = currentExercises.joined(separator: " ").lowercased()
-        let elapsedMinutes = elapsedTime / 60
-
-        func filterDone(_ list: [String]) -> [String] {
-            let done = Set(currentExercises.map { $0.lowercased() })
-            return list.filter { !done.contains($0.lowercased()) }
-        }
-        
-        // Phase-specific suggestions
-        if elapsedMinutes < 5 { // Warm-up phase: lighter compound movements
-            let warmupExercises = ["Bodyweight Squat", "Push-Ups", "Arm Circles", "Leg Swings", "Light Goblet Squat", "Band Pull-Aparts"]
-            return Array(filterDone(warmupExercises).prefix(6))
-        }
-        
-        if elapsedMinutes > 40 { // Finishing phase: isolation/accessory work
-            let finishingExercises = ["Lateral Raise", "Bicep Curl", "Tricep Pushdown", "Calf Raise", "Face Pulls", "Plank", "Hammer Curl", "Cable Fly"]
-            return Array(filterDone(finishingExercises).prefix(6))
-        }
-
-        switch soul.trainingSplit {
-        case .pushPullLegs:
-            let push = ["Bench Press", "Overhead Press", "Incline Dumbbell Press", "Lateral Raise", "Tricep Pushdown", "Cable Fly"]
-            let pull = ["Barbell Row", "Pull-Ups", "Face Pulls", "Hammer Curl", "Lat Pulldown", "Cable Row"]
-            let legs = ["Squat", "Romanian Deadlift", "Leg Press", "Leg Curl", "Calf Raise", "Bulgarian Split Squat"]
-
-            if current.contains("bench") || current.contains("fly") || current.contains("tricep") || current.contains("shoulder") || current.contains("lateral") {
-                return Array(filterDone(push).prefix(6))
-            } else if current.contains("row") || current.contains("pull") || current.contains("curl") || current.contains("lat") || current.contains("face") {
-                return Array(filterDone(pull).prefix(6))
-            } else if current.contains("squat") || current.contains("deadlift") || current.contains("leg") || current.contains("calf") || current.contains("lunge") {
-                return Array(filterDone(legs).prefix(6))
-            }
-            // No moments yet — show all three categories as starting points
-            return ["Bench Press", "Squat", "Barbell Row", "Overhead Press", "Lateral Raise", "Romanian Deadlift"]
-
-        case .upperLower:
-            let upper = ["Bench Press", "Overhead Press", "Barbell Row", "Pull-Ups", "Lateral Raise", "Bicep Curl"]
-            let lower = ["Squat", "Romanian Deadlift", "Leg Press", "Hip Thrust", "Leg Curl", "Calf Raise"]
-            if current.contains("squat") || current.contains("deadlift") || current.contains("leg") || current.contains("hip") || current.contains("lunge") {
-                return Array(filterDone(lower).prefix(6))
-            } else if !current.isEmpty {
-                return Array(filterDone(upper).prefix(6))
-            }
-            return ["Bench Press", "Squat", "Overhead Press", "Barbell Row", "Romanian Deadlift", "Pull-Ups"]
-
-        case .fullBody:
-            return Array(filterDone(["Squat", "Bench Press", "Barbell Row", "Overhead Press", "Romanian Deadlift", "Pull-Ups", "Lateral Raise", "Bicep Curl"]).prefix(6))
-
-        case .broSplit:
-            if current.contains("bench") || current.contains("fly") || current.contains("chest") {
-                return Array(filterDone(["Incline Dumbbell Press", "Cable Fly", "Dumbbell Press", "Chest Fly", "Tricep Pushdown", "Dips"]).prefix(6))
-            } else if current.contains("row") || current.contains("lat") || current.contains("back") {
-                return Array(filterDone(["Barbell Row", "Lat Pulldown", "Cable Row", "Pull-Ups", "Face Pulls", "Hammer Curl"]).prefix(6))
-            }
-            return ["Bench Press", "Squat", "Barbell Row", "Overhead Press", "Lateral Raise", "Leg Press"]
-
-        case .arnoldSplit:
-            if current.contains("bench") || current.contains("row") || current.contains("back") || current.contains("chest") {
-                return Array(filterDone(["Bench Press", "Barbell Row", "Incline Dumbbell Press", "Cable Row", "Cable Fly", "Lat Pulldown"]).prefix(6))
-            } else if current.contains("curl") || current.contains("tricep") || current.contains("lateral") || current.contains("shoulder") {
-                return Array(filterDone(["Overhead Press", "Lateral Raise", "Bicep Curl", "Tricep Pushdown", "Hammer Curl", "Face Pulls"]).prefix(6))
-            }
-            return ["Bench Press", "Barbell Row", "Overhead Press", "Squat", "Lateral Raise", "Bicep Curl"]
-
-        case .phat, .custom:
-            return Array(filterDone(["Bench Press", "Squat", "Deadlift", "Overhead Press", "Barbell Row", "Pull-Ups", "Lateral Raise", "Romanian Deadlift"]).prefix(6))
-        }
     }
     
     func getLastPerformance(exercise: String, workoutStore: WorkoutStore) -> (weight: Double, reps: Int)? {
@@ -168,8 +187,10 @@ class ExerciseSuggestionEngine: ObservableObject {
     
     func getSmartOrderedSuggestions(currentTranscripts: [String], workoutStore: WorkoutStore, elapsedTime: TimeInterval = 0) -> [(exercise: String, priority: Int)] {
         let currentExercises = extractExercises(from: currentTranscripts)
-        let historicalPairs = buildExercisePairings(from: workoutStore)
+        let focus = determineTodaysFocus(workoutStore: workoutStore, currentExercises: currentExercises)
+        todaysFocus = focus.name
         
+        let historicalPairs = buildExercisePairings(from: workoutStore)
         var scores: [String: Int] = [:]
         
         // Score based on historical co-occurrence patterns
@@ -177,19 +198,17 @@ class ExerciseSuggestionEngine: ObservableObject {
             if let paired = historicalPairs[exercise.lowercased()] {
                 for (pairedExercise, count) in paired {
                     if !currentExercises.map({ $0.lowercased() }).contains(pairedExercise.lowercased()) {
-                        scores[pairedExercise, default: 0] += count * 3 // Historical patterns get high priority
+                        scores[pairedExercise, default: 0] += count * 3
                     }
                 }
             }
         }
         
-        // Add base suggestions with lower scores (phase-aware)
-        let baseSuggestions = getDefaultSuggestions(currentExercises: currentExercises, elapsedTime: elapsedTime)
-        for suggestion in baseSuggestions {
-            scores[suggestion, default: 0] += 1
+        // Add focus exercises with base priority
+        for (i, exercise) in focus.exercises.enumerated() {
+            scores[exercise, default: 0] += max(1, focus.exercises.count - i) // Higher priority for earlier exercises
         }
         
-        // Return sorted by priority (score)
         return scores.map { (exercise: $0.key, priority: $0.value) }
             .sorted { $0.priority > $1.priority }
     }
@@ -410,15 +429,22 @@ struct ActiveWorkoutTab: View {
     
     private var workoutTypeHeader: some View {
         VStack(spacing: 4) {
-            Text("YOUR WORKOUT")
-                .font(.caption2)
-                .foregroundColor(Theme.textTertiary)
-                .textCase(.uppercase)
-                .tracking(1.5)
+            if !suggestionEngine.todaysFocus.isEmpty {
+                Text(suggestionEngine.todaysFocus.uppercased())
+                    .font(.caption.weight(.semibold))
+                    .foregroundColor(Theme.accent)
+                    .tracking(1.5)
+            } else {
+                Text("YOUR WORKOUT")
+                    .font(.caption2)
+                    .foregroundColor(Theme.textTertiary)
+                    .textCase(.uppercase)
+                    .tracking(1.5)
+            }
             
             if !plannedWorkoutStore.planSource.isEmpty {
                 Text(plannedWorkoutStore.planSource)
-                    .font(.subheadline.weight(.medium))
+                    .font(.caption)
                     .foregroundColor(Theme.textSecondary)
             }
         }
