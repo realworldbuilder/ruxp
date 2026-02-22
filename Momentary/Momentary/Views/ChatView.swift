@@ -170,28 +170,38 @@ struct ChatView: View {
     // MARK: - Empty State
 
     private var emptyState: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: 0) {
             Spacer()
-
-            Image(systemName: "figure.strengthtraining.traditional")
-                .font(.system(size: 48))
-                .foregroundColor(Theme.textTertiary)
-
-            Text("Your AI coach. Ask anything about training.")
-                .font(.title3)
-                .foregroundColor(Theme.textSecondary)
-                .multilineTextAlignment(.center)
-
-            LazyVGrid(columns: [GridItem(.flexible())], spacing: 10) {
+            
+            // Minimal centered branding
+            VStack(spacing: 12) {
+                Circle()
+                    .fill(Theme.surface)
+                    .frame(width: 56, height: 56)
+                    .overlay(
+                        Image(systemName: "figure.strengthtraining.traditional")
+                            .font(.title2)
+                            .foregroundColor(Theme.accent)
+                    )
+                
+                Text("How can I help with\nyour training?")
+                    .font(.title3.weight(.medium))
+                    .foregroundColor(Theme.textPrimary)
+                    .multilineTextAlignment(.center)
+            }
+            
+            Spacer()
+            
+            // ChatGPT-style suggestion chips — 2x2 grid, outlined, compact
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
                 ForEach(contextualChips, id: \.text) { chip in
                     SuggestedChip(text: chip.text, icon: chip.icon) {
                         sendMessage(chip.message)
                     }
                 }
             }
-            .padding(.horizontal, 24)
-
-            Spacer()
+            .padding(.horizontal, 16)
+            .padding(.bottom, 8)
         }
     }
 
@@ -305,18 +315,21 @@ private struct SuggestedChip: View {
         Button(action: action) {
             HStack(spacing: 6) {
                 Image(systemName: icon)
-                    .font(.caption)
+                    .font(.caption2)
                 Text(text)
-                    .font(.subheadline)
+                    .font(.caption)
                     .fontWeight(.medium)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.8)
             }
-            .foregroundColor(Theme.accent)
-            .frame(maxWidth: .infinity, minHeight: 44)
+            .foregroundColor(Theme.textSecondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 12)
-            .padding(.vertical, 12)
-            .background(Theme.accentSubtle, in: RoundedRectangle(cornerRadius: Theme.radiusMedium))
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Theme.border, lineWidth: 1)
+            )
         }
     }
 }
