@@ -229,18 +229,18 @@ struct ActiveWorkoutTab: View {
     @State private var selectedTag: String?
 
     private var allTags: [ExerciseTag] {
-        let completedExercises = Set(
-            (workoutManager.activeSession?.moments.map(\.transcript) ?? [])
-                .joined(separator: " ")
-                .lowercased()
-                .components(separatedBy: .whitespaces)
+        guard workoutManager.activeSession != nil else { return [] }
+        
+        let transcripts = workoutManager.activeSession?.moments.map(\.transcript) ?? []
+        let completedWords = Set(
+            transcripts.joined(separator: " ").lowercased().components(separatedBy: .whitespaces)
         )
         
         var tags: [ExerciseTag] = []
         
         // Get smart-ordered suggestions
         let smartSuggestions = suggestionEngine.getSmartOrderedSuggestions(
-            currentTranscripts: workoutManager.activeSession?.moments.map(\.transcript) ?? [],
+            currentTranscripts: transcripts,
             workoutStore: workoutManager.workoutStore,
             elapsedTime: workoutElapsedTime
         )
@@ -248,8 +248,9 @@ struct ActiveWorkoutTab: View {
         // Planned exercises first (from trainer)
         let plannedNames = Set(plannedWorkoutStore.plannedExercises.map { $0.lowercased() })
         for exercise in plannedWorkoutStore.plannedExercises {
-            let isCompleted = completedExercises.contains(where: { exercise.lowercased().contains($0) })
-            let priority = smartSuggestions.first(where: { $0.exercise.lowercased() == exercise.lowercased() })?.priority ?? 0
+            let nameLower = exercise.lowercased()
+            let isCompleted = completedWords.contains(where: { nameLower.contains($0) && $0.count > 2 })
+            let priority = smartSuggestions.first(where: { $0.exercise.lowercased() == nameLower })?.priority ?? 0
             tags.append(ExerciseTag(name: exercise, source: .planned, isCompleted: isCompleted, priority: priority))
         }
         
@@ -260,7 +261,6 @@ struct ActiveWorkoutTab: View {
             }
         }
         
-        // Sort all tags by priority (highest first)
         return tags.sorted { $0.priority > $1.priority }
     }
     
