@@ -105,6 +105,16 @@ struct HomeView: View {
             VStack(spacing: 0) {
                 Spacer().frame(height: 32)
 
+                // Welcome greeting
+                Text("ready when you are")
+                    .font(.title3.weight(.medium))
+                    .foregroundStyle(.primary)
+                    .padding(.bottom, 4)
+                Text("tap to start tracking with your voice")
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.textSecondary)
+                    .padding(.bottom, 24)
+
                 // Start Workout button
                 Button { workoutManager.startWorkout() } label: {
                     HStack(spacing: 10) {
