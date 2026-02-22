@@ -214,106 +214,102 @@ class ExerciseSuggestionEngine: ObservableObject {
     }
 }
 
-// MARK: - Active Workout Tab
+// MARK: - Active Workout Tab (Stripped — stable core only)
 
 struct ActiveWorkoutTab: View {
     @Environment(WorkoutManager.self) private var workoutManager
-    @Environment(PlannedWorkoutStore.self) private var plannedWorkoutStore
     @StateObject private var recorder = PhoneAudioRecorderService()
-    @StateObject private var suggestionEngine = ExerciseSuggestionEngine()
     @State private var showMicPermissionDenied = false
     @State private var showEndConfirmation = false
-    @State private var showDiscardStep1 = false
-    @State private var discardConfirmText = ""
-    @State private var showDiscardStep2 = false
-    @State private var selectedTag: String?
-
-    private var allTags: [ExerciseTag] {
-        guard workoutManager.activeSession != nil else { return [] }
-        
-        let transcripts = workoutManager.activeSession?.moments.map(\.transcript) ?? []
-        let completedWords = Set(
-            transcripts.joined(separator: " ").lowercased().components(separatedBy: .whitespaces)
-        )
-        
-        var tags: [ExerciseTag] = []
-        
-        // Get smart-ordered suggestions
-        let smartSuggestions = suggestionEngine.getSmartOrderedSuggestions(
-            currentTranscripts: transcripts,
-            workoutStore: workoutManager.workoutStore,
-            elapsedTime: workoutElapsedTime
-        )
-        
-        // Planned exercises first (from trainer)
-        let plannedNames = Set(plannedWorkoutStore.plannedExercises.map { $0.lowercased() })
-        for exercise in plannedWorkoutStore.plannedExercises {
-            let nameLower = exercise.lowercased()
-            let isCompleted = completedWords.contains(where: { nameLower.contains($0) && $0.count > 2 })
-            let priority = smartSuggestions.first(where: { $0.exercise.lowercased() == nameLower })?.priority ?? 0
-            tags.append(ExerciseTag(name: exercise, source: .planned, isCompleted: isCompleted, priority: priority))
-        }
-        
-        // Then smart suggestions (skip if already in planned)
-        for suggestion in smartSuggestions.prefix(8) {
-            if !plannedNames.contains(suggestion.exercise.lowercased()) {
-                tags.append(ExerciseTag(name: suggestion.exercise, source: .suggested, priority: suggestion.priority))
-            }
-        }
-        
-        return tags.sorted { $0.priority > $1.priority }
-    }
-    
-    private var workoutElapsedTime: TimeInterval {
-        guard let session = workoutManager.activeSession else { return 0 }
-        return Date().timeIntervalSince(session.startedAt)
-    }
+    @State private var showDiscardConfirmation = false
+    @State private var timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+    @State private var elapsedText = "0:00"
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // Compact timer header
-                timerHeader
-                
-                // Main canvas area - always visible
-                ScrollView {
-                    VStack(spacing: 20) {
-                        // Moments feed (when exists)
-                        if let session = workoutManager.activeSession, !session.moments.isEmpty {
-                            momentsFeedContent(session: session)
-                        }
-                        
-                        // The tag cloud is ALWAYS the main interface
-                        if !allTags.isEmpty {
-                            VStack(spacing: 12) {
-                                // Workout type header
-                                if let session = workoutManager.activeSession, session.moments.isEmpty {
-                                    workoutTypeHeader
-                                }
-                                
-                                WorkoutCanvas(
-                                    tags: allTags,
-                                    reason: plannedWorkoutStore.planSource.isEmpty 
-                                        ? suggestionEngine.suggestionReason 
-                                        : plannedWorkoutStore.planSource,
-                                    selectedTag: $selectedTag,
-                                    momentsCount: workoutManager.activeSession?.moments.count ?? 0,
-                                    workoutElapsed: workoutElapsedTime,
-                                    workoutStore: workoutManager.workoutStore,
-                                    suggestionEngine: suggestionEngine,
-                                    currentSession: workoutManager.activeSession
-                                )
+                // Timer
+                VStack(spacing: 6) {
+                    Text(elapsedText)
+                        .font(.system(size: 36, weight: .medium, design: .monospaced))
+                        .foregroundStyle(.primary)
+
+                    HStack(spacing: 16) {
+                        Label("\(workoutManager.activeSession?.moments.count ?? 0) moments", systemImage: "waveform")
+                            .font(.caption).foregroundStyle(Theme.textSecondary)
+
+                        if workoutManager.isProcessingMoment {
+                            HStack(spacing: 4) {
+                                ProgressView().controlSize(.small)
+                                Text("Transcribing...").font(.caption).foregroundStyle(Theme.textSecondary)
                             }
-                            .frame(maxWidth: .infinity)
                         }
-                        
-                        Spacer(minLength: 120) // Space for mic button
                     }
                 }
+                .padding(.vertical, 16)
+                .frame(maxWidth: .infinity)
+                .background(Theme.cardBackground)
+
+                // Moments feed
+                ScrollView {
+                    VStack(spacing: 8) {
+                        if let session = workoutManager.activeSession {
+                            ForEach(session.moments.reversed()) { moment in
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(moment.transcript)
+                                        .font(.body)
+                                        .foregroundColor(.primary)
+                                    HStack {
+                                        Text(moment.timestamp, style: .time)
+                                            .font(.caption)
+                                            .foregroundStyle(Theme.textSecondary)
+                                        if moment.source == .watch {
+                                            Image(systemName: "applewatch")
+                                                .font(.caption2)
+                                                .foregroundStyle(Theme.textSecondary)
+                                        }
+                                    }
+                                }
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 12)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(Theme.cardBackground)
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(Theme.border, lineWidth: 0.5)
+                                )
+                            }
+                        }
+                        Spacer(minLength: 120)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
+                }
                 .background(Theme.background)
-                
-                // Bottom mic button (always visible)
-                bottomControls
+
+                // Mic button
+                VStack(spacing: 12) {
+                    if recorder.isRecording {
+                        HStack(spacing: 8) {
+                            Circle().fill(.red).frame(width: 10, height: 10)
+                            Text(formattedRecordingDuration).font(.body.monospacedDigit())
+                        }
+                    }
+                    Button {
+                        if recorder.isRecording { stopAndAddMoment() }
+                        else { requestMicAndRecord() }
+                    } label: {
+                        Image(systemName: recorder.isRecording ? "stop.fill" : "mic.fill")
+                            .font(.title2).foregroundStyle(.white)
+                            .frame(width: 64, height: 64)
+                            .background(recorder.isRecording ? Color.red : Theme.accent, in: Circle())
+                            .shadow(color: (recorder.isRecording ? Color.red : Theme.accent).opacity(0.4), radius: 8, y: 2)
+                    }
+                    .padding(.bottom, 16)
+                }
+                .padding()
+                .background(Theme.background)
             }
             .background(Theme.background)
             .navigationTitle("Active Workout")
@@ -321,7 +317,7 @@ struct ActiveWorkoutTab: View {
             .toolbarBackground(Theme.background, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button { showDiscardStep1 = true } label: {
+                    Button { showDiscardConfirmation = true } label: {
                         Image(systemName: "xmark")
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(Theme.textSecondary)
@@ -354,172 +350,22 @@ struct ActiveWorkoutTab: View {
             } message: {
                 Text("This will end the current workout and begin AI processing.")
             }
-            // Discard Step 1: "Are you sure?"
-            .alert("Discard Workout?", isPresented: $showDiscardStep1) {
-                Button("Yes, Discard", role: .destructive) {
-                    discardConfirmText = ""
-                    showDiscardStep2 = true
-                }
+            .alert("Discard Workout?", isPresented: $showDiscardConfirmation) {
+                Button("Discard", role: .destructive) { workoutManager.discardWorkout() }
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text("This will throw away all recorded moments. This cannot be undone.")
+                Text("This will throw away all recorded moments.")
             }
-            // Discard Step 2: Type "DISCARD" to confirm
-            .alert("Type DISCARD to confirm", isPresented: $showDiscardStep2) {
-                TextField("DISCARD", text: $discardConfirmText)
-                    .autocorrectionDisabled()
-                    .textInputAutocapitalization(.characters)
-                Button("Confirm", role: .destructive) {
-                    if discardConfirmText.uppercased() == "DISCARD" {
-                        workoutManager.discardWorkout()
-                    }
-                }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("Type DISCARD to permanently delete this workout.")
-            }
-            .onChange(of: workoutManager.activeSession?.moments.count) { _, _ in
-                updateSuggestions()
-            }
-            .onAppear {
-                updateSuggestions()
-            }
+            .onReceive(timer) { _ in updateElapsed() }
+            .onAppear { updateElapsed() }
         }
     }
 
-    private func updateSuggestions() {
-        let transcripts = workoutManager.activeSession?.moments.map(\.transcript) ?? []
-        suggestionEngine.update(
-            currentTranscripts: transcripts, 
-            workoutStore: workoutManager.workoutStore,
-            elapsedTime: workoutElapsedTime
-        )
-        
-        // Update suggestions with smart ordering
-        let smartSuggestions = suggestionEngine.getSmartOrderedSuggestions(
-            currentTranscripts: transcripts, 
-            workoutStore: workoutManager.workoutStore,
-            elapsedTime: workoutElapsedTime
-        )
-        suggestionEngine.suggestions = smartSuggestions.prefix(8).map(\.exercise)
-    }
-
-    private var timerHeader: some View {
-        VStack(spacing: 6) {
-            Text(formattedElapsed)
-                .font(.system(size: 36, weight: .medium, design: .monospaced))
-                .foregroundStyle(.primary)
-
-            HStack(spacing: 16) {
-                Label("\(workoutManager.activeSession?.moments.count ?? 0) \((workoutManager.activeSession?.moments.count ?? 0) == 1 ? "moment" : "moments")", systemImage: "waveform")
-                    .font(.caption).foregroundStyle(Theme.textSecondary)
-
-                if workoutManager.isProcessingMoment {
-                    HStack(spacing: 4) {
-                        ProgressView().controlSize(.small)
-                        Text("Transcribing...").font(.caption).foregroundStyle(Theme.textSecondary)
-                    }
-                }
-            }
-        }
-        .padding(.vertical, 16)
-        .frame(maxWidth: .infinity)
-        .background(Theme.cardBackground)
-    }
-    
-    private var workoutTypeHeader: some View {
-        VStack(spacing: 4) {
-            if !suggestionEngine.todaysFocus.isEmpty {
-                Text(suggestionEngine.todaysFocus.uppercased())
-                    .font(.caption.weight(.semibold))
-                    .foregroundColor(Theme.accent)
-                    .tracking(1.5)
-            } else {
-                Text("YOUR WORKOUT")
-                    .font(.caption2)
-                    .foregroundColor(Theme.textTertiary)
-                    .textCase(.uppercase)
-                    .tracking(1.5)
-            }
-            
-            if !plannedWorkoutStore.planSource.isEmpty {
-                Text(plannedWorkoutStore.planSource)
-                    .font(.caption)
-                    .foregroundColor(Theme.textSecondary)
-            }
-        }
-        .padding(.top, 8)
-    }
-
-    private func momentsFeedContent(session: WorkoutSession) -> some View {
-        VStack(spacing: 0) {
-            ForEach(session.moments.reversed()) { moment in
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(moment.transcript)
-                        .font(.body)
-                        .foregroundColor(.primary)
-                    
-                    HStack {
-                        Text(moment.timestamp, style: .time)
-                            .font(.caption)
-                            .foregroundStyle(Theme.textSecondary)
-                        
-                        if moment.source == .watch {
-                            Image(systemName: "applewatch")
-                                .font(.caption2)
-                                .foregroundStyle(Theme.textSecondary)
-                        }
-                    }
-                }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 12)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Theme.cardBackground)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(Theme.border, lineWidth: 0.5)
-                )
-            }
-        }
-        .padding(.horizontal, 16)
-    }
-
-    private var bottomControls: some View {
-        VStack(spacing: 12) {
-            if recorder.isRecording { recordingOverlay }
-
-            Button {
-                if recorder.isRecording { stopAndAddMoment() }
-                else { requestMicAndRecord() }
-            } label: {
-                Image(systemName: recorder.isRecording ? "stop.fill" : "mic.fill")
-                    .font(.title2).foregroundStyle(.white)
-                    .frame(width: 64, height: 64)
-                    .background(recorder.isRecording ? Color.red : Theme.accent, in: Circle())
-                    .shadow(color: (recorder.isRecording ? Color.red : Theme.accent).opacity(0.4), radius: 8, y: 2)
-            }
-            .accessibilityLabel(recorder.isRecording ? "Stop recording" : "Record moment")
-            .padding(.bottom, 16)
-        }
-        .padding()
-        .background(Theme.background)
-    }
-
-    private var recordingOverlay: some View {
-        HStack(spacing: 8) {
-            Circle().fill(.red).frame(width: 10, height: 10)
-            Text(formattedRecordingDuration).font(.body.monospacedDigit())
-        }
-    }
-
-    private var formattedElapsed: String {
-        guard let session = workoutManager.activeSession else { return "0:00" }
+    private func updateElapsed() {
+        guard let session = workoutManager.activeSession else { elapsedText = "0:00"; return }
         let total = Int(Date().timeIntervalSince(session.startedAt))
-        let hrs = total / 3600
-        let mins = (total % 3600) / 60
-        let secs = total % 60
-        return hrs > 0 ? String(format: "%d:%02d:%02d", hrs, mins, secs) : String(format: "%d:%02d", mins, secs)
+        let hrs = total / 3600, mins = (total % 3600) / 60, secs = total % 60
+        elapsedText = hrs > 0 ? String(format: "%d:%02d:%02d", hrs, mins, secs) : String(format: "%d:%02d", mins, secs)
     }
 
     private var formattedRecordingDuration: String {
