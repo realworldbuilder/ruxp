@@ -52,11 +52,6 @@ struct InsightsTab: View {
                         }
                     }
                     
-                    // Weekly Comparison (NEW)
-                    if let engine = intelligenceEngine {
-                        weeklyComparisonSection
-                    }
-
                     // Time Period Toggle
                     Picker("Time Period", selection: $selectedPeriod) {
                         ForEach(TimePeriod.allCases, id: \.self) { period in
@@ -153,9 +148,34 @@ struct InsightsTab: View {
         }
     }
 
-    // MARK: - All Stories (including trainer feedback)
+    // MARK: - All Stories (including trainer feedback + weekly comparison)
     private var allStories: [InsightStory] {
         var stories = insightsService.stories
+        
+        // Add weekly comparison as a story
+        if let engine = intelligenceEngine {
+            let comp = engine.weeklyComparison
+            let hasData = comp.volumeChange.direction != .same || comp.workoutChange.direction != .same
+            if hasData {
+                let body = """
+                Volume: \(comp.volumeChange.displayValue)
+                Workouts: \(comp.workoutChange.displayValue)
+                Exercises: \(comp.exerciseChange.displayValue)
+                Sets: \(comp.setsChange.displayValue)
+                """
+                let preview = "Vol \(comp.volumeChange.displayValue) · Workouts \(comp.workoutChange.displayValue)"
+                let weeklyStory = InsightStory(
+                    title: "This Week vs Last",
+                    body: body,
+                    tags: ["weekly", "comparison"],
+                    type: .weeklyReview,
+                    preview: preview
+                )
+                stories.insert(weeklyStory, at: 0)
+            }
+        }
+        
+        // Add trainer feedback story
         if let engine = intelligenceEngine, !engine.aiProgressSummary.isEmpty {
             let trainerStory = InsightStory(
                 title: "Trainer Feedback",
