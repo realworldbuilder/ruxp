@@ -24,29 +24,21 @@ struct MainTabView: View {
                 .tabItem { Label("Home", systemImage: "house.fill") }
                 .tag(0)
 
-            if workoutManager.activeSession != nil {
-                ActiveWorkoutTab()
-                    .tabItem { Label("Workout", systemImage: "figure.strengthtraining.traditional") }
-                    .tag(1)
-            }
-
             InsightsTab()
                 .tabItem { Label("Insights", systemImage: "lightbulb.fill") }
-                .tag(2)
+                .tag(1)
 
             ChatView()
                 .tabItem { Label("Trainer", systemImage: "bubble.left.and.text.bubble.right.fill") }
-                .tag(3)
+                .tag(2)
 
             SettingsView()
                 .tabItem { Label("Settings", systemImage: "gearshape.fill") }
-                .tag(4)
+                .tag(3)
         }
         .tint(Theme.accent)
         .onReceive(NotificationCenter.default.publisher(for: .switchToWorkoutTab)) { _ in
-            if workoutManager.activeSession != nil {
-                selectedTab = 1
-            }
+            selectedTab = 0 // Home tab now hosts the workout
         }
         .onReceive(NotificationCenter.default.publisher(for: .switchToTab)) { notification in
             if let idx = notification.userInfo?["tabIndex"] as? Int {
@@ -55,9 +47,7 @@ struct MainTabView: View {
         }
         .onChange(of: workoutManager.activeSession?.id) { oldVal, newVal in
             if newVal != nil && oldVal == nil {
-                selectedTab = 1
-            } else if newVal == nil && oldVal != nil {
-                selectedTab = 0
+                selectedTab = 0 // Stay on home
             }
         }
     }

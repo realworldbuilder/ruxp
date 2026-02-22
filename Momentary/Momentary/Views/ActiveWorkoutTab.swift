@@ -270,7 +270,6 @@ struct ActiveWorkoutTab: View {
     }
 
     var body: some View {
-        NavigationStack {
             VStack(spacing: 0) {
                 // Compact timer header
                 timerHeader
@@ -384,7 +383,6 @@ struct ActiveWorkoutTab: View {
             .onAppear {
                 updateSuggestions()
             }
-        }
     }
 
     private func updateSuggestions() {
