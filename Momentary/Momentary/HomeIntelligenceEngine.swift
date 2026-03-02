@@ -104,9 +104,10 @@ final class HomeIntelligenceEngine {
         let lastWorkout = workoutStore.index.first
         let dayOfYear = calendar.ordinality(of: .day, in: .year, for: now) ?? 1
         
-        // If they trained today already, acknowledge it
+        // If they trained today already (and actually logged something), acknowledge it
         if let lastWorkout = lastWorkout,
-           calendar.isDate(lastWorkout.startedAt, inSameDayAs: now) {
+           calendar.isDate(lastWorkout.startedAt, inSameDayAs: now),
+           lastWorkout.momentCount > 0 || lastWorkout.totalVolume > 0 {
             let options = [
                 "Already put in work today. 💪",
                 "Today's session is in the books.",
@@ -175,11 +176,8 @@ final class HomeIntelligenceEngine {
     var workoutSuggestion: WorkoutSuggestion? {
         let now = Date()
         
-        // If they already trained today, return summary instead
-        if let todaysWorkout = workoutStore.index.first,
-           calendar.isDate(todaysWorkout.startedAt, inSameDayAs: now) {
-            return nil // Handled separately by todaysWorkoutSummary
-        }
+        // Even if they trained today, still allow starting another workout
+        // (don't block the start button)
         
         // Check muscle group rotation
         let muscleGroupDays = daysSinceEachMuscleGroup()
@@ -219,7 +217,8 @@ final class HomeIntelligenceEngine {
     
     var todaysWorkoutSummary: String? {
         guard let todaysWorkout = workoutStore.index.first,
-              calendar.isDate(todaysWorkout.startedAt, inSameDayAs: Date()) else {
+              calendar.isDate(todaysWorkout.startedAt, inSameDayAs: Date()),
+              todaysWorkout.momentCount > 0 || todaysWorkout.totalVolume > 0 else {
             return nil
         }
         
@@ -349,7 +348,9 @@ final class HomeIntelligenceEngine {
     }
     
     var recentWorkoutCards: [RecentWorkoutCard] {
-        let recent = Array(workoutStore.index.prefix(3))
+        // Filter out empty workouts (0 moments and 0 volume)
+        let nonEmpty = workoutStore.index.filter { $0.momentCount > 0 || $0.totalVolume > 0 }
+        let recent = Array(nonEmpty.prefix(3))
         
         return recent.map { workout in
             RecentWorkoutCard(

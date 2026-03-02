@@ -5,7 +5,7 @@ import os
 @Observable
 @MainActor
 final class TranscriptionService {
-    private static let logger = Logger(subsystem: "com.whussey.momentary", category: "TranscriptionService")
+    private static let logger = Logger(subsystem: "com.williamhussey.mind2muscle", category: "TranscriptionService")
 
     var isProcessing = false
 

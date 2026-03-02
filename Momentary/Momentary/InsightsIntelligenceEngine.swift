@@ -317,7 +317,7 @@ final class InsightsIntelligenceEngine {
     
     private func generateRecoveryInsight() -> SmartInsightCard? {
         let sessions = loadRecentSessions(count: 10)
-        guard sessions.count >= 3 else { return nil }
+        guard sessions.count >= 5 else { return nil }
         
         var gaps: [TimeInterval] = []
         for i in 0..<(sessions.count - 1) {
@@ -353,13 +353,16 @@ final class InsightsIntelligenceEngine {
         let sessions = loadRecentSessions(count: 20)
         let daysOfWeek = sessions.compactMap { Calendar.current.component(.weekday, from: $0.startedAt) }
         
-        guard !daysOfWeek.isEmpty else { return nil }
+        // Need at least 5 sessions across 2+ different days for this to be meaningful
+        guard daysOfWeek.count >= 5 else { return nil }
         
         let frequency = Dictionary(daysOfWeek.map { ($0, 1) }, uniquingKeysWith: +)
+        guard frequency.count >= 2 else { return nil } // Need variety to compare
+        
         let mostConsistent = frequency.max { $0.value < $1.value }
         let leastConsistent = frequency.min { $0.value < $1.value }
         
-        guard let most = mostConsistent, let least = leastConsistent else { return nil }
+        guard let most = mostConsistent, let least = leastConsistent, most.key != least.key else { return nil }
         
         let dayNames = ["", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
         

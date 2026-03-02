@@ -15,8 +15,8 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "T2000001"
-               BuildableName = "Mind2Muscle Watch App.app"
-               BlueprintName = "Mind2Muscle Watch App"
+               BuildableName = "Momentary Watch App.app"
+               BlueprintName = "Momentary Watch App"
                ReferencedContainer = "container:Momentary.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -44,8 +44,8 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "T2000001"
-            BuildableName = "Mind2Muscle Watch App.app"
-            BlueprintName = "Mind2Muscle Watch App"
+            BuildableName = "Momentary Watch App.app"
+            BlueprintName = "Momentary Watch App"
             ReferencedContainer = "container:Momentary.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -61,8 +61,8 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "T2000001"
-            BuildableName = "Mind2Muscle Watch App.app"
-            BlueprintName = "Mind2Muscle Watch App"
+            BuildableName = "Momentary Watch App.app"
+            BlueprintName = "Momentary Watch App"
             ReferencedContainer = "container:Momentary.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>

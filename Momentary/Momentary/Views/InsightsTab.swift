@@ -147,9 +147,10 @@ struct InsightsTab: View {
 
     // MARK: - All Stories (including trainer feedback + weekly comparison)
     private var allStories: [InsightStory] {
-        var stories = insightsService.stories
+        // Start with AI-generated stories but filter out weekly reviews to avoid duplicates
+        var stories = insightsService.stories.filter { $0.type != .weeklyReview }
         
-        // Add weekly comparison as a story
+        // Add ONE weekly comparison story (computed from intelligence engine)
         if let engine = intelligenceEngine {
             let comp = engine.weeklyComparison
             let hasData = comp.volumeChange.direction != .same || comp.workoutChange.direction != .same
@@ -172,19 +173,23 @@ struct InsightsTab: View {
             }
         }
         
-        // Add muscle balance story
+        // Merge muscle balance into existing nextGoals story (append as extra page context)
+        // If no nextGoals story exists, skip — muscle balance alone isn't worth a carousel slot
         if let engine = intelligenceEngine, !engine.muscleBalance.muscleGroups.isEmpty {
-            let groups = engine.muscleBalance.muscleGroups.map { "\($0.muscleGroup): \(Int($0.percentage))%" }
-            let body = groups.joined(separator: "\n") + (engine.muscleBalance.imbalances.isEmpty ? "" : "\n\n⚠️ " + engine.muscleBalance.imbalances.joined(separator: "\n⚠️ "))
-            let preview = groups.prefix(3).joined(separator: " · ")
-            let balanceStory = InsightStory(
-                title: "Muscle Balance",
-                body: body,
-                tags: ["balance", "muscles"],
-                type: .weeklyReview,
-                preview: preview
-            )
-            stories.append(balanceStory)
+            if let idx = stories.firstIndex(where: { $0.type == .nextGoals }) {
+                let groups = engine.muscleBalance.muscleGroups.map { "\($0.muscleGroup): \(Int($0.percentage))%" }
+                let balanceText = groups.joined(separator: " · ")
+                let existing = stories[idx]
+                stories[idx] = InsightStory(
+                    title: existing.title,
+                    body: existing.body + "\n\nBalance: " + balanceText,
+                    tags: existing.tags + ["balance"],
+                    type: existing.type,
+                    pages: existing.pages,
+                    preview: existing.preview,
+                    generatedAt: existing.generatedAt
+                )
+            }
         }
         
         // Add trainer feedback story
@@ -247,65 +252,67 @@ struct InsightsTab: View {
             }
             .padding(.horizontal)
 
-            // Streak row
-            HStack(spacing: 12) {
-                statCard(
-                    icon: "flame.fill",
-                    value: "\(insightsStore.lifetimeStats.currentStreak)",
-                    title: "Day Streak",
-                    subtitle: "current",
-                    color: .red
-                )
-                statCard(
-                    icon: "trophy.fill",
-                    value: "\(insightsStore.lifetimeStats.longestStreak)",
-                    title: "Best Streak",
-                    subtitle: "all-time",
-                    color: .yellow
-                )
+            // Streak row — only show if meaningful
+            if insightsStore.lifetimeStats.currentStreak > 1 || insightsStore.lifetimeStats.longestStreak > 1 {
+                HStack(spacing: 12) {
+                    statCard(
+                        icon: "flame.fill",
+                        value: "\(insightsStore.lifetimeStats.currentStreak)",
+                        title: "Day Streak",
+                        subtitle: "current",
+                        color: .red
+                    )
+                    statCard(
+                        icon: "trophy.fill",
+                        value: "\(insightsStore.lifetimeStats.longestStreak)",
+                        title: "Best Streak",
+                        subtitle: "all-time",
+                        color: .yellow
+                    )
+                }
+                .padding(.horizontal)
             }
-            .padding(.horizontal)
         }
     }
 
     private func statCard(icon: String, value: String, title: String, subtitle: String?, color: Color) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Image(systemName: icon)
-                    .font(.caption)
-                    .foregroundStyle(color)
-                Spacer()
-                Button(action: {
-                    shareStatCard(icon: icon, value: value, title: title, subtitle: subtitle, color: color)
-                }) {
-                    Image(systemName: "square.and.arrow.up")
-                        .font(.caption2)
-                        .foregroundStyle(Theme.textTertiary)
-                }
-                .buttonStyle(.plain)
-            }
-
-            Text(value)
-                .font(.title2.bold())
-                .lineLimit(1)
-                .minimumScaleFactor(0.6)
-
-            Text(title)
+        HStack(spacing: 10) {
+            Image(systemName: icon)
                 .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
+                .foregroundStyle(color)
+                .frame(width: 20)
 
-            if let subtitle {
-                Text(subtitle)
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-                    .lineLimit(1)
-            } else {
-                Text(" ")
-                    .font(.caption2)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(value)
+                        .font(.title3.bold())
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
+                    Text(title)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
+                }
             }
+
+            Spacer()
+
+            Button(action: {
+                shareStatCard(icon: icon, value: value, title: title, subtitle: subtitle, color: color)
+            }) {
+                Image(systemName: "square.and.arrow.up")
+                    .font(.caption2)
+                    .foregroundStyle(Theme.textTertiary)
+            }
+            .buttonStyle(.plain)
         }
-        .frame(maxWidth: .infinity, minHeight: 100, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .themeCard()
     }
 

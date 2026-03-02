@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ChatView: View {
+    @Environment(AccessManager.self) private var accessManager
     @Environment(ChatEngine.self) private var chatService
     @Environment(ConversationStore.self) private var conversationStore
     @Environment(WorkoutManager.self) private var workoutManager
@@ -13,6 +14,14 @@ struct ChatView: View {
     @State private var showHistory = false
 
     var body: some View {
+        if !accessManager.isUnlocked {
+            accessCodeView
+        } else {
+            chatView
+        }
+    }
+    
+    private var chatView: some View {
         NavigationStack(path: $navigationPath) {
             VStack(spacing: 0) {
                 if showHistory {
@@ -61,6 +70,83 @@ struct ChatView: View {
                 if let data = exportData {
                     ShareSheet(data: data)
                 }
+            }
+        }
+    }
+    
+    // MARK: - Access Code View
+    
+    @State private var accessCode = ""
+    @State private var hasCodeError = false
+    
+    private var accessCodeView: some View {
+        VStack(spacing: 0) {
+            Spacer()
+            
+            VStack(spacing: 24) {
+                // Lock icon
+                Circle()
+                    .fill(Theme.surface)
+                    .frame(width: 64, height: 64)
+                    .overlay(
+                        Image(systemName: "lock.fill")
+                            .font(.title)
+                            .foregroundColor(Theme.accent)
+                    )
+                
+                // Title
+                Text("Enter access code")
+                    .font(.headline)
+                    .foregroundColor(Theme.textPrimary)
+                
+                // TextField and button
+                VStack(spacing: 12) {
+                    TextField("Access code", text: $accessCode)
+                        .textFieldStyle(.roundedBorder)
+                        .onSubmit {
+                            tryAccessCode()
+                        }
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(hasCodeError ? Theme.error : Color.clear, lineWidth: 1)
+                        )
+                    
+                    if hasCodeError {
+                        Text("Invalid access code")
+                            .font(.caption)
+                            .foregroundColor(Theme.error)
+                    }
+                    
+                    Button {
+                        tryAccessCode()
+                    } label: {
+                        Text("Submit")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundColor(Theme.background)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(Theme.accent)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                    }
+                    .disabled(accessCode.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+                .padding(.horizontal, 40)
+            }
+            
+            Spacer()
+        }
+        .background(Theme.background)
+    }
+    
+    private func tryAccessCode() {
+        if accessManager.tryCode(accessCode) {
+            accessCode = ""
+            hasCodeError = false
+        } else {
+            hasCodeError = true
+            // Clear error after 2 seconds
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                hasCodeError = false
             }
         }
     }
@@ -119,14 +205,40 @@ struct ChatView: View {
     private var historyList: some View {
         Group {
             if conversationStore.conversations.isEmpty {
-                VStack(spacing: 16) {
+                VStack(spacing: 20) {
                     Spacer()
-                    Image(systemName: "bubble.left.and.text.bubble.right")
-                        .font(.system(size: 40))
-                        .foregroundColor(Theme.textTertiary)
-                    Text("No conversations yet")
-                        .font(.subheadline)
-                        .foregroundColor(Theme.textSecondary)
+                    
+                    Circle()
+                        .fill(Theme.surface)
+                        .frame(width: 64, height: 64)
+                        .overlay(
+                            Image(systemName: "bubble.left.and.text.bubble.right")
+                                .font(.system(size: 24))
+                                .foregroundColor(Theme.accent)
+                        )
+                    
+                    VStack(spacing: 8) {
+                        Text("No conversations yet")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundColor(Theme.textPrimary)
+                        Text("Start chatting with your trainer\nto see your history here")
+                            .font(.caption)
+                            .foregroundColor(Theme.textSecondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    
+                    Button {
+                        withAnimation { showHistory = false }
+                    } label: {
+                        Text("Start a conversation")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundColor(Theme.background)
+                            .padding(.horizontal, 24)
+                            .padding(.vertical, 10)
+                            .background(Theme.accent)
+                            .clipShape(Capsule())
+                    }
+                    
                     Spacer()
                 }
             } else {
@@ -165,6 +277,7 @@ struct ChatView: View {
                 .scrollContentBackground(.hidden)
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     // MARK: - Empty State
@@ -173,35 +286,36 @@ struct ChatView: View {
         VStack(spacing: 0) {
             Spacer()
             
-            // Minimal centered branding
-            VStack(spacing: 12) {
-                Circle()
-                    .fill(Theme.surface)
-                    .frame(width: 56, height: 56)
-                    .overlay(
-                        Image(systemName: "figure.strengthtraining.traditional")
-                            .font(.title2)
-                            .foregroundColor(Theme.accent)
-                    )
+            // Grouped near bottom — icon, prompt, chips all together
+            VStack(spacing: 20) {
+                // Branding
+                VStack(spacing: 10) {
+                    Circle()
+                        .fill(Theme.surface)
+                        .frame(width: 48, height: 48)
+                        .overlay(
+                            Image(systemName: "figure.strengthtraining.traditional")
+                                .font(.title3)
+                                .foregroundColor(Theme.accent)
+                        )
+                    
+                    Text("How can I help with\nyour training?")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundColor(Theme.textSecondary)
+                        .multilineTextAlignment(.center)
+                }
                 
-                Text("How can I help with\nyour training?")
-                    .font(.title3.weight(.medium))
-                    .foregroundColor(Theme.textPrimary)
-                    .multilineTextAlignment(.center)
-            }
-            
-            Spacer()
-            
-            // ChatGPT-style suggestion chips — 2x2 grid, outlined, compact
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
-                ForEach(contextualChips, id: \.text) { chip in
-                    SuggestedChip(text: chip.text, icon: chip.icon) {
-                        sendMessage(chip.message)
+                // Suggestion chips right below
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
+                    ForEach(contextualChips, id: \.text) { chip in
+                        SuggestedChip(text: chip.text, icon: chip.icon) {
+                            sendMessage(chip.message)
+                        }
                     }
                 }
             }
             .padding(.horizontal, 16)
-            .padding(.bottom, 8)
+            .padding(.bottom, 12)
         }
     }
 

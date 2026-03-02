@@ -8,9 +8,13 @@ struct HomeView: View {
     @State private var selectedWorkouts = Set<UUID>()
     @State private var showMicPermissionDenied = false
     @AppStorage("weightUnit") private var weightUnit: String = WeightUnit.lbs.rawValue
+    @State private var intelligenceEngine: HomeIntelligenceEngine?
     
-    private var intelligenceEngine: HomeIntelligenceEngine {
-        HomeIntelligenceEngine(workoutStore: workoutManager.workoutStore)
+    private var engine: HomeIntelligenceEngine {
+        if let existing = intelligenceEngine { return existing }
+        let new = HomeIntelligenceEngine(workoutStore: workoutManager.workoutStore)
+        Task { @MainActor in intelligenceEngine = new }
+        return new
     }
 
     var body: some View {
@@ -246,14 +250,15 @@ struct HomeView: View {
             smartNudgesSection
 
             // Recent workouts with AI summaries
-            if !intelligenceEngine.recentWorkoutCards.isEmpty {
+            if !engine.recentWorkoutCards.isEmpty {
                 recentWorkoutsSection
             }
             
-            // Full workout history (if more than 3 workouts)
-            if workoutManager.workoutStore.index.count > 3 {
+            // Full workout history (if more than 3 non-empty workouts)
+            let nonEmptyAll = workoutManager.workoutStore.index.filter { $0.momentCount > 0 || $0.totalVolume > 0 }
+            if nonEmptyAll.count > 3 {
                 Section("All Workouts") {
-                    ForEach(Array(workoutManager.workoutStore.index.dropFirst(3))) { entry in
+                    ForEach(Array(nonEmptyAll.dropFirst(3))) { entry in
                         NavigationLink(value: entry.id) {
                             workoutRow(entry)
                         }
@@ -359,10 +364,11 @@ struct HomeView: View {
     
     private var smartGreetingSection: some View {
         Section {
-            Text(intelligenceEngine.smartGreeting)
+            Text(engine.smartGreeting)
                 .font(.subheadline.weight(.medium))
                 .foregroundStyle(Theme.textSecondary)
                 .frame(maxWidth: .infinity, alignment: .center)
+                .multilineTextAlignment(.center)
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
                 .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
@@ -371,61 +377,66 @@ struct HomeView: View {
     
     private var workoutSuggestionCard: some View {
         Section {
-            Group {
-                if let summary = intelligenceEngine.todaysWorkoutSummary {
-                    // Today's workout summary
+            // Always show start button
+            if let suggestion = engine.workoutSuggestion {
+                Button { workoutManager.startWorkout() } label: {
                     HStack(spacing: 12) {
-                        Image(systemName: "checkmark.circle.fill")
+                        Image(systemName: "brain.head.profile")
                             .font(.title2)
                             .foregroundStyle(Theme.accent)
+                            .frame(width: 32)
                         
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("Workout Complete")
+                            Text(suggestion.title)
                                 .font(.headline)
                                 .foregroundStyle(Theme.textPrimary)
-                            Text(summary)
-                                .font(.subheadline)
+                            Text(suggestion.reason)
+                                .font(.caption)
                                 .foregroundStyle(Theme.textSecondary)
                         }
                         
                         Spacer()
+                        
+                        Text("Start")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(Theme.accent, in: Capsule())
                     }
                     .padding(.vertical, 4)
-                } else if let suggestion = intelligenceEngine.workoutSuggestion {
-                    // Workout suggestion
-                    Button { workoutManager.startWorkout() } label: {
-                        HStack(spacing: 12) {
-                            Image(systemName: "brain.head.profile")
-                                .font(.title2)
-                                .foregroundStyle(Theme.accent)
-                                .frame(width: 32)
-                            
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(suggestion.title)
-                                    .font(.headline)
-                                    .foregroundStyle(Theme.textPrimary)
-                                Text(suggestion.reason)
-                                    .font(.caption)
-                                    .foregroundStyle(Theme.textSecondary)
-                            }
-                            
-                            Spacer()
-                            
-                            Text("Start")
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.white)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 8)
-                                .background(Theme.accent, in: Capsule())
-                        }
-                        .padding(.vertical, 4)
-                    }
-                    .buttonStyle(.plain)
-                } else {
-                    startWorkoutCompactCard
                 }
+                .buttonStyle(.plain)
+                .listRowBackground(Theme.cardBackground)
+            } else {
+                Button { workoutManager.startWorkout() } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "mic.fill")
+                            .font(.title3)
+                            .foregroundStyle(.white)
+                            .frame(width: 44, height: 44)
+                            .background(Theme.accent, in: Circle())
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Start Workout")
+                                .font(.headline)
+                                .foregroundStyle(Theme.textPrimary)
+                            Text("Tap to begin voice tracking")
+                                .font(.caption)
+                                .foregroundStyle(Theme.textSecondary)
+                        }
+
+                        Spacer()
+
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(Theme.textTertiary)
+                    }
+                    .padding(.vertical, 4)
+                }
+                .buttonStyle(.plain)
+                .listRowBackground(Theme.cardBackground)
             }
-            .listRowBackground(Theme.cardBackground)
         }
     }
     
@@ -436,7 +447,7 @@ struct HomeView: View {
                     .font(.headline)
                     .foregroundStyle(Theme.textPrimary)
                 
-                let streak = intelligenceEngine.weeklyStreak
+                let streak = engine.weeklyStreak
                 
                 // Day dots (Mon-Sun)
                 HStack(spacing: 8) {
@@ -471,7 +482,7 @@ struct HomeView: View {
     }
     
     private var smartNudgesSection: some View {
-        let nudges = intelligenceEngine.smartNudges
+        let nudges = engine.smartNudges
         
         return Group {
             if !nudges.isEmpty {
@@ -500,7 +511,7 @@ struct HomeView: View {
     
     private var recentWorkoutsSection: some View {
         Section("Recent") {
-            ForEach(intelligenceEngine.recentWorkoutCards, id: \.workoutIndex.id) { card in
+            ForEach(engine.recentWorkoutCards, id: \.workoutIndex.id) { card in
                 NavigationLink(value: card.workoutIndex.id) {
                     enhancedWorkoutRow(card.workoutIndex, summary: card.aiSummary)
                 }

@@ -9,10 +9,6 @@ struct SettingsView: View {
     @State private var showDeleteConfirmation = false
     @State private var showExportSheet = false
     @State private var exportData: Data?
-    @State private var customAPIKey: String = ""
-    @State private var showAPIKeyField = false
-    @State private var apiKeySaved = false
-
     // Trainer Soul
     @State private var soul = TrainerSoul.load()
     @State private var showSoulEditor = false
@@ -28,10 +24,6 @@ struct SettingsView: View {
 
     private var buildNumber: String {
         Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "—"
-    }
-
-    private var hasCustomAPIKey: Bool {
-        loadKeychainKey() != nil
     }
 
     var body: some View {
@@ -98,66 +90,10 @@ struct SettingsView: View {
                 Text("\(workoutManager.workoutStore.index.count) workout\(workoutManager.workoutStore.index.count == 1 ? "" : "s") stored on device")
             }
 
-            // MARK: - AI / API Key
-            Section {
-                HStack {
-                    Image(systemName: hasCustomAPIKey ? "key.fill" : "checkmark.circle.fill")
-                        .foregroundStyle(hasCustomAPIKey ? .orange : Theme.accent)
-                    Text(hasCustomAPIKey ? "Using Custom API Key" : "Using Built-in API Key")
-                }
-
-                if showAPIKeyField {
-                    SecureField("sk-...", text: $customAPIKey)
-                        .textContentType(.password)
-                        .autocorrectionDisabled()
-                        .textInputAutocapitalization(.never)
-                        .onSubmit { saveCustomAPIKey() }
-
-                    HStack {
-                        Button("Save Key") { saveCustomAPIKey() }
-                            .disabled(customAPIKey.isEmpty)
-                            .buttonStyle(.borderedProminent)
-                            .tint(Theme.accent)
-
-                        if hasCustomAPIKey {
-                            Button("Remove Key", role: .destructive) {
-                                deleteKeychainKey()
-                                customAPIKey = ""
-                                showAPIKeyField = false
-                            }
-                        }
-
-                        Spacer()
-
-                        Button("Cancel") {
-                            customAPIKey = ""
-                            showAPIKeyField = false
-                        }
-                    }
-                    .font(.subheadline)
-                } else {
-                    Button {
-                        showAPIKeyField = true
-                    } label: {
-                        Label("Set Custom OpenAI Key", systemImage: "key")
-                    }
-                }
-
-                if apiKeySaved {
-                    Text("API key saved to Keychain")
-                        .font(.caption)
-                        .foregroundStyle(Theme.accent)
-                }
-            } header: {
-                Text("OpenAI")
-            } footer: {
-                Text("Custom keys are stored securely in the iOS Keychain.")
-            }
-
             // MARK: - About
             Section("About") {
-                LabeledContent("AI Model", value: "GPT-4o")
-                LabeledContent("Transcription", value: "OpenAI Whisper API")
+                LabeledContent("AI", value: "Built-in")
+                LabeledContent("Transcription", value: "Voice Recognition")
 
                 // TODO: ⚠️ REMOVE BEFORE APP STORE SUBMISSION ⚠️
                 // Tap version 5 times to reveal sample data loader
@@ -242,57 +178,6 @@ struct SettingsView: View {
         let fileURL = tempDir.appendingPathComponent("momentary_workouts_export.json")
         try? data.write(to: fileURL)
         return fileURL
-    }
-
-    // MARK: - Keychain Helpers
-
-    private static let keychainService = "com.williamhussey.mind2muscle.openai"
-    private static let keychainAccount = "custom_api_key"
-
-    private func saveCustomAPIKey() {
-        guard !customAPIKey.isEmpty else { return }
-        let data = Data(customAPIKey.utf8)
-
-        // Delete existing first
-        deleteKeychainKey()
-
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: Self.keychainService,
-            kSecAttrAccount as String: Self.keychainAccount,
-            kSecValueData as String: data
-        ]
-        SecItemAdd(query as CFDictionary, nil)
-        customAPIKey = ""
-        showAPIKeyField = false
-        apiKeySaved = true
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-            apiKeySaved = false
-        }
-    }
-
-    private func loadKeychainKey() -> String? {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: Self.keychainService,
-            kSecAttrAccount as String: Self.keychainAccount,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
-        ]
-        var result: AnyObject?
-        let status = SecItemCopyMatching(query as CFDictionary, &result)
-        guard status == errSecSuccess, let data = result as? Data else { return nil }
-        return String(data: data, encoding: .utf8)
-    }
-
-    private func deleteKeychainKey() {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: Self.keychainService,
-            kSecAttrAccount as String: Self.keychainAccount
-        ]
-        SecItemDelete(query as CFDictionary)
     }
 }
 

@@ -29,8 +29,15 @@ final class InsightsStore {
 
     // MARK: - Ingest a Workout (call on workout end or analysis complete)
 
+    /// Track which workout IDs have been ingested to prevent double-counting
+    private var ingestedWorkoutIDs: Set<UUID> = []
+    
     func ingest(_ session: WorkoutSession) {
         guard let log = session.structuredLog else { return }
+        
+        // Dedup: skip if already ingested
+        guard !ingestedWorkoutIDs.contains(session.id) else { return }
+        ingestedWorkoutIDs.insert(session.id)
 
         // Update lifetime stats
         lifetimeStats.totalWorkouts += 1
@@ -105,6 +112,7 @@ final class InsightsStore {
         lifetimeStats = LifetimeStats()
         personalRecords = [:]
         weeklySnapshots = []
+        ingestedWorkoutIDs = []
         save()
         Self.logger.info("All insights data reset")
     }
@@ -115,6 +123,7 @@ final class InsightsStore {
         lifetimeStats = LifetimeStats()
         personalRecords = [:]
         weeklySnapshots = []
+        ingestedWorkoutIDs = []
 
         let sessions = store.index.compactMap { store.loadSession(id: $0.id) }
         let sorted = sessions.sorted { $0.startedAt < $1.startedAt }

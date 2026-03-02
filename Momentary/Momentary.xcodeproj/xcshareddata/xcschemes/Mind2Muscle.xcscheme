@@ -15,7 +15,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "T1000001"
-               BuildableName = "Mind2Muscle.app"
+               BuildableName = "Momentary.app"
                BlueprintName = "Momentary"
                ReferencedContainer = "container:Momentary.xcodeproj">
             </BuildableReference>
@@ -44,7 +44,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "T1000001"
-            BuildableName = "Mind2Muscle.app"
+            BuildableName = "Momentary.app"
             BlueprintName = "Momentary"
             ReferencedContainer = "container:Momentary.xcodeproj">
          </BuildableReference>
@@ -61,7 +61,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "T1000001"
-            BuildableName = "Mind2Muscle.app"
+            BuildableName = "Momentary.app"
             BlueprintName = "Momentary"
             ReferencedContainer = "container:Momentary.xcodeproj">
          </BuildableReference>

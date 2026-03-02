@@ -2,6 +2,7 @@ import SwiftUI
 
 @main
 struct Mind2MuscleApp: App {
+    @State private var accessManager = AccessManager()
     @State private var workoutManager: WorkoutManager
     @State private var workoutProcessor: WorkoutProcessor
     @State private var insightsEngine: InsightsEngine
@@ -51,6 +52,7 @@ struct Mind2MuscleApp: App {
     var body: some Scene {
         WindowGroup {
             MainTabView()
+                .environment(accessManager)
                 .environment(workoutManager)
                 .environment(workoutProcessor)
                 .environment(insightsEngine)
@@ -71,5 +73,34 @@ struct Mind2MuscleApp: App {
                     }
                 }
         }
+    }
+}
+
+// MARK: - AccessManager
+
+@MainActor @Observable
+final class AccessManager {
+    var isUnlocked: Bool = false
+    
+    private let accessKey = "m2m_access_unlocked"
+    private let validCodes: Set<String> = ["OGM2M", "ogm2m"]
+    
+    init() {
+        self.isUnlocked = UserDefaults.standard.bool(forKey: accessKey)
+    }
+    
+    func tryCode(_ code: String) -> Bool {
+        let trimmed = code.trimmingCharacters(in: .whitespacesAndNewlines)
+        if validCodes.contains(trimmed) {
+            isUnlocked = true
+            UserDefaults.standard.set(true, forKey: accessKey)
+            return true
+        }
+        return false
+    }
+    
+    func lock() {
+        isUnlocked = false
+        UserDefaults.standard.set(false, forKey: accessKey)
     }
 }

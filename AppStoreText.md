@@ -1,7 +1,7 @@
-# Momentary — App Store Connect Text
+# Mind2Muscle — App Store Connect Text
 
 ## App Name
-Momentary
+Mind2Muscle
 
 ## Subtitle
 Workout Notebook for Your Wrist
@@ -9,7 +9,7 @@ Workout Notebook for Your Wrist
 ## Description
 Start a workout on your Apple Watch. Log moments by voice. Turn training into insights and content.
 
-Momentary is a wrist-first workout notebook built for lifters who want to capture every set, every PR, and every training thought — without stopping to type. Record short voice "Moments" during your strength training session, and when you're done, AI transforms your voice notes into structured workout logs, social media content, and personalized training insights.
+Mind2Muscle is a wrist-first workout notebook built for lifters who want to capture every set, every PR, and every training thought — without stopping to type. Record short voice moments during your strength training session, and when you're done, AI transforms your voice notes into structured workout logs, social media content, and personalized training insights.
 
 KEY FEATURES
 
@@ -41,7 +41,7 @@ HOW IT WORKS
 
 PRIVACY
 
-Audio recordings are sent to OpenAI for transcription and AI processing (requires your own API key). No accounts, no analytics, no tracking beyond what's necessary for OpenAI API functionality.
+Audio recordings are sent to OpenAI for transcription. Transcript text is sent to OpenAI for AI features (workout logs, insights, content). A bundled API key is included; you can optionally provide your own in Settings. No other third parties receive your data. No accounts, no analytics, no tracking.
 
 Requires iPhone running iOS 18+ and Apple Watch running watchOS 11+.
 
@@ -61,7 +61,7 @@ https://realworldbuilder.github.io/momentary/
 https://realworldbuilder.github.io/momentary/privacy.html
 
 ## Version
-1.0
+2.0
 
 ## Copyright
 © 2026 William Hussey
@@ -73,13 +73,13 @@ Health & Fitness
 Productivity
 
 ## Notes for Review
-Momentary requires an Apple Watch paired with an iPhone to demonstrate the full watch workout workflow. However, the app also supports starting workouts and recording moments directly on iPhone — you can test this without an Apple Watch.
+Mind2Muscle requires an Apple Watch paired with an iPhone to demonstrate the full watch workout workflow. However, the app also supports starting workouts and recording moments directly on iPhone — you can test this without an Apple Watch.
 
 The app requires an internet connection for audio transcription via OpenAI's Whisper API. You can record voice moments offline, but they'll be transcribed when connectivity is restored.
 
-AI features (structured workout log, social content, training insights) require an OpenAI API key entered in Settings. Without a key, the app still functions as a voice-based workout logger — you just won't get AI-generated output.
+The app includes a bundled OpenAI API key so AI features work immediately. Users can optionally provide their own API key in Settings.
 
-No account, login, or special configuration is needed beyond the optional API key.
+No account, login, or special configuration is needed.
 
 ## Review Contact Email
 williamhussey33@gmail.com

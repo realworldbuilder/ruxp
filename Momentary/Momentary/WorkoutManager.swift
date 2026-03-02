@@ -115,6 +115,13 @@ final class WorkoutManager {
 
     func endWorkout() {
         guard var session = activeSession else { return }
+        
+        // If no moments were recorded, discard instead of saving an empty workout
+        if session.moments.isEmpty {
+            discardWorkout()
+            return
+        }
+        
         session.endedAt = Date()
         workoutStore.saveSession(session)
         endingSessionID = session.id
@@ -190,14 +197,22 @@ final class WorkoutManager {
 
     // MARK: - Moment Management
 
-    func addMoment(audioURL: URL, source: MomentSource, momentID: UUID? = nil) async {
+    func addMoment(audioURL: URL, source: MomentSource, momentID: UUID? = nil, forWorkoutID: UUID? = nil) async {
         let workoutID: UUID
-        if let active = activeSession {
+        if let explicit = forWorkoutID {
+            // Trust the workoutID from file metadata — moment belongs to this workout
+            // even if the session is no longer active (stop arrived before transfer)
+            workoutID = explicit
+        } else if let active = activeSession {
             workoutID = active.id
         } else if let ending = endingSessionID {
             workoutID = ending
         } else {
             return
+        }
+        // Verify the workout exists on disk (handles late-arriving transfers after stop)
+        if activeSession?.id != workoutID && endingSessionID != workoutID {
+            guard workoutStore.loadSession(id: workoutID) != nil else { return }
         }
         await processAudioMoment(audioURL: audioURL, source: source, momentID: momentID, workoutID: workoutID)
     }
@@ -250,9 +265,9 @@ final class WorkoutManager {
     // MARK: - Connectivity Callbacks
 
     private func setupConnectivityCallbacks() {
-        connectivity.onAudioReceived = { [weak self] url, momentID, _ in
+        connectivity.onAudioReceived = { [weak self] url, momentID, workoutID in
             guard let self else { return }
-            await self.addMoment(audioURL: url, source: .watch, momentID: momentID)
+            await self.addMoment(audioURL: url, source: .watch, momentID: momentID, forWorkoutID: workoutID)
         }
 
         connectivity.onWorkoutCommand = { [weak self] message in
