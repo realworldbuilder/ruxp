@@ -45,6 +45,11 @@ final class WatchWorkoutManager {
     // MARK: - Workout Lifecycle
 
     func startWorkout() {
+        // Clear any lingering completed workout state (e.g. summary still showing)
+        if workoutEndReady || isEndingWorkout {
+            completeWorkoutDismissal()
+        }
+
         let workoutID = UUID()
         currentWorkoutID = workoutID
         isWorkoutActive = true
@@ -249,6 +254,10 @@ final class WatchWorkoutManager {
             guard let self else { return }
             switch message.command {
             case .start:
+                // Allow new workout even if old one is in completed/ending state
+                if self.workoutEndReady || self.isEndingWorkout {
+                    self.completeWorkoutDismissal()
+                }
                 if !self.isWorkoutActive {
                     self.currentWorkoutID = message.workoutID
                     self.isWorkoutActive = true
@@ -287,6 +296,10 @@ final class WatchWorkoutManager {
 
         connectivity.onReceivedWorkoutContext = { [weak self] workoutID, isActive, startedAt in
             guard let self else { return }
+            // Clear stale completed state so new workout can start
+            if isActive, (self.workoutEndReady || self.isEndingWorkout) {
+                self.completeWorkoutDismissal()
+            }
             if isActive, let workoutID, !self.isWorkoutActive {
                 self.currentWorkoutID = workoutID
                 self.isWorkoutActive = true
