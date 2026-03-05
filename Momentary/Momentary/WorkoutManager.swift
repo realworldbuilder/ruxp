@@ -16,6 +16,8 @@ final class WorkoutManager {
     var lastError: String?
 
     private var processor: WorkoutProcessor?
+    /// The workout ID currently being finalized (AI processing). Publicly readable so the UI can present a completion sheet.
+    var completedWorkoutID: UUID?
     private var endingSessionID: UUID?
 
     private static let activeWorkoutKey = "com.m2m.activeWorkoutID"
@@ -125,6 +127,7 @@ final class WorkoutManager {
         session.endedAt = Date()
         workoutStore.saveSession(session)
         endingSessionID = session.id
+        completedWorkoutID = session.id
         activeSession = nil
         isProcessingMoment = false
         persistActiveWorkoutID(nil)
@@ -169,6 +172,7 @@ final class WorkoutManager {
         if let activeCalories, activeCalories > 0 { session.activeCalories = activeCalories }
         workoutStore.saveSession(session)
         endingSessionID = session.id
+        completedWorkoutID = session.id
         activeSession = nil
         persistActiveWorkoutID(nil)
         connectivity.updateWorkoutContext(workoutID: nil, isActive: false, startedAt: nil)

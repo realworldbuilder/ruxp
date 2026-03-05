@@ -50,5 +50,17 @@ struct MainTabView: View {
                 selectedTab = 0 // Stay on home
             }
         }
+        .fullScreenCover(item: Binding<WorkoutCompletionID?>(
+            get: { workoutManager.completedWorkoutID.map { WorkoutCompletionID(id: $0) } },
+            set: { workoutManager.completedWorkoutID = $0?.id }
+        )) { item in
+            WorkoutCompletionSheet(workoutID: item.id)
+                .environment(workoutManager)
+        }
     }
+}
+
+/// Wrapper to make UUID work with fullScreenCover(item:)
+private struct WorkoutCompletionID: Identifiable {
+    let id: UUID
 }
