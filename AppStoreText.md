@@ -41,7 +41,7 @@ HOW IT WORKS
 
 PRIVACY
 
-Audio recordings are sent to OpenAI for transcription. Transcript text is sent to OpenAI for AI features (workout logs, insights, content). A bundled API key is included; you can optionally provide your own in Settings. No other third parties receive your data. No accounts, no analytics, no tracking.
+Audio recordings are sent to OpenAI for transcription. Transcript text is sent to OpenAI for AI features (workout logs, insights, content). You provide your own OpenAI API key in Settings; it is stored in the iOS Keychain and sent only to OpenAI. No other third parties receive your data. No accounts, no analytics, no tracking.
 
 Requires iPhone running iOS 18+ and Apple Watch running watchOS 11+.
 
@@ -61,7 +61,7 @@ https://realworldbuilder.github.io/momentary/
 https://realworldbuilder.github.io/momentary/privacy.html
 
 ## Version
-2.0
+2.2
 
 ## Copyright
 © 2026 William Hussey
@@ -77,7 +77,7 @@ Mind2Muscle requires an Apple Watch paired with an iPhone to demonstrate the ful
 
 The app requires an internet connection for audio transcription via OpenAI's Whisper API. You can record voice moments offline, but they'll be transcribed when connectivity is restored.
 
-The app includes a bundled OpenAI API key so AI features work immediately. Users can optionally provide their own API key in Settings.
+AI features require an OpenAI API key, entered in Settings → OpenAI API Key. A working demo key for review is provided in the App Review notes field in App Store Connect (do not publish it anywhere).
 
 No account, login, or special configuration is needed.
 

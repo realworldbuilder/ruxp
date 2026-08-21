@@ -8,7 +8,7 @@
 - Delete all data with confirmation dialog
 - Custom OpenAI API key management (SecureField → Keychain)
 - About section with real version/build from bundle
-- `APIKeyProvider.resolvedKey` checks Keychain first, falls back to embedded key
+- `APIKeyProvider.resolvedKey` reads the Keychain (no embedded fallback since v2.2)
 - AI prompt builder accepts `preferredUnit` from UserDefaults
 - HomeView and WorkoutDetailView volume labels use user's preferred unit
 
@@ -103,7 +103,7 @@
 | `Momentary/Momentary/AIProcessingPipeline.swift` | Orchestrates OpenAI calls, retry, offline queue, lenient parsing |
 | `Momentary/Momentary/AIProcessingService.swift` | OpenAI GPT-4o HTTP client |
 | `Momentary/Momentary/AIPromptBuilder.swift` | Builds system/user prompts with preferred weight unit |
-| `Momentary/Momentary/APIKeyProvider.swift` | Keychain custom key → embedded fallback |
+| `Momentary/Momentary/APIKeyProvider.swift` | Keychain-stored user API key |
 | `Momentary/Momentary/Views/HomeView.swift` | Workout history + weekly summary dashboard |
 | `Momentary/Momentary/Views/WorkoutDetailView.swift` | Card-based detail with inline editing |
 | `Momentary/Momentary/Views/SettingsView.swift` | Weight unit, export, delete, API key, about |

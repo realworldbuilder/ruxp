@@ -72,7 +72,6 @@ Momentary/
 │   │   ├── WorkoutDetailView.swift       # Post-workout detail
 │   │   ├── InsightsTab.swift             # Cross-workout insights
 │   │   └── SettingsView.swift            # OpenAI API key config
-│   └── Models/openai_whisper-tiny/       # Bundled CoreML models
 └── Momentary Watch App/                  # watchOS target
     ├── MomentaryWatchApp.swift
     ├── WatchWorkoutManager.swift         # Watch-side orchestrator
@@ -105,9 +104,8 @@ open Momentary/Momentary.xcodeproj
 4. **OpenAI API Key**: Go to Settings (gear icon) in the app and enter your OpenAI API key
    - Required for all audio transcription and AI processing
    - Key is stored securely in the iOS Keychain
-   - Without a key, the app includes a bundled key for basic functionality
 
-All transcription and AI processing requires an OpenAI API key. Enter your key in Settings after installation.
+All transcription and AI processing requires your own OpenAI API key — there is no bundled key. Enter your key in Settings after installation.
 
 ## Technical Details
 

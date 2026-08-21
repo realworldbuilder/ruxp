@@ -1,8 +1,8 @@
 import SwiftUI
-import Security
 
 struct SettingsView: View {
     @Environment(WorkoutManager.self) private var workoutManager
+    @Environment(WorkoutProcessor.self) private var workoutProcessor
     @Environment(InsightsStore.self) private var insightsStore
 
     @AppStorage("weightUnit") private var weightUnit: String = WeightUnit.lbs.rawValue
@@ -13,10 +13,27 @@ struct SettingsView: View {
     @State private var soul = TrainerSoul.load()
     @State private var showSoulEditor = false
 
-    // TODO: ⚠️ REMOVE BEFORE APP STORE SUBMISSION ⚠️
+    // OpenAI API key
+    @State private var apiKeyInput = ""
+    @State private var storedKeyMask: String?
+    @State private var keyTestResult: KeyTestResult = .idle
+
+    private var trimmedKeyInput: String {
+        apiKeyInput.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    #if DEBUG
     @State private var devTapCount = 0
     @State private var showLoadSampleData = false
     @State private var sampleDataLoaded = false
+    #endif
+
+    private enum KeyTestResult: Equatable {
+        case idle
+        case testing
+        case valid
+        case invalid(String)
+    }
 
     private var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"
@@ -90,19 +107,84 @@ struct SettingsView: View {
                 Text("\(workoutManager.workoutStore.index.count) workout\(workoutManager.workoutStore.index.count == 1 ? "" : "s") stored on device")
             }
 
+            // MARK: - OpenAI API Key
+            Section {
+                if let mask = storedKeyMask {
+                    HStack {
+                        Image(systemName: "key.fill")
+                            .foregroundStyle(Theme.accent)
+                        Text("Key configured (\(mask))")
+                            .font(.subheadline)
+                    }
+                } else {
+                    HStack {
+                        Image(systemName: "key.slash")
+                            .foregroundStyle(Theme.error)
+                        Text("No key set — AI features disabled")
+                            .font(.subheadline)
+                            .foregroundStyle(Theme.textSecondary)
+                    }
+                }
+
+                SecureField("sk-...", text: $apiKeyInput)
+                    .textContentType(.password)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+
+                Button("Save Key") {
+                    saveKey()
+                }
+                .disabled(trimmedKeyInput.isEmpty)
+
+                Button("Test Key") {
+                    testKey()
+                }
+                .disabled(keyTestResult == .testing || (trimmedKeyInput.isEmpty && storedKeyMask == nil))
+
+                switch keyTestResult {
+                case .idle:
+                    EmptyView()
+                case .testing:
+                    HStack(spacing: 8) {
+                        ProgressView()
+                        Text("Checking key…").font(.caption).foregroundStyle(Theme.textSecondary)
+                    }
+                case .valid:
+                    Label("Key works", systemImage: "checkmark.circle.fill")
+                        .font(.caption)
+                        .foregroundStyle(Theme.accent)
+                case .invalid(let message):
+                    Label(message, systemImage: "exclamationmark.triangle.fill")
+                        .font(.caption)
+                        .foregroundStyle(Theme.error)
+                }
+
+                if storedKeyMask != nil {
+                    Button("Remove Key", role: .destructive) {
+                        APIKeyProvider.delete()
+                        storedKeyMask = nil
+                        keyTestResult = .idle
+                    }
+                }
+            } header: {
+                Text("OpenAI API Key")
+            } footer: {
+                Text("Transcription and AI coaching use your own OpenAI API key. It's stored in the iOS Keychain and sent only to api.openai.com. Get one at platform.openai.com/api-keys.")
+            }
+
             // MARK: - About
             Section("About") {
-                LabeledContent("AI", value: "Built-in")
-                LabeledContent("Transcription", value: "Voice Recognition")
+                LabeledContent("AI Model", value: "OpenAI GPT-4o")
+                LabeledContent("Transcription", value: "OpenAI Whisper (cloud)")
 
-                // TODO: ⚠️ REMOVE BEFORE APP STORE SUBMISSION ⚠️
-                // Tap version 5 times to reveal sample data loader
                 HStack {
                     Text("Version")
                     Spacer()
                     Text("\(appVersion) (\(buildNumber))")
                         .foregroundStyle(.secondary)
                 }
+                #if DEBUG
+                // Tap version 5 times to reveal sample data loader
                 .contentShape(Rectangle())
                 .onTapGesture {
                     devTapCount += 1
@@ -111,9 +193,10 @@ struct SettingsView: View {
                         devTapCount = 0
                     }
                 }
+                #endif
             }
 
-            // TODO: ⚠️ REMOVE BEFORE APP STORE SUBMISSION ⚠️
+            #if DEBUG
             if showLoadSampleData {
                 Section {
                     Button {
@@ -139,7 +222,9 @@ struct SettingsView: View {
                     Text("Loads 7 realistic workouts spanning 9 days: Chest, Pull, Leg, Push, Back & Biceps, Full Body, Shoulders.")
                 }
             }
+            #endif
         }
+        .task { storedKeyMask = APIKeyProvider.maskedKey }
         .scrollContentBackground(.hidden)
         .background(Theme.background)
         .navigationTitle("Settings")
@@ -168,6 +253,30 @@ struct SettingsView: View {
         }
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
+        }
+    }
+
+    // MARK: - API Key Helpers
+
+    private func saveKey() {
+        guard APIKeyProvider.save(apiKeyInput) else { return }
+        apiKeyInput = ""
+        storedKeyMask = APIKeyProvider.maskedKey
+        keyTestResult = .idle
+        // A new key may unblock workouts stuck in the offline queue
+        Task { await workoutProcessor.processPendingQueue() }
+    }
+
+    private func testKey() {
+        let keyToTest = trimmedKeyInput.isEmpty ? APIKeyProvider.resolvedKey : trimmedKeyInput
+        keyTestResult = .testing
+        Task {
+            switch await AIService.validateKey(keyToTest) {
+            case .success:
+                keyTestResult = .valid
+            case .failure(let error):
+                keyTestResult = .invalid(error.localizedDescription)
+            }
         }
     }
 

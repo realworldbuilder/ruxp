@@ -6,7 +6,7 @@ Forked from [WristAssist](https://github.com/realworldbuilder/wristassist) (a si
 
 - **iOS 18 / watchOS 11** minimum (uses `@Observable`)
 - **OpenAI Whisper API** for cloud-based transcription
-- **OpenAI GPT-4o** for AI processing (bundled API key via XOR obfuscation)
+- **OpenAI GPT-4o** for AI processing (user-supplied API key stored in Keychain)
 
 ---
 
@@ -61,7 +61,7 @@ OpenAI GPT-4o generates structured workout logs, social content, and insights.
 | AI backend protocol + OpenAI implementation | DONE | `Momentary/AIProcessingService.swift` |
 | Prompt construction | DONE | `Momentary/AIPromptBuilder.swift` |
 | Processing pipeline (offline queue, retry) | DONE | `Momentary/AIProcessingPipeline.swift` |
-| Bundled API key (XOR obfuscation) | DONE | `Momentary/APIKeyProvider.swift` |
+| User-supplied API key (Keychain) | DONE | `Momentary/APIKeyProvider.swift` |
 
 ### Phase 5: Polish & Deliverables — COMPLETE
 
@@ -100,7 +100,7 @@ The full codebase has been written but has **not yet been compiled or tested**. 
 
 ### Priority 4: AI Processing
 - End a workout with moments
-- Verify OpenAI API call fires with bundled key
+- Verify OpenAI API call fires with the key saved in Settings
 - Verify structured log, content pack, and insights parse correctly
 - Verify they render in WorkoutDetailView
 - Test offline queue (airplane mode -> end workout -> restore network)
@@ -167,6 +167,6 @@ Momentary/
 - **Directory-per-workout** storage: `Documents/workouts/<UUID>/session.json`
 - **Callback closures** on connectivity managers (not owning business logic)
 - **Offline AI queue** at `Documents/pending_ai_queue.json`
-- **XOR-obfuscated bundled API key** — Keychain override available in Settings
+- **User-supplied API key** — entered in Settings, stored in Keychain
 - **Bundle IDs**: `com.whussey.momentary` (iOS), `com.whussey.momentary.watchkitapp` (watchOS)
 - **Dev team**: `R2C4T4N7US`

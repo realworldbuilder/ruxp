@@ -51,23 +51,25 @@ final class WorkoutProcessor {
 
     // MARK: - Process Workout
 
-    func processWorkout(_ session: WorkoutSession) async {
+    /// Returns the AIError that stopped processing, or nil on success/queue/non-AI failures.
+    @discardableResult
+    func processWorkout(_ session: WorkoutSession) async -> AIError? {
         guard !session.moments.isEmpty else {
             state = .completed
-            return
+            return nil
         }
 
         guard let duration = session.duration, duration > 0 else {
             Self.logger.error("Workout \(session.id) has no duration")
             state = .failed("Workout has no duration")
-            return
+            return nil
         }
 
         if !isNetworkAvailable {
             Self.logger.info("Network unavailable — queuing workout \(session.id)")
             queueForLater(session)
             state = .queued
-            return
+            return nil
         }
 
         state = .processing(stage: "Analyzing workout...")
@@ -105,7 +107,7 @@ final class WorkoutProcessor {
                 Self.logger.info("Processing completed for workout \(session.id)")
                 insightsStore?.ingest(updatedSession)
                 await insightsEngine?.generateInsights()
-                return
+                return nil
 
             } catch let error as AIError {
                 lastError = error
@@ -114,9 +116,9 @@ final class WorkoutProcessor {
                     try? await Task.sleep(for: .seconds(retryAfter))
                     continue
                 }
-                if case .noAPIKey = error {
+                if error.isKeyProblem {
                     state = .failed(error.localizedDescription)
-                    return
+                    return error
                 }
             } catch {
                 lastError = error
@@ -125,6 +127,7 @@ final class WorkoutProcessor {
 
         queueForLater(session)
         state = .failed(lastError?.localizedDescription ?? "Processing failed after \(maxRetries) attempts")
+        return lastError as? AIError
     }
 
     // MARK: - Parse Response
@@ -192,18 +195,26 @@ final class WorkoutProcessor {
     }
 
     func processPendingQueue() async {
-        var queue = loadPendingQueue()
-        guard !queue.isEmpty, isNetworkAvailable else { return }
+        guard isNetworkAvailable, APIKeyProvider.hasKey else { return }
+
+        let queue = loadPendingQueue()
+        guard !queue.isEmpty else { return }
 
         var remaining: [WorkoutProcessingRequest] = []
 
-        for request in queue {
+        for (index, request) in queue.enumerated() {
             guard let session = workoutStore.loadSession(id: request.workoutID) else { continue }
             if session.structuredLog != nil { continue }
 
-            await processWorkout(session)
+            let error = await processWorkout(session)
 
             if state != .completed {
+                // A rejected key fails every request identically — stop draining and
+                // keep the rest of the queue untouched until the user fixes the key.
+                if error?.isKeyProblem == true {
+                    remaining.append(contentsOf: queue[index...])
+                    break
+                }
                 var updated = request
                 updated.retryCount += 1
                 updated.lastAttempt = Date()
@@ -223,6 +234,8 @@ final class WorkoutProcessor {
             let data = try Data(contentsOf: url)
             return try JSONDecoder().decode([WorkoutProcessingRequest].self, from: data)
         } catch {
+            Self.logger.error("Pending queue unreadable, discarding: \(error)")
+            try? FileManager.default.removeItem(at: url)
             return []
         }
     }

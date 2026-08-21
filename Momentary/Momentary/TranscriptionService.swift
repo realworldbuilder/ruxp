@@ -9,7 +9,11 @@ final class TranscriptionService {
 
     var isProcessing = false
 
-    private let aiService = AIService()
+    private let aiService: AIService
+
+    init(aiService: AIService) {
+        self.aiService = aiService
+    }
 
     func transcribe(audioURL: URL) async -> Result<String, Error> {
         isProcessing = true

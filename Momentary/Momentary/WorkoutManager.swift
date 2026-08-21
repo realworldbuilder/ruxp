@@ -244,7 +244,11 @@ final class WorkoutManager {
         case .success(let text):
             moment.transcript = text
         case .failure(let error):
-            moment.transcript = "[Transcription failed]"
+            if error.isAPIKeyProblem {
+                moment.transcript = "[Not transcribed — add an OpenAI API key in Settings]"
+            } else {
+                moment.transcript = "[Transcription failed]"
+            }
             moment.confidence = 0
             lastError = error.localizedDescription
         }

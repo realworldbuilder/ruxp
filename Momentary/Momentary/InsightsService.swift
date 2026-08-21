@@ -247,8 +247,7 @@ final class InsightsEngine {
     // MARK: - AI Enhancement
 
     private func enhanceStoriesWithAI(index: [WorkoutSessionIndex], sessions: [WorkoutSession]) async {
-        let apiKey = APIKeyProvider.resolvedKey
-        guard !apiKey.isEmpty else { return }
+        guard APIKeyProvider.hasKey else { return }
 
         let weekSessions = index.filter {
             $0.startedAt >= Calendar.current.date(byAdding: .day, value: -7, to: Date())!

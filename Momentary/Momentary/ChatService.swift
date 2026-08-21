@@ -36,6 +36,7 @@ final class ChatEngine {
     
     func checkForPostWorkoutContext() {
         guard messages.isEmpty else { return } // Only for new conversations
+        guard APIKeyProvider.hasKey else { return }
         
         let now = Date()
         let calendar = Calendar.current
@@ -189,9 +190,12 @@ final class ChatEngine {
             Self.logger.error("Chat error: \(error.localizedDescription)")
             lastError = error.localizedDescription
 
+            let errorText = error.isAPIKeyProblem
+                ? error.localizedDescription
+                : "Sorry, I couldn't process that request. \(error.localizedDescription)"
             let errorBlock = ChatBlock(
                 type: .text,
-                payload: ChatBlockPayload(text: "Sorry, I couldn't process that request. \(error.localizedDescription)")
+                payload: ChatBlockPayload(text: errorText)
             )
             let errorMessage = ChatMessage(role: .assistant, blocks: [errorBlock])
             if let idx = messages.firstIndex(where: { $0.id == loadingID }) {

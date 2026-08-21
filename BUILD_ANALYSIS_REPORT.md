@@ -22,7 +22,7 @@ The Momentary app codebase appears to be well-structured and follows modern Swif
 - ✅ `WatchWorkoutManager.swift` - watchOS workout lifecycle
 - ✅ `HealthKitService.swift` - Proper platform-specific HealthKit integration
 - ✅ `AIProcessingPipeline.swift` - OpenAI integration with offline queue
-- ✅ `APIKeyProvider.swift` - XOR-obfuscated API key (App Store safe)
+- ✅ `APIKeyProvider.swift` - user-supplied API key stored in Keychain (bundled XOR key removed in v2.2 after the public-repo key was revoked)
 
 ## Code Quality Assessment ✅
 

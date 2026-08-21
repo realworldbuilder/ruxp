@@ -1,7 +1,6 @@
 import SwiftUI
 
 struct ChatView: View {
-    @Environment(AccessManager.self) private var accessManager
     @Environment(ChatEngine.self) private var chatService
     @Environment(ConversationStore.self) private var conversationStore
     @Environment(WorkoutManager.self) private var workoutManager
@@ -14,13 +13,9 @@ struct ChatView: View {
     @State private var showHistory = false
 
     var body: some View {
-        if !accessManager.isUnlocked {
-            accessCodeView
-        } else {
-            chatView
-        }
+        chatView
     }
-    
+
     private var chatView: some View {
         NavigationStack(path: $navigationPath) {
             VStack(spacing: 0) {
@@ -74,83 +69,6 @@ struct ChatView: View {
         }
     }
     
-    // MARK: - Access Code View
-    
-    @State private var accessCode = ""
-    @State private var hasCodeError = false
-    
-    private var accessCodeView: some View {
-        VStack(spacing: 0) {
-            Spacer()
-            
-            VStack(spacing: 24) {
-                // Lock icon
-                Circle()
-                    .fill(Theme.surface)
-                    .frame(width: 64, height: 64)
-                    .overlay(
-                        Image(systemName: "lock.fill")
-                            .font(.title)
-                            .foregroundColor(Theme.accent)
-                    )
-                
-                // Title
-                Text("Enter access code")
-                    .font(.headline)
-                    .foregroundColor(Theme.textPrimary)
-                
-                // TextField and button
-                VStack(spacing: 12) {
-                    TextField("Access code", text: $accessCode)
-                        .textFieldStyle(.roundedBorder)
-                        .onSubmit {
-                            tryAccessCode()
-                        }
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(hasCodeError ? Theme.error : Color.clear, lineWidth: 1)
-                        )
-                    
-                    if hasCodeError {
-                        Text("Invalid access code")
-                            .font(.caption)
-                            .foregroundColor(Theme.error)
-                    }
-                    
-                    Button {
-                        tryAccessCode()
-                    } label: {
-                        Text("Submit")
-                            .font(.subheadline.weight(.medium))
-                            .foregroundColor(Theme.background)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .background(Theme.accent)
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                    }
-                    .disabled(accessCode.trimmingCharacters(in: .whitespaces).isEmpty)
-                }
-                .padding(.horizontal, 40)
-            }
-            
-            Spacer()
-        }
-        .background(Theme.background)
-    }
-    
-    private func tryAccessCode() {
-        if accessManager.tryCode(accessCode) {
-            accessCode = ""
-            hasCodeError = false
-        } else {
-            hasCodeError = true
-            // Clear error after 2 seconds
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                hasCodeError = false
-            }
-        }
-    }
-
     // MARK: - Contextual Chips
 
     private var contextualChips: [(text: String, icon: String, message: String)] {

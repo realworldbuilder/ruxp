@@ -1,7 +1,7 @@
 import Foundation
 
-// TODO: ⚠️ REMOVE BEFORE APP STORE SUBMISSION ⚠️
-// This file generates sample workout data for testing/demo purposes.
+// Sample workout data for testing/demo purposes. Debug builds only.
+#if DEBUG
 
 enum SampleDataGenerator {
     static func generate() -> [WorkoutSession] {
@@ -249,3 +249,5 @@ enum SampleDataGenerator {
         ExerciseSet(setNumber: num, reps: reps, weight: weight)
     }
 }
+
+#endif

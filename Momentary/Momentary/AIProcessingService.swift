@@ -44,20 +44,7 @@ final class AIService {
         request.timeoutInterval = 60
 
         let (data, response) = try await URLSession.shared.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw AIError.invalidResponse
-        }
-
-        if httpResponse.statusCode == 429 {
-            let retryAfter = httpResponse.value(forHTTPHeaderField: "Retry-After")
-            throw AIError.rateLimited(retryAfter: Double(retryAfter ?? "") ?? 5.0)
-        }
-
-        guard (200...299).contains(httpResponse.statusCode) else {
-            let body = String(data: data, encoding: .utf8) ?? "Unknown error"
-            throw AIError.apiError(statusCode: httpResponse.statusCode, message: body)
-        }
+        try Self.validate(response, data: data)
 
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               let choices = json["choices"] as? [[String: Any]],
@@ -105,15 +92,11 @@ final class AIService {
         request.httpBody = body
 
         let (data, response) = try await URLSession.shared.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw AIError.invalidResponse
-        }
-
-        guard (200...299).contains(httpResponse.statusCode) else {
-            let errorBody = String(data: data, encoding: .utf8) ?? "Unknown error"
-            Self.logger.error("Whisper API error \(httpResponse.statusCode): \(errorBody)")
-            throw AIError.apiError(statusCode: httpResponse.statusCode, message: errorBody)
+        do {
+            try Self.validate(response, data: data)
+        } catch let error as AIError {
+            Self.logger.error("Whisper API error: \(error.localizedDescription)")
+            throw error
         }
 
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -126,12 +109,65 @@ final class AIService {
 
         return trimmed
     }
+
+    // MARK: - Key Validation
+
+    /// Checks a key against the OpenAI API without storing it. Used by the Settings "Test Key" button.
+    static func validateKey(_ key: String) async -> Result<Void, AIError> {
+        let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return .failure(.noAPIKey) }
+
+        var request = URLRequest(url: URL(string: "https://api.openai.com/v1/models")!)
+        request.addValue("Bearer \(trimmed)", forHTTPHeaderField: "Authorization")
+        request.timeoutInterval = 15
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            try validate(response, data: data)
+            return .success(())
+        } catch let error as AIError {
+            return .failure(error)
+        } catch {
+            return .failure(.networkUnavailable)
+        }
+    }
+
+    // MARK: - Response Validation
+
+    /// Single home for the HTTP status-code policy — throws the matching AIError for any failure response.
+    private static func validate(_ response: URLResponse, data: Data) throws {
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw AIError.invalidResponse
+        }
+        switch httpResponse.statusCode {
+        case 200...299:
+            return
+        case 401, 403:
+            throw AIError.invalidAPIKey
+        case 429:
+            let retryAfter = httpResponse.value(forHTTPHeaderField: "Retry-After")
+            throw AIError.rateLimited(retryAfter: Double(retryAfter ?? "") ?? 5.0)
+        default:
+            throw AIError.apiError(statusCode: httpResponse.statusCode, message: errorMessage(from: data))
+        }
+    }
+
+    /// Extracts OpenAI's `error.message` from a failure body so raw JSON never reaches the UI.
+    private static func errorMessage(from data: Data) -> String {
+        if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let error = json["error"] as? [String: Any],
+           let message = error["message"] as? String {
+            return message
+        }
+        return "Unexpected server error"
+    }
 }
 
 // MARK: - AI Error
 
 enum AIError: LocalizedError {
     case noAPIKey
+    case invalidAPIKey
     case invalidResponse
     case emptyResult
     case rateLimited(retryAfter: Double)
@@ -139,9 +175,18 @@ enum AIError: LocalizedError {
     case parsingFailed(String)
     case networkUnavailable
 
+    /// True when the failure can only be fixed by the user entering a valid key — never retry or queue these.
+    var isKeyProblem: Bool {
+        switch self {
+        case .noAPIKey, .invalidAPIKey: true
+        default: false
+        }
+    }
+
     var errorDescription: String? {
         switch self {
-        case .noAPIKey: "No OpenAI API key configured."
+        case .noAPIKey: "No OpenAI API key set. Add yours in Settings to enable AI features."
+        case .invalidAPIKey: "Your OpenAI API key was rejected. Check it in Settings."
         case .invalidResponse: "Invalid response from OpenAI"
         case .emptyResult: "No speech detected"
         case .rateLimited(let retryAfter): "Rate limited. Retrying in \(Int(retryAfter))s."
@@ -150,4 +195,9 @@ enum AIError: LocalizedError {
         case .networkUnavailable: "No network connection."
         }
     }
+}
+
+extension Error {
+    /// True when this is an AIError that only a valid API key can fix.
+    var isAPIKeyProblem: Bool { (self as? AIError)?.isKeyProblem == true }
 }
