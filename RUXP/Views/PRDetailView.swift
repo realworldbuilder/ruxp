@@ -30,11 +30,11 @@ struct PRDetailView: View {
                 // Header
                 VStack(spacing: 8) {
                     Text("Personal Records")
-                        .font(.largeTitle.weight(.bold))
+                        .font(Theme.Fonts.ui(.largeTitle, weight: .bold))
                         .foregroundStyle(Theme.textPrimary)
                     
                     Text("\(personalRecords.count) achievements unlocked")
-                        .font(.subheadline)
+                        .font(Theme.Fonts.ui(.subheadline))
                         .foregroundStyle(Theme.textSecondary)
                 }
                 .padding(.top, 40)
@@ -59,7 +59,7 @@ struct PRDetailView: View {
         .overlay(alignment: .topTrailing) {
             Button { dismiss() } label: {
                 Image(systemName: "xmark")
-                    .font(.title3.weight(.semibold))
+                    .font(Theme.Fonts.ui(.title3, weight: .semibold))
                     .foregroundStyle(Theme.textSecondary)
                     .frame(width: 32, height: 32)
                     .background(Theme.surface.opacity(0.8), in: Circle())
@@ -76,12 +76,12 @@ struct PRDetailView: View {
         VStack(spacing: 20) {
             VStack(spacing: 4) {
                 Text("🏆 Hall of Fame")
-                    .font(.title2.weight(.bold))
+                    .font(Theme.Fonts.ui(.title2, weight: .bold))
                     .foregroundStyle(Theme.textPrimary)
                 
                 if !compoundPRs.isEmpty {
                     Text("Top Compound Lifts")
-                        .font(.caption)
+                        .font(Theme.Fonts.ui(.caption))
                         .foregroundStyle(Theme.textSecondary)
                 }
             }
@@ -120,22 +120,22 @@ struct PRDetailView: View {
                     .frame(width: 44, height: 44)
                 
                 Text("\(position)")
-                    .font(.title2.weight(.bold))
+                    .font(Theme.Fonts.ui(.title2, weight: .bold))
                     .foregroundStyle(accentColor)
             }
             
             // Weight - Main attraction
             Text("\(Int(pr.weight))")
-                .font(.system(size: 36, weight: .bold, design: .rounded))
+                .font(Theme.Fonts.number(36))
                 .foregroundStyle(Theme.textPrimary)
             
             Text(weightUnit)
-                .font(.caption.weight(.medium))
+                .font(Theme.Fonts.ui(.caption, weight: .medium))
                 .foregroundStyle(Theme.textSecondary)
             
             // Exercise name
             Text(pr.exercise)
-                .font(.headline.weight(.semibold))
+                .font(Theme.Fonts.ui(.headline, weight: .semibold))
                 .foregroundStyle(Theme.textPrimary)
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
@@ -143,22 +143,22 @@ struct PRDetailView: View {
             // Reps if available
             if let reps = pr.reps {
                 Text("\(reps) rep\(reps == 1 ? "" : "s")")
-                    .font(.caption)
+                    .font(Theme.Fonts.ui(.caption))
                     .foregroundStyle(Theme.textSecondary)
             }
             
             // Date
             Text(pr.date, format: .dateTime.month(.abbreviated).day())
-                .font(.caption)
+                .font(Theme.Fonts.ui(.caption))
                 .foregroundStyle(Theme.textTertiary)
             
             // Improvement delta
             if let improvement = pr.improvement, improvement > 0 {
                 HStack(spacing: 2) {
                     Image(systemName: "arrow.up.right")
-                        .font(.caption2)
+                        .font(Theme.Fonts.ui(.caption2))
                     Text("+\(Int(improvement))")
-                        .font(.caption.weight(.medium))
+                        .font(Theme.Fonts.ui(.caption, weight: .medium))
                 }
                 .foregroundStyle(.green)
             }
@@ -192,13 +192,13 @@ struct PRDetailView: View {
             }) {
                 HStack {
                     Text("All Records")
-                        .font(.title3.weight(.bold))
+                        .font(Theme.Fonts.ui(.title3, weight: .bold))
                         .foregroundStyle(Theme.textPrimary)
                     
                     Spacer()
                     
                     Image(systemName: showAllRecords ? "chevron.up" : "chevron.down")
-                        .font(.title3.weight(.semibold))
+                        .font(Theme.Fonts.ui(.title3, weight: .semibold))
                         .foregroundStyle(Theme.textSecondary)
                         .rotationEffect(.degrees(showAllRecords ? 0 : 0))
                 }
@@ -224,7 +224,7 @@ struct PRDetailView: View {
         VStack(alignment: .leading, spacing: 8) {
             // Exercise name
             Text(pr.exercise)
-                .font(.headline.weight(.semibold))
+                .font(Theme.Fonts.ui(.headline, weight: .semibold))
                 .foregroundStyle(Theme.textPrimary)
                 .lineLimit(2)
                 .multilineTextAlignment(.leading)
@@ -232,11 +232,11 @@ struct PRDetailView: View {
             // Weight prominently displayed
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text("\(Int(pr.weight))")
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .font(Theme.Fonts.number(28))
                     .foregroundStyle(Theme.accent)
                 
                 Text(weightUnit)
-                    .font(.caption.weight(.medium))
+                    .font(Theme.Fonts.ui(.caption, weight: .medium))
                     .foregroundStyle(Theme.textSecondary)
             }
             
@@ -244,12 +244,12 @@ struct PRDetailView: View {
             VStack(alignment: .leading, spacing: 2) {
                 if let reps = pr.reps {
                     Text("\(reps) rep\(reps == 1 ? "" : "s")")
-                        .font(.caption)
+                        .font(Theme.Fonts.ui(.caption))
                         .foregroundStyle(Theme.textSecondary)
                 }
                 
                 Text(pr.date, format: .dateTime.month(.abbreviated).day())
-                    .font(.caption)
+                    .font(Theme.Fonts.ui(.caption))
                     .foregroundStyle(Theme.textTertiary)
             }
             
@@ -257,9 +257,9 @@ struct PRDetailView: View {
             if let improvement = pr.improvement, improvement > 0 {
                 HStack(spacing: 2) {
                     Image(systemName: "arrow.up.right")
-                        .font(.caption2)
+                        .font(Theme.Fonts.ui(.caption2))
                     Text("+\(Int(improvement)) \(weightUnit)")
-                        .font(.caption.weight(.medium))
+                        .font(Theme.Fonts.ui(.caption, weight: .medium))
                 }
                 .foregroundStyle(.green)
             }
@@ -292,14 +292,14 @@ struct PRDetailView: View {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(pr.exercise)
-                        .font(.headline.weight(.semibold))
+                        .font(Theme.Fonts.ui(.headline, weight: .semibold))
                         .foregroundStyle(Theme.textPrimary)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
                     
                     // Compound/Isolation indicator
                     Text(pr.isCompound ? "Compound" : "Isolation")
-                        .font(.caption2.weight(.medium))
+                        .font(Theme.Fonts.ui(.caption2, weight: .medium))
                         .foregroundStyle(pr.isCompound ? Theme.accent : Theme.textTertiary)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 2)
@@ -316,11 +316,11 @@ struct PRDetailView: View {
             // Weight prominently displayed
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text("\(Int(pr.weight))")
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .font(Theme.Fonts.number(28))
                     .foregroundStyle(Theme.accent)
                 
                 Text(weightUnit)
-                    .font(.caption.weight(.medium))
+                    .font(Theme.Fonts.ui(.caption, weight: .medium))
                     .foregroundStyle(Theme.textSecondary)
             }
             
@@ -328,12 +328,12 @@ struct PRDetailView: View {
             VStack(alignment: .leading, spacing: 2) {
                 if let reps = pr.reps {
                     Text("\(reps) rep\(reps == 1 ? "" : "s")")
-                        .font(.caption)
+                        .font(Theme.Fonts.ui(.caption))
                         .foregroundStyle(Theme.textSecondary)
                 }
                 
                 Text(pr.date, format: .dateTime.month(.abbreviated).day())
-                    .font(.caption)
+                    .font(Theme.Fonts.ui(.caption))
                     .foregroundStyle(Theme.textTertiary)
             }
             
@@ -341,9 +341,9 @@ struct PRDetailView: View {
             if let improvement = pr.improvement, improvement > 0 {
                 HStack(spacing: 2) {
                     Image(systemName: "arrow.up.right")
-                        .font(.caption2)
+                        .font(Theme.Fonts.ui(.caption2))
                     Text("+\(Int(improvement)) \(weightUnit)")
-                        .font(.caption.weight(.medium))
+                        .font(Theme.Fonts.ui(.caption, weight: .medium))
                 }
                 .foregroundStyle(.green)
             }

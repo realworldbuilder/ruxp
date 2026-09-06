@@ -13,9 +13,9 @@ struct NowPlayingPage: View {
                             VStack(spacing: 8) {
                                 Image(systemName: "mic.fill")
                                     .font(.title3)
-                                    .foregroundStyle(.green)
+                                    .foregroundStyle(WatchTheme.accent)
                                 Text("Recording...")
-                                    .font(.caption)
+                                    .font(WatchTheme.Fonts.caption)
                                     .foregroundStyle(.white.opacity(0.7))
                             }
                         }

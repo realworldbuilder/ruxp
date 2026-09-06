@@ -9,7 +9,7 @@ struct VolumeOverTimeChart: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Volume Trend")
-                .font(.caption)
+                .font(Theme.Fonts.ui(.caption))
                 .fontWeight(.semibold)
                 .foregroundColor(.white.opacity(0.7))
 
@@ -90,7 +90,7 @@ struct ProgressTrendChart: View {
         VStack(alignment: .leading, spacing: 12) {
             if let exerciseName = dataPoints.first?.label {
                 Text(exerciseName)
-                    .font(.caption)
+                    .font(Theme.Fonts.ui(.caption))
                     .fontWeight(.semibold)
                     .foregroundColor(.white.opacity(0.7))
             }
@@ -116,7 +116,7 @@ struct ProgressTrendChart: View {
                         .annotation(position: .top) {
                             if point.isPR ?? false {
                                 Text("PR")
-                                    .font(.caption2)
+                                    .font(Theme.Fonts.ui(.caption2))
                                     .fontWeight(.bold)
                                     .foregroundColor(.orange)
                             }
@@ -160,7 +160,7 @@ struct PRComparisonChart: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Personal Records")
-                .font(.caption)
+                .font(Theme.Fonts.ui(.caption))
                 .fontWeight(.semibold)
                 .foregroundColor(.white.opacity(0.7))
 
@@ -172,10 +172,10 @@ struct PRComparisonChart: View {
                         HStack {
                             Image(systemName: "trophy.fill")
                                 .foregroundColor(.orange)
-                                .font(.caption)
+                                .font(Theme.Fonts.ui(.caption))
 
                             Text(pr.label)
-                                .font(.caption)
+                                .font(Theme.Fonts.ui(.caption))
                                 .foregroundColor(.white)
                                 .lineLimit(1)
 
@@ -184,15 +184,15 @@ struct PRComparisonChart: View {
                             HStack(spacing: 4) {
                                 if let oldWeight = pr.secondaryValue, oldWeight > 0 {
                                     Text("\(Int(oldWeight))")
-                                        .font(.caption)
+                                        .font(Theme.Fonts.ui(.caption))
                                         .foregroundColor(.gray)
                                         .strikethrough()
                                     Image(systemName: "arrow.right")
-                                        .font(.caption2)
+                                        .font(Theme.Fonts.ui(.caption2))
                                         .foregroundColor(.gray)
                                 }
                                 Text("\(Int(pr.value)) lbs")
-                                    .font(.caption)
+                                    .font(Theme.Fonts.ui(.caption))
                                     .fontWeight(.semibold)
                                     .foregroundColor(.green)
                             }
@@ -220,10 +220,10 @@ struct PRComparisonChart: View {
 private func emptyState(_ icon: String) -> some View {
     VStack(spacing: 8) {
         Image(systemName: icon)
-            .font(.title2)
+            .font(Theme.Fonts.ui(.title2))
             .foregroundColor(.gray)
         Text("Not enough data yet")
-            .font(.caption)
+            .font(Theme.Fonts.ui(.caption))
             .foregroundColor(.gray)
     }
     .frame(height: 120)

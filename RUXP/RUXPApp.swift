@@ -11,10 +11,12 @@ struct RUXPApp: App {
     @State private var workoutStore: WorkoutStore
     @State private var plannedWorkoutStore: PlannedWorkoutStore
     @State private var progression: ProgressionService
-    @State private var livePresence: SimulatedLivePresence
+    @State private var gameCenter: GameCenterService
+    @State private var livePresence: GameCenterLivePresence
     private let eventService = ScheduledEventService()
 
     init() {
+        Typeface.registerFonts()
         Self.applyDebugLaunchArguments()
         let store = WorkoutStore()
         let plannedStore = PlannedWorkoutStore()
@@ -29,7 +31,12 @@ struct RUXPApp: App {
         let chat = ChatEngine(workoutStore: store, insightsEngine: insights, aiService: aiService, conversationStore: convoStore)
         let progressionService = ProgressionService()
         let events = ScheduledEventService()
-        let presence = SimulatedLivePresence(tickInterval: 4)
+        let gameCenterService = GameCenterService(progression: progressionService)
+        progressionService.onProgressChanged = { [weak gameCenterService] in gameCenterService?.noteProgressChanged($0) }
+        let presence = GameCenterLivePresence(gameCenter: gameCenterService, season: progressionService.season)
+        presence.onSnapshotChanged = { [weak connectivity] in connectivity?.pushPresence($0) }
+        gameCenterService.onSyncEnabledChanged = { [weak connectivity] in connectivity?.pushGameCenterSync($0) }
+        connectivity.pushGameCenterSync(gameCenterService.isSyncEnabled)
         let manager = WorkoutManager(
             workoutStore: store,
             connectivity: connectivity,
@@ -43,6 +50,7 @@ struct RUXPApp: App {
         processor.insightsEngine = insights
         processor.insightsStore = persistentInsights
         processor.progression = progressionService
+        manager.gameCenter = gameCenterService
 
         _workoutManager = State(initialValue: manager)
         _workoutProcessor = State(initialValue: processor)
@@ -53,7 +61,17 @@ struct RUXPApp: App {
         _workoutStore = State(initialValue: store)
         _plannedWorkoutStore = State(initialValue: plannedStore)
         _progression = State(initialValue: progressionService)
+        _gameCenter = State(initialValue: gameCenterService)
         _livePresence = State(initialValue: presence)
+
+        #if DEBUG
+        // -RUXPLoadSamples: seed the seven sample workouts on an empty install (simulator screenshots).
+        if ProcessInfo.processInfo.arguments.contains("-RUXPLoadSamples"), store.index.isEmpty {
+            for session in SampleDataGenerator.generate() { store.saveSession(session) }
+            store.loadIndex()
+            persistentInsights.rebuild(from: store)
+        }
+        #endif
 
         // Rebuild persistent insights if empty (first launch / migration)
         if persistentInsights.lifetimeStats.totalWorkouts == 0 && !store.index.isEmpty {
@@ -71,6 +89,10 @@ struct RUXPApp: App {
     /// DEBUG-only knobs for exercising the reward flow quickly:
     ///   -RUXPSkipMinimum   no 10-minute minimum for completion XP
     ///   -RUXPEventClock friday|sunday|tuesday   pretend it is that day
+    ///   -RUXPLoadSamples   seed sample workouts on an empty install
+    ///   -RUXPTab train|profile   open on that tab (see MainTabView)
+    ///   -RUXPSkipHealthKit   bypass HealthKit (see HealthKitService.isDisabledForTesting)
+    ///   -RUXPSkipGameCenter  no Game Center sign-in, scores, or live counts (see GameCenterService.isDisabledForTesting)
     private static func applyDebugLaunchArguments() {
         #if DEBUG
         let args = ProcessInfo.processInfo.arguments
@@ -102,10 +124,12 @@ struct RUXPApp: App {
                 .environment(workoutStore)
                 .environment(plannedWorkoutStore)
                 .environment(progression)
+                .environment(gameCenter)
                 .environment(\.livePresence, livePresence)
                 .environment(\.liveEvents, eventService)
                 .preferredColorScheme(.dark)
                 .task {
+                    gameCenter.start()
                     livePresence.start()
                     await workoutProcessor.processPendingQueue()
                     await insightsEngine.generateInsights()
@@ -117,6 +141,7 @@ struct RUXPApp: App {
                         livePresence.start()
                     } else if scenePhase == .background {
                         livePresence.stop()
+                        gameCenter.flushNow()
                     }
                 }
         }

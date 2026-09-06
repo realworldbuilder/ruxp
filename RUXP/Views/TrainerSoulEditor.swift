@@ -19,7 +19,7 @@ struct TrainerSoulEditor: View {
                     Text("What are you training for?")
                 } footer: {
                     Text(draft.fitnessGoal.promptFragment.prefix(80) + "...")
-                        .font(.caption2)
+                        .font(Theme.Fonts.ui(.caption2))
                 }
 
                 // MARK: - Experience
@@ -40,7 +40,7 @@ struct TrainerSoulEditor: View {
                         } label: {
                             HStack {
                                 Text(style.rawValue)
-                                    .font(.subheadline.weight(.medium))
+                                    .font(Theme.Fonts.ui(.subheadline, weight: .medium))
                                     .foregroundStyle(Theme.textPrimary)
                                 Spacer()
                                 if draft.trainingStyle == style {
@@ -63,7 +63,7 @@ struct TrainerSoulEditor: View {
                     Text("Training Split")
                 } footer: {
                     Text(draft.trainingSplit.promptFragment)
-                        .font(.caption2)
+                        .font(Theme.Fonts.ui(.caption2))
                 }
 
                 // MARK: - Coaching Tone
@@ -75,10 +75,10 @@ struct TrainerSoulEditor: View {
                             HStack {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(tone.rawValue)
-                                        .font(.subheadline.weight(.medium))
+                                        .font(Theme.Fonts.ui(.subheadline, weight: .medium))
                                         .foregroundStyle(Theme.textPrimary)
                                     Text(tonePreview(tone))
-                                        .font(.caption)
+                                        .font(Theme.Fonts.ui(.caption))
                                         .foregroundStyle(Theme.textSecondary)
                                 }
                                 Spacer()
@@ -97,7 +97,7 @@ struct TrainerSoulEditor: View {
                 Section {
                     TextEditor(text: $draft.customPrompt)
                         .frame(minHeight: 100)
-                        .font(.subheadline)
+                        .font(Theme.Fonts.ui(.subheadline))
                         .scrollContentBackground(.hidden)
                 } header: {
                     Text("Custom Instructions")
@@ -108,7 +108,7 @@ struct TrainerSoulEditor: View {
                 // MARK: - Preview
                 Section("Prompt Preview") {
                     Text(draft.systemPromptFragment)
-                        .font(.caption)
+                        .font(Theme.Fonts.ui(.caption))
                         .foregroundStyle(Theme.textSecondary)
                         .textSelection(.enabled)
                 }

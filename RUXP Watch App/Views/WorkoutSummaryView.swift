@@ -14,8 +14,7 @@ struct WorkoutSummaryView: View {
         ScrollView {
             VStack(spacing: 12) {
                 Text("WORKOUT COMPLETE")
-                    .font(.system(size: 13, weight: .black, design: .rounded))
-                    .tracking(0.8)
+                    .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(WatchTheme.textPrimary)
                     .padding(.top, 4)
 
@@ -32,18 +31,18 @@ struct WorkoutSummaryView: View {
                     onDismiss()
                 } label: {
                     Text("Continue")
-                        .font(.system(size: 15, weight: .black, design: .rounded))
-                        .foregroundStyle(WatchTheme.onAccent)
+                        .font(WatchTheme.Fonts.tagline(15))
+                        .foregroundStyle(WatchTheme.onButton)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 11)
-                        .background(WatchTheme.accent, in: RoundedRectangle(cornerRadius: 12))
+                        .background(WatchTheme.button, in: Capsule())
                 }
                 .buttonStyle(.plain)
                 .padding(.top, 2)
             }
             .padding(.horizontal, 6)
         }
-        .containerBackground(WatchTheme.background.gradient, for: .navigation)
+        .containerBackground(WatchTheme.backgroundGradient, for: .navigation)
     }
 
     @ViewBuilder
@@ -53,23 +52,23 @@ struct WorkoutSummaryView: View {
             case .received, .idle:
                 if let reward {
                     Text("+\(reward.xp.grouped) XP")
-                        .font(.system(size: 34, weight: .heavy, design: .rounded).monospacedDigit())
-                        .foregroundStyle(WatchTheme.accent)
+                        .font(WatchTheme.Fonts.number(26))
+                        .foregroundStyle(WatchTheme.xp)
                         .contentTransition(.numericText())
                     HStack(spacing: 6) {
                         Text("LVL \(reward.level)")
-                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                            .font(.system(size: 12, weight: .semibold))
                             .foregroundStyle(WatchTheme.textSecondary)
                         if reward.levelUp {
                             Text("LEVEL UP")
-                                .font(.system(size: 10, weight: .black, design: .rounded))
+                                .font(WatchTheme.Fonts.tagline(9))
                                 .foregroundStyle(WatchTheme.onAccent)
                                 .padding(.horizontal, 6).padding(.vertical, 2)
                                 .background(WatchTheme.accent, in: Capsule())
                         }
                         if reward.prCount > 0 {
                             Text("\(reward.prCount) PR")
-                                .font(.system(size: 10, weight: .black, design: .rounded))
+                                .font(WatchTheme.Fonts.tagline(9))
                                 .foregroundStyle(WatchTheme.accent)
                         }
                     }
@@ -79,7 +78,7 @@ struct WorkoutSummaryView: View {
             case .waiting:
                 HStack(spacing: 6) {
                     ProgressView().tint(WatchTheme.accent).controlSize(.small)
-                    Text("Syncing XP").font(.system(.caption, design: .rounded)).foregroundStyle(WatchTheme.textSecondary)
+                    Text("Syncing XP").font(WatchTheme.Fonts.caption).foregroundStyle(WatchTheme.textSecondary)
                 }
             case .phoneUnreachable:
                 pending("XP syncs on iPhone")
@@ -89,26 +88,26 @@ struct WorkoutSummaryView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 10)
-        .background(WatchTheme.surface, in: RoundedRectangle(cornerRadius: 12))
+        .background(WatchTheme.surface, in: RoundedRectangle(cornerRadius: 14))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.white.opacity(0.08), lineWidth: 1))
     }
 
     private func pending(_ text: String) -> some View {
         VStack(spacing: 2) {
             Text("+\(ProgressionRules.workoutCompleteXP) XP")
-                .font(.system(size: 26, weight: .heavy, design: .rounded).monospacedDigit())
+                .font(WatchTheme.Fonts.number(22))
                 .foregroundStyle(WatchTheme.textSecondary)
-            Text(text).font(.system(.caption2, design: .rounded)).foregroundStyle(WatchTheme.textTertiary)
+            Text(text).font(WatchTheme.Fonts.caption2).foregroundStyle(WatchTheme.textTertiary)
         }
     }
 
     private func statCell(value: String, label: String) -> some View {
         VStack(spacing: 2) {
             Text(value)
-                .font(.system(size: 15, weight: .bold, design: .rounded).monospacedDigit())
+                .font(WatchTheme.Fonts.mono(14))
                 .foregroundStyle(WatchTheme.textPrimary)
-            Text(label.uppercased())
-                .font(.system(size: 9, weight: .bold, design: .rounded))
-                .tracking(1)
+            Text(label)
+                .watchEyebrow()
                 .foregroundStyle(WatchTheme.textTertiary)
         }
     }

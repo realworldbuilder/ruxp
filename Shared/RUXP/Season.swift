@@ -24,8 +24,8 @@ struct Season: Identifiable, Equatable {
 }
 
 enum SeasonCatalog {
-    /// SEASON 01 — BACK 2 SCHOOL. Summer is over. Start training again.
-    static let backToSchool: Season = {
+    /// SEASON 01 — PRESS START. The first season is all about the game.
+    static let pressStart: Season = {
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = .current
         let start = cal.date(from: DateComponents(year: 2026, month: 9, day: 1))!
@@ -33,13 +33,13 @@ enum SeasonCatalog {
         return Season(
             id: "S01",
             number: 1,
-            name: "BACK 2 SCHOOL",
-            tagline: "Summer is over. Start training again.",
+            name: "PRESS START",
+            tagline: "Load in. Level up. Own the season.",
             start: start,
             end: end,
             goalWorkouts: 32
         )
     }()
 
-    static var current: Season { backToSchool }
+    static var current: Season { pressStart }
 }

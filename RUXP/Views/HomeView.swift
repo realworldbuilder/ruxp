@@ -7,12 +7,14 @@ struct HomeView: View {
     @Environment(ProgressionService.self) private var progression
     @Environment(PlannedWorkoutStore.self) private var plannedWorkoutStore
     @Environment(\.livePresence) private var presence
+    @Environment(GameCenterService.self) private var gameCenter
     @Environment(\.liveEvents) private var events
 
     @State private var now = ScheduledEventService.now()
+    @State private var showSeasonPass = false
     private let clock = Timer.publish(every: 20, on: .main, in: .common).autoconnect()
 
-    private var live: LiveSnapshot { presence?.snapshot ?? .empty }
+    private var live: LiveSnapshot { presence?.snapshot ?? .unavailable }
     private var featured: LiveEvent { events.featuredEvent(at: now) }
     private var season: Season { progression.season }
 
@@ -30,7 +32,8 @@ struct HomeView: View {
             .padding(.top, 8)
             .padding(.bottom, 32)
         }
-        .background(Theme.background.ignoresSafeArea())
+        .background(HUDBackground())
+        .fullScreenCover(isPresented: $showSeasonPass) { SeasonPassView() }
         .onReceive(clock) { _ in now = ScheduledEventService.now() }
         .onAppear { now = ScheduledEventService.now() }
     }
@@ -41,34 +44,37 @@ struct HomeView: View {
         HStack(alignment: .center) {
             RUXPWordmark(size: 30)
             Spacer()
-            Text("\(season.code) · \(season.name)")
-                .eyebrow()
-                .foregroundStyle(Theme.secondary)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(Theme.secondary.opacity(0.14), in: Capsule())
+            SlantTag(text: "\(season.code) · \(season.name)")
         }
         .padding(.top, 6)
     }
 
     // MARK: - Presence
 
+    /// Real Game Center players. Small numbers are shown as they are; nothing is inflated.
     private var presenceBlock: some View {
         VStack(alignment: .leading, spacing: 4) {
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
-                BigNumber(value: live.liftingNow, size: 60)
-                LiveDot(label: nil, size: 9)
-                    .offset(y: -18)
+            if live.isAvailable {
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    BigNumber(value: live.liftingNow, size: 52)
+                    LiveDot(label: nil, size: 9)
+                        .offset(y: -18)
+                }
             }
             Text("LIFTING NOW")
                 .eyebrow()
                 .foregroundStyle(Theme.textSecondary)
-            Text("\(live.workoutsLastHour.grouped) workouts finished in the last hour")
+            Text(live.isAvailable ? presenceLine : gameCenter.presenceUnavailableMessage)
                 .font(Theme.Fonts.body)
                 .foregroundStyle(Theme.textTertiary)
                 .padding(.top, 4)
         }
         .padding(.vertical, 6)
+    }
+
+    private var presenceLine: String {
+        if live.liftingNow == 0 { return "Nobody's on right now. Be first." }
+        return live.trainedTodayLine
     }
 
     // MARK: - Event
@@ -89,8 +95,8 @@ struct HomeView: View {
                 if featured.xpReward > 0 { XPChip(amount: featured.xpReward, prominent: isLive) }
             }
 
-            Text(featured.title)
-                .font(Theme.Fonts.display(38))
+            Text(featured.title.capitalized)
+                .font(.system(size: 28, weight: .bold))
                 .foregroundStyle(Theme.textPrimary)
                 .lineLimit(2)
                 .minimumScaleFactor(0.7)
@@ -99,7 +105,7 @@ struct HomeView: View {
                 if participants > 0 {
                     Text(participantsLine(count: participants, isLive: isLive))
                         .font(Theme.Fonts.title(16))
-                        .foregroundStyle(isLive ? Theme.accent : Theme.textPrimary)
+                        .foregroundStyle(Theme.textPrimary)
                 }
                 Text(featured.description)
                     .font(Theme.Fonts.body)
@@ -111,11 +117,11 @@ struct HomeView: View {
             }
             .padding(.top, 4)
         }
-        .padding(18)
+        .padding(20)
         .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.radiusLarge, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: Theme.radiusLarge, style: .continuous)
-                .stroke(isLive ? Theme.accent.opacity(0.5) : Theme.border, lineWidth: 1)
+                .stroke(isLive ? Theme.borderNeon : Theme.border, lineWidth: 1)
         )
     }
 
@@ -137,24 +143,19 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text("TRAINER PLAN READY").eyebrow().foregroundStyle(Theme.secondary)
                 Text(plan.title).font(Theme.Fonts.title(16)).foregroundStyle(Theme.textPrimary).lineLimit(1)
-                Text("\(plan.exercises.count) exercises").font(.caption).foregroundStyle(Theme.textSecondary)
+                Text("\(plan.exercises.count) exercises").font(Theme.Fonts.ui(.caption)).foregroundStyle(Theme.textSecondary)
             }
             Spacer()
-            Button {
+            PillButton(title: "Start") {
                 workoutManager.startWorkout(plan: plan)
-            } label: {
-                Text("START")
-                    .font(.system(size: 13, weight: .black, design: .rounded))
-                    .foregroundStyle(Theme.onAccent)
-                    .padding(.horizontal, 14).padding(.vertical, 9)
-                    .background(Theme.accent, in: Capsule())
             }
             Button { plannedWorkoutStore.clearPlan() } label: {
-                Image(systemName: "xmark").font(.caption.bold()).foregroundStyle(Theme.textTertiary)
+                Image(systemName: "xmark").font(Theme.Fonts.ui(.caption, weight: .bold)).foregroundStyle(Theme.textTertiary)
             }
         }
         .padding(14)
         .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.radiusMedium, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Theme.radiusMedium, style: .continuous).stroke(Theme.border, lineWidth: 1))
     }
 
     // MARK: - You
@@ -181,13 +182,14 @@ struct HomeView: View {
                 Spacer()
                 Text(weeklyLine(remaining: remaining))
                     .font(Theme.Fonts.body)
-                    .foregroundStyle(remaining == 0 ? Theme.accent : Theme.textSecondary)
+                    .foregroundStyle(remaining == 0 ? Theme.xp : Theme.textSecondary)
                     .multilineTextAlignment(.trailing)
                     .frame(maxWidth: 170, alignment: .trailing)
             }
         }
-        .padding(18)
+        .padding(20)
         .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.radiusLarge, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Theme.radiusLarge, style: .continuous).stroke(Theme.border, lineWidth: 1))
     }
 
     private func weeklyLine(remaining: Int) -> String {
@@ -203,7 +205,10 @@ struct HomeView: View {
     private var seasonCard: some View {
         let (done, goal) = progression.seasonProgress
         let fraction = goal > 0 ? min(1, Double(done) / Double(goal)) : 0
-        return VStack(alignment: .leading, spacing: 10) {
+        let tier = SeasonPassCatalog.currentTier(level: progression.level)
+        let next = SeasonPassCatalog.next(after: progression.level, season: season)
+        return Button { showSeasonPass = true } label: {
+          VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text(season.displayName).eyebrow().foregroundStyle(Theme.secondary)
                 Spacer()
@@ -221,14 +226,30 @@ struct HomeView: View {
                 }
                 .frame(height: 6)
                 Text("\(done) / \(goal)")
-                    .font(Theme.Fonts.label).monospacedDigit()
+                    .font(Theme.Fonts.mono(12))
                     .foregroundStyle(Theme.textSecondary)
             }
             Text(season.tagline)
-                .font(.caption)
+                .font(Theme.Fonts.ui(.caption))
                 .foregroundStyle(Theme.textTertiary)
+            Divider().overlay(Theme.divider)
+            HStack {
+                Text("SEASON PASS · TIER \(tier) · NEXT: \(next?.name ?? "COMPLETE")")
+                    .eyebrow()
+                    .foregroundStyle(Theme.violet)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(Theme.Fonts.ui(.caption, weight: .bold))
+                    .foregroundStyle(Theme.textTertiary)
+            }
+          }
+          .padding(20)
+          .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.radiusLarge, style: .continuous))
+          .overlay(RoundedRectangle(cornerRadius: Theme.radiusLarge, style: .continuous).stroke(Theme.border, lineWidth: 1))
+          .contentShape(RoundedRectangle(cornerRadius: Theme.radiusLarge, style: .continuous))
         }
-        .padding(18)
-        .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.radiusLarge, style: .continuous))
+        .buttonStyle(PressableButtonStyle())
     }
 }

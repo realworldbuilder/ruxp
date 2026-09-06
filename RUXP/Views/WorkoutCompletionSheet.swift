@@ -28,7 +28,7 @@ struct WorkoutCompletionSheet: View {
 
     var body: some View {
         ZStack {
-            Theme.background.ignoresSafeArea()
+            HUDBackground(glow: true)
 
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 22) {
@@ -78,12 +78,12 @@ struct WorkoutCompletionSheet: View {
 
     private var completionHeader: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("WORKOUT COMPLETE")
-                .font(Theme.Fonts.display(30))
+            Text("Workout complete")
+                .font(.system(size: 28, weight: .bold))
                 .foregroundStyle(Theme.textPrimary)
             HStack(spacing: 10) {
                 if let duration = session?.duration {
-                    Text(formatDuration(duration)).font(Theme.Fonts.label).monospacedDigit()
+                    Text(formatDuration(duration)).font(Theme.Fonts.mono(12))
                 }
                 if let started = session?.startedAt {
                     Text(started, format: .dateTime.weekday(.wide).hour().minute()).font(Theme.Fonts.label)
@@ -119,7 +119,7 @@ struct WorkoutCompletionSheet: View {
                     HStack(spacing: 8) {
                         ProgressView().tint(Theme.accent).controlSize(.small)
                         Text("Checking your notes for PRs…")
-                            .font(.caption)
+                            .font(Theme.Fonts.ui(.caption))
                             .foregroundStyle(Theme.textTertiary)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -144,7 +144,7 @@ struct WorkoutCompletionSheet: View {
                 .font(Theme.Fonts.body)
                 .foregroundStyle(Theme.textSecondary)
             Text("The workout is still saved.")
-                .font(.caption)
+                .font(Theme.Fonts.ui(.caption))
                 .foregroundStyle(Theme.textTertiary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -156,21 +156,22 @@ struct WorkoutCompletionSheet: View {
             HStack(spacing: 10) {
                 Image(systemName: icon(for: award.reason))
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(Theme.accent)
+                    .foregroundStyle(Theme.xp)
                     .frame(width: 30, height: 30)
-                    .background(Theme.accentSubtle, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+                    .background(Theme.xpSubtle, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
                 Text(award.label)
                     .font(Theme.Fonts.title(16))
                     .foregroundStyle(Theme.textPrimary)
             }
             Spacer()
             Text("+\(award.amount.grouped) XP")
-                .font(Theme.Fonts.number(18))
-                .foregroundStyle(Theme.accent)
+                .font(Theme.Fonts.mono(16, weight: .heavy))
+                .foregroundStyle(Theme.xp)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
         .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.radiusMedium, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Theme.radiusMedium, style: .continuous).stroke(Theme.border, lineWidth: 1))
     }
 
     private func icon(for reason: XPReason) -> String {
@@ -185,21 +186,18 @@ struct WorkoutCompletionSheet: View {
     private func totalBlock(_ reward: WorkoutRewardSummary) -> some View {
         let xp = displayedSeasonXP ?? reward.seasonXPAfter
         let p = LevelCurve.progress(seasonXP: xp)
-        let live = presence?.snapshot ?? .empty
+        let live = presence?.snapshot ?? .unavailable
         return VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .firstTextBaseline) {
                 Text("+\(reward.totalXP.grouped) XP")
-                    .font(Theme.Fonts.number(46))
-                    .foregroundStyle(Theme.accent)
+                    .font(Theme.Fonts.number(36))
+                    .foregroundStyle(Theme.xp)
                     .contentTransition(.numericText(value: Double(reward.totalXP)))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
                 Spacer()
                 if reward.didLevelUp && showLevelUp {
-                    Text("LEVEL UP")
-                        .font(.system(size: 12, weight: .black, design: .rounded))
-                        .tracking(1.2)
-                        .foregroundStyle(Theme.onAccent)
-                        .padding(.horizontal, 10).padding(.vertical, 6)
-                        .background(Theme.accent, in: Capsule())
+                    SlantTag(text: "Level up")
                         .transition(.scale.combined(with: .opacity))
                 }
             }
@@ -209,7 +207,7 @@ struct WorkoutCompletionSheet: View {
             if reward.didLevelUp {
                 HStack(spacing: 8) {
                     Text("LVL \(reward.levelBefore)").font(Theme.Fonts.title(18)).foregroundStyle(Theme.textSecondary)
-                    Image(systemName: "arrow.right").font(.caption.bold()).foregroundStyle(Theme.textTertiary)
+                    Image(systemName: "arrow.right").font(Theme.Fonts.ui(.caption, weight: .bold)).foregroundStyle(Theme.textTertiary)
                     Text("LVL \(reward.levelAfter)")
                         .font(Theme.Fonts.title(18))
                         .foregroundStyle(Theme.accent)
@@ -217,21 +215,45 @@ struct WorkoutCompletionSheet: View {
                 }
             }
 
-            if live.trainedTonight > 0 {
+            if reward.didLevelUp, showLevelUp {
+                let unlocked = SeasonPassCatalog.newlyUnlocked(from: reward.levelBefore, to: reward.levelAfter, season: progression.season)
+                if !unlocked.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        ForEach(unlocked) { r in
+                            HStack(spacing: 8) {
+                                Image(systemName: "lock.open.fill")
+                                    .font(Theme.Fonts.ui(.caption, weight: .bold))
+                                    .foregroundStyle(Theme.violet)
+                                Text("TIER \(r.tier) UNLOCKED").eyebrow().foregroundStyle(Theme.violet)
+                                Spacer()
+                                Text(r.name)
+                                    .font(Theme.Fonts.mono(12))
+                                    .foregroundStyle(Theme.textPrimary)
+                            }
+                        }
+                        Text("Equip it in Profile → Season Pass.")
+                            .font(Theme.Fonts.ui(.caption))
+                            .foregroundStyle(Theme.textTertiary)
+                    }
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
+
+            if live.isAvailable {
                 Divider().overlay(Theme.divider)
                 HStack(spacing: 8) {
                     LiveDot(label: nil, size: 7)
-                    Text("\(live.trainedTonight.grouped) \(live.trainedTonightLabel).")
+                    Text(live.workoutsToday <= 1 ? "You're the first to train today." : live.trainedTodayLine)
                         .font(Theme.Fonts.body)
                         .foregroundStyle(Theme.textSecondary)
                 }
             }
         }
-        .padding(18)
+        .padding(20)
         .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.radiusLarge, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: Theme.radiusLarge, style: .continuous)
-                .stroke(Theme.accent.opacity(0.35), lineWidth: 1)
+                .stroke(Theme.borderNeon, lineWidth: 1)
         )
     }
 
@@ -283,7 +305,7 @@ struct WorkoutCompletionSheet: View {
         case .processing(let stage):
             HStack(spacing: 12) {
                 ProgressView().tint(Theme.accent)
-                Text(stage).font(.subheadline).foregroundStyle(Theme.textSecondary)
+                Text(stage).font(Theme.Fonts.ui(.subheadline)).foregroundStyle(Theme.textSecondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .themeCard()
@@ -291,9 +313,9 @@ struct WorkoutCompletionSheet: View {
         case .failed(let message):
             VStack(alignment: .leading, spacing: 8) {
                 Label("Couldn't parse your notes", systemImage: "exclamationmark.triangle.fill")
-                    .font(.subheadline.bold())
+                    .font(Theme.Fonts.ui(.subheadline, weight: .bold))
                     .foregroundStyle(Theme.error)
-                Text(message).font(.caption).foregroundStyle(.secondary)
+                Text(message).font(Theme.Fonts.ui(.caption)).foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .themeCard()
@@ -302,7 +324,7 @@ struct WorkoutCompletionSheet: View {
             HStack(spacing: 10) {
                 Image(systemName: "wifi.slash").foregroundStyle(Theme.warning)
                 Text("Queued — your notes will be parsed when online")
-                    .font(.subheadline)
+                    .font(Theme.Fonts.ui(.subheadline))
                     .foregroundStyle(Theme.textSecondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -311,7 +333,7 @@ struct WorkoutCompletionSheet: View {
         default:
             if let session, session.moments.isEmpty {
                 Text("No voice notes this session. Talk through your sets next time and RUXP writes the log.")
-                    .font(.caption)
+                    .font(Theme.Fonts.ui(.caption))
                     .foregroundStyle(Theme.textTertiary)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -331,14 +353,14 @@ struct WorkoutCompletionSheet: View {
                     ForEach(Array(exercise.sets.enumerated()), id: \.offset) { idx, set in
                         HStack {
                             Text("Set \(idx + 1)")
-                                .font(.caption)
+                                .font(Theme.Fonts.ui(.caption))
                                 .foregroundStyle(Theme.textTertiary)
                                 .frame(width: 44, alignment: .leading)
                             if let reps = set.reps {
-                                Text("\(reps) reps").font(.caption.monospacedDigit()).foregroundStyle(Theme.textSecondary)
+                                Text("\(reps) reps").font(Theme.Fonts.ui(.caption, mono: true)).foregroundStyle(Theme.textSecondary)
                             }
                             if let weight = set.weight, weight > 0 {
-                                Text("@ \(formatWeight(weight)) \(weightUnit)").font(.caption.monospacedDigit()).foregroundStyle(Theme.textSecondary)
+                                Text("@ \(formatWeight(weight)) \(weightUnit)").font(Theme.Fonts.ui(.caption, mono: true)).foregroundStyle(Theme.textSecondary)
                             }
                             Spacer()
                         }
@@ -362,21 +384,21 @@ struct WorkoutCompletionSheet: View {
             ForEach(result.entries) { entry in
                 HStack(spacing: 8) {
                     Image(systemName: adherenceIcon(entry.status))
-                        .font(.caption)
+                        .font(Theme.Fonts.ui(.caption))
                         .foregroundStyle(adherenceColor(entry.status))
-                    Text(entry.plannedName).font(.subheadline).foregroundStyle(Theme.textPrimary)
+                    Text(entry.plannedName).font(Theme.Fonts.ui(.subheadline)).foregroundStyle(Theme.textPrimary)
                     Spacer()
                     if let target = entry.targetSets {
-                        Text("\(entry.actualSets)/\(target) sets").font(.caption.monospacedDigit()).foregroundStyle(Theme.textSecondary)
+                        Text("\(entry.actualSets)/\(target) sets").font(Theme.Fonts.ui(.caption, mono: true)).foregroundStyle(Theme.textSecondary)
                     } else if entry.actualSets > 0 {
-                        Text("\(entry.actualSets) sets").font(.caption.monospacedDigit()).foregroundStyle(Theme.textSecondary)
+                        Text("\(entry.actualSets) sets").font(Theme.Fonts.ui(.caption, mono: true)).foregroundStyle(Theme.textSecondary)
                     }
                 }
             }
 
             if !result.extras.isEmpty {
                 Text("Off-plan: \(result.extras.joined(separator: ", "))")
-                    .font(.caption)
+                    .font(Theme.Fonts.ui(.caption))
                     .foregroundStyle(Theme.textSecondary)
                     .padding(.top, 4)
             }
@@ -407,7 +429,7 @@ struct WorkoutCompletionSheet: View {
             ForEach(highlights, id: \.self) { highlight in
                 HStack(alignment: .top, spacing: 8) {
                     Text("•").foregroundStyle(Theme.accent)
-                    Text(highlight).font(.subheadline).foregroundStyle(Theme.textPrimary)
+                    Text(highlight).font(Theme.Fonts.ui(.subheadline)).foregroundStyle(Theme.textPrimary)
                 }
             }
         }
@@ -444,7 +466,8 @@ struct WorkoutCompletionSheet: View {
     private func generateShareImage() {
         guard let session else { return }
         let renderer = ImageRenderer(content:
-            ShareableWorkoutCard(session: session, weightUnit: weightUnit, reward: reward)
+            ShareableWorkoutCard(session: session, weightUnit: weightUnit, reward: reward,
+                                 title: SeasonPassCatalog.loadout(for: progression.progress, season: progression.season).title)
                 .frame(width: 390)
         )
         renderer.scale = 3.0
@@ -489,11 +512,12 @@ private struct ShareableWorkoutCard: View {
     let session: WorkoutSession
     let weightUnit: String
     let reward: WorkoutRewardSummary?
+    let title: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
-                RUXPWordmark(size: 22, color: Theme.accent)
+                RUXPWordmark(size: 22, color: Theme.textPrimary, glitch: false)
                 Spacer()
                 Text(session.startedAt, format: .dateTime.month(.wide).day().year())
                     .font(Theme.Fonts.label)
@@ -502,8 +526,11 @@ private struct ShareableWorkoutCard: View {
 
             if let reward, reward.totalXP > 0 {
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
-                    Text("+\(reward.totalXP.grouped) XP").font(Theme.Fonts.number(34)).foregroundStyle(Theme.accent)
+                    Text("+\(reward.totalXP.grouped) XP").font(Theme.Fonts.number(30)).foregroundStyle(Theme.xp)
                     Text("LVL \(reward.levelAfter)").font(Theme.Fonts.title(16)).foregroundStyle(.white.opacity(0.7))
+                    if let title {
+                        Text(title).font(Theme.Fonts.mono(12)).foregroundStyle(Theme.violet)
+                    }
                 }
             }
 
@@ -523,9 +550,9 @@ private struct ShareableWorkoutCard: View {
                 VStack(alignment: .leading, spacing: 4) {
                     ForEach(exercises) { exercise in
                         HStack {
-                            Text(exercise.exerciseName).font(.subheadline).foregroundStyle(.white)
+                            Text(exercise.exerciseName).font(Theme.Fonts.ui(.subheadline)).foregroundStyle(.white)
                             Spacer()
-                            Text("\(exercise.sets.count) sets").font(.caption).foregroundStyle(.white.opacity(0.6))
+                            Text("\(exercise.sets.count) sets").font(Theme.Fonts.ui(.caption)).foregroundStyle(.white.opacity(0.6))
                         }
                     }
                 }
@@ -539,8 +566,8 @@ private struct ShareableWorkoutCard: View {
 
     private func shareStatItem(value: String, label: String) -> some View {
         VStack(spacing: 2) {
-            Text(value).font(.headline.monospacedDigit()).foregroundStyle(.white)
-            Text(label).font(.caption2).foregroundStyle(.white.opacity(0.5))
+            Text(value).font(Theme.Fonts.ui(.headline, mono: true)).foregroundStyle(.white)
+            Text(label).font(Theme.Fonts.ui(.caption2)).foregroundStyle(.white.opacity(0.5))
         }
         .frame(maxWidth: .infinity)
     }

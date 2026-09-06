@@ -16,7 +16,7 @@ struct TrainView: View {
                 Section {
                     VStack(alignment: .leading, spacing: 12) {
                         HStack(alignment: .firstTextBaseline) {
-                            Text("TRAIN").font(Theme.Fonts.display(34)).foregroundStyle(Theme.textPrimary)
+                            Text("Train").font(.system(size: 30, weight: .bold)).foregroundStyle(Theme.textPrimary)
                             Spacer()
                             Text("\(entries.count) WORKOUT\(entries.count == 1 ? "" : "S")")
                                 .eyebrow().foregroundStyle(Theme.textTertiary)
@@ -64,7 +64,7 @@ struct TrainView: View {
             }
             .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
-            .background(Theme.background.ignoresSafeArea())
+            .background(HUDBackground())
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: UUID.self) { workoutID in
                 WorkoutDetailView(workoutID: workoutID)
@@ -88,22 +88,22 @@ struct TrainView: View {
                     .foregroundStyle(Theme.textPrimary)
                 HStack(spacing: 8) {
                     Text(entry.startedAt, format: .dateTime.weekday(.abbreviated).month(.abbreviated).day())
-                        .font(.caption)
+                        .font(Theme.Fonts.ui(.caption))
                         .foregroundStyle(Theme.textSecondary)
                     if let duration = entry.duration {
                         Text(formatDuration(duration))
-                            .font(.caption.monospacedDigit())
+                            .font(Theme.Fonts.ui(.caption, mono: true))
                             .foregroundStyle(Theme.textTertiary)
                     }
                 }
                 if !entry.exerciseNames.isEmpty {
                     Text(entry.exerciseNames.joined(separator: " · "))
-                        .font(.caption)
+                        .font(Theme.Fonts.ui(.caption))
                         .foregroundStyle(Theme.textTertiary)
                         .lineLimit(1)
                 } else if entry.momentCount > 0 && !entry.hasStructuredLog {
                     Text("\(entry.momentCount) voice note\(entry.momentCount == 1 ? "" : "s") · not parsed yet")
-                        .font(.caption)
+                        .font(Theme.Fonts.ui(.caption))
                         .foregroundStyle(Theme.textTertiary)
                 }
                 let hasHealth = (entry.averageHeartRate ?? 0) > 0 || (entry.activeCalories ?? 0) > 0
@@ -111,12 +111,12 @@ struct TrainView: View {
                     HStack(spacing: 10) {
                         if let hr = entry.averageHeartRate, hr > 0 {
                             Label("\(Int(hr)) bpm", systemImage: "heart.fill")
-                                .font(.caption2.monospacedDigit())
+                                .font(Theme.Fonts.ui(.caption2, mono: true))
                                 .foregroundStyle(Theme.textSecondary)
                         }
                         if let cal = entry.activeCalories, cal > 0 {
                             Label("\(Int(cal)) cal", systemImage: "flame.fill")
-                                .font(.caption2.monospacedDigit())
+                                .font(Theme.Fonts.ui(.caption2, mono: true))
                                 .foregroundStyle(Theme.textSecondary)
                         }
                     }
@@ -126,8 +126,8 @@ struct TrainView: View {
             if entry.totalVolume > 0 {
                 VStack(alignment: .trailing, spacing: 2) {
                     Text(formatVolume(entry.totalVolume))
-                        .font(Theme.Fonts.number(17))
-                        .foregroundStyle(Theme.accent)
+                        .font(Theme.Fonts.mono(15))
+                        .foregroundStyle(Theme.textPrimary)
                     Text(weightUnit).eyebrow().foregroundStyle(Theme.textTertiary)
                 }
             }

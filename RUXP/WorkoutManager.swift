@@ -19,6 +19,12 @@ final class WorkoutManager {
     var lastError: String?
 
     private var processor: WorkoutProcessor?
+    /// Presence pings ("lifting now", "trained today"). Set after init; nil in previews.
+    var gameCenter: GameCenterService? {
+        didSet { if activeSession != nil { startPresenceHeartbeat() } }
+    }
+    private var heartbeatTask: Task<Void, Never>?
+    private static let heartbeatInterval: Duration = .seconds(5 * 60)
     /// The workout ID currently being finalized (AI processing). Publicly readable so the UI can present a completion sheet.
     var completedWorkoutID: UUID?
     private var endingSessionID: UUID?
@@ -69,6 +75,7 @@ final class WorkoutManager {
 
         activeSession = session
         Self.logger.info("Restored active workout \(id) with \(session.moments.count) moments")
+        startPresenceHeartbeat()
     }
 
     /// Call this when app returns to foreground to ensure session is fresh from disk
@@ -79,8 +86,10 @@ final class WorkoutManager {
             // Workout was ended (maybe by watch) while we were in background
             activeSession = nil
             UserDefaults.standard.removeObject(forKey: Self.activeWorkoutKey)
+            stopPresenceHeartbeat()
         } else {
             activeSession = session
+            startPresenceHeartbeat()
         }
     }
 
@@ -114,6 +123,7 @@ final class WorkoutManager {
 
         // Start HealthKit tracking (on phone, just records start time for manual save)
         Task { await healthKit.startWorkout() }
+        startPresenceHeartbeat()
 
         Self.logger.info("Started workout \(session.id)")
     }
@@ -124,6 +134,7 @@ final class WorkoutManager {
         isProcessingMoment = false
         persistActiveWorkoutID(nil)
         clearPlanIfUsed(by: session)
+        stopPresenceHeartbeat()
 
         // Delete the session file entirely
         workoutStore.deleteSession(id: session.id)
@@ -150,6 +161,7 @@ final class WorkoutManager {
         isProcessingMoment = false
         persistActiveWorkoutID(nil)
         clearPlanIfUsed(by: session)
+        stopPresenceHeartbeat()
 
         let message = WorkoutMessage(command: .stop, workoutID: session.id)
         connectivity.sendWorkoutMessage(message)
@@ -197,6 +209,7 @@ final class WorkoutManager {
         activeSession = nil
         persistActiveWorkoutID(nil)
         clearPlanIfUsed(by: session)
+        stopPresenceHeartbeat()
         connectivity.updateWorkoutContext(workoutID: nil, isActive: false, startedAt: nil)
 
         // Still try HealthKit query as fallback (in case watch didn't send data)
@@ -215,7 +228,47 @@ final class WorkoutManager {
     /// Awards completion XP synchronously (offline, no AI). PR XP arrives later from the processor.
     private func rewardCompletion(for session: WorkoutSession) {
         let overlapping = events.events(overlapping: session.startedAt, end: session.endedAt ?? ScheduledEventService.now())
-        progression.rewardWorkoutCompletion(session: session, events: overlapping)
+        let reward = progression.rewardWorkoutCompletion(session: session, events: overlapping)
+        recordCompletionPresence(reward: reward, events: overlapping)
+    }
+
+    // MARK: - Presence
+
+    /// While a workout is active, ping the "lifting now" windows every few minutes (plus the
+    /// live event's board) so this player is counted. The watch pings on its own when the phone
+    /// is suspended during a watch-run workout.
+    private func startPresenceHeartbeat() {
+        guard gameCenter != nil else { return }
+        heartbeatTask?.cancel()
+        heartbeatTask = Task { [weak self] in
+            while !Task.isCancelled {
+                guard let self, self.activeSession != nil else { return }
+                await self.pingActivePresence()
+                try? await Task.sleep(for: Self.heartbeatInterval)
+            }
+        }
+    }
+
+    private func stopPresenceHeartbeat() {
+        heartbeatTask?.cancel()
+        heartbeatTask = nil
+    }
+
+    private func pingActivePresence() async {
+        guard let gameCenter else { return }
+        var boards = GameCenterCatalog.activeBoards
+        if let event = events.activeEvent(at: ScheduledEventService.now()), let id = GameCenterCatalog.eventBoard(for: event) {
+            boards.append(id)
+        }
+        await gameCenter.submitPresence(boards: boards)
+    }
+
+    /// A rewarded workout counts toward "trained today" and any event it overlapped.
+    private func recordCompletionPresence(reward: WorkoutRewardSummary, events overlapping: [LiveEvent]) {
+        guard let gameCenter, !reward.isEmpty else { return }
+        var boards = [GameCenterCatalog.trainedToday]
+        boards += overlapping.compactMap(GameCenterCatalog.eventBoard(for:))
+        Task { await gameCenter.submitPresence(boards: boards) }
     }
 
     /// The plan slot is one-shot: once its workout ends (or is discarded), clear it.
@@ -322,6 +375,7 @@ final class WorkoutManager {
                     self.activeSession = session
                     self.workoutStore.saveSession(session)
                     self.connectivity.updateWorkoutContext(workoutID: message.workoutID, isActive: true, startedAt: message.timestamp)
+                    self.startPresenceHeartbeat()
                 }
             case .stop:
                 if self.activeSession?.id == message.workoutID {
@@ -338,6 +392,7 @@ final class WorkoutManager {
                 let session = WorkoutSession(id: workoutID, startedAt: startedAt ?? Date())
                 self.activeSession = session
                 self.workoutStore.saveSession(session)
+                self.startPresenceHeartbeat()
             } else if !isActive, let activeID = self.activeSession?.id, activeID == workoutID {
                 self.handleRemoteStop(workoutID: activeID)
             }

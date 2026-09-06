@@ -4,6 +4,8 @@ import SwiftUI
 struct RUXPWatchApp: App {
     @State private var workoutManager = WatchWorkoutManager()
 
+    init() { Typeface.registerFonts() }
+
     var body: some Scene {
         WindowGroup {
             WatchRootView()

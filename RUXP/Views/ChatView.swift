@@ -138,10 +138,10 @@ struct ChatView: View {
                     
                     VStack(spacing: 8) {
                         Text("No conversations yet")
-                            .font(.subheadline.weight(.medium))
+                            .font(Theme.Fonts.ui(.subheadline, weight: .medium))
                             .foregroundColor(Theme.textPrimary)
                         Text("Start chatting with your trainer\nto see your history here")
-                            .font(.caption)
+                            .font(Theme.Fonts.ui(.caption))
                             .foregroundColor(Theme.textSecondary)
                             .multilineTextAlignment(.center)
                     }
@@ -150,7 +150,7 @@ struct ChatView: View {
                         withAnimation { showHistory = false }
                     } label: {
                         Text("Start a conversation")
-                            .font(.subheadline.weight(.medium))
+                            .font(Theme.Fonts.ui(.subheadline, weight: .medium))
                             .foregroundColor(Theme.background)
                             .padding(.horizontal, 24)
                             .padding(.vertical, 10)
@@ -169,12 +169,12 @@ struct ChatView: View {
                         } label: {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(convo.title)
-                                    .font(.subheadline)
+                                    .font(Theme.Fonts.ui(.subheadline))
                                     .fontWeight(.medium)
                                     .foregroundColor(conversationStore.activeConversationId == convo.id ? Theme.accent : Theme.textPrimary)
                                     .lineLimit(1)
                                 Text(convo.updatedAt.formatted(.relative(presentation: .named)))
-                                    .font(.caption)
+                                    .font(Theme.Fonts.ui(.caption))
                                     .foregroundColor(Theme.textTertiary)
                             }
                             .padding(.vertical, 4)
@@ -214,12 +214,12 @@ struct ChatView: View {
                         .frame(width: 48, height: 48)
                         .overlay(
                             Image(systemName: "figure.strengthtraining.traditional")
-                                .font(.title3)
+                                .font(Theme.Fonts.ui(.title3))
                                 .foregroundColor(Theme.accent)
                         )
                     
                     Text("How can I help with\nyour training?")
-                        .font(.subheadline.weight(.medium))
+                        .font(Theme.Fonts.ui(.subheadline, weight: .medium))
                         .foregroundColor(Theme.textSecondary)
                         .multilineTextAlignment(.center)
                 }
@@ -280,7 +280,7 @@ struct ChatView: View {
                     sendMessage(inputText)
                 } label: {
                     Image(systemName: "arrow.up.circle.fill")
-                        .font(.title2)
+                        .font(Theme.Fonts.ui(.title2))
                         .foregroundColor(inputText.trimmingCharacters(in: .whitespaces).isEmpty ? Theme.textTertiary : Theme.accent)
                 }
                 .disabled(inputText.trimmingCharacters(in: .whitespaces).isEmpty || chatService.isResponding)
@@ -370,9 +370,9 @@ private struct SuggestedChip: View {
         Button(action: action) {
             HStack(spacing: 6) {
                 Image(systemName: icon)
-                    .font(.caption2)
+                    .font(Theme.Fonts.ui(.caption2))
                 Text(text)
-                    .font(.caption)
+                    .font(Theme.Fonts.ui(.caption))
                     .fontWeight(.medium)
                     .lineLimit(2)
                     .minimumScaleFactor(0.8)

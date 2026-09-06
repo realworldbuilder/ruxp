@@ -6,8 +6,11 @@ struct SettingsView: View {
     @Environment(InsightsStore.self) private var insightsStore
     @Environment(ProgressionService.self) private var progression
     @Environment(\.liveEvents) private var events
+    @Environment(GameCenterService.self) private var gameCenter
+    @Environment(\.livePresence) private var presence
 
     @AppStorage("weightUnit") private var weightUnit: String = WeightUnit.lbs.rawValue
+    @AppStorage(GameCenterService.syncEnabledKey) private var gameCenterSync = true
     @State private var showDeleteConfirmation = false
     @State private var showExportSheet = false
     @State private var exportData: Data?
@@ -81,6 +84,18 @@ struct SettingsView: View {
                 .pickerStyle(.segmented)
             }
 
+            // MARK: - Game Center
+            Section {
+                Toggle("Sync to Game Center", isOn: $gameCenterSync)
+                    .onChange(of: gameCenterSync) { gameCenter.setSyncEnabled(gameCenterSync) }
+                    .disabled(gameCenter.authState == .disabled)
+                LabeledContent("Status", value: gameCenter.statusLine)
+            } header: {
+                Text("Game Center")
+            } footer: {
+                Text("Leaderboards, achievements, and the live lifting counts run on Game Center. Only your XP totals, week streak, milestones, and an \"I'm training\" ping leave the device.")
+            }
+
             // MARK: - Data
             Section {
                 Button {
@@ -110,14 +125,14 @@ struct SettingsView: View {
                         Image(systemName: "key.fill")
                             .foregroundStyle(Theme.accent)
                         Text("Key configured (\(mask))")
-                            .font(.subheadline)
+                            .font(Theme.Fonts.ui(.subheadline))
                     }
                 } else {
                     HStack {
                         Image(systemName: "key.slash")
                             .foregroundStyle(Theme.error)
                         Text("No key set — AI features disabled")
-                            .font(.subheadline)
+                            .font(Theme.Fonts.ui(.subheadline))
                             .foregroundStyle(Theme.textSecondary)
                     }
                 }
@@ -143,15 +158,15 @@ struct SettingsView: View {
                 case .testing:
                     HStack(spacing: 8) {
                         ProgressView()
-                        Text("Checking key…").font(.caption).foregroundStyle(Theme.textSecondary)
+                        Text("Checking key…").font(Theme.Fonts.ui(.caption)).foregroundStyle(Theme.textSecondary)
                     }
                 case .valid:
                     Label("Key works", systemImage: "checkmark.circle.fill")
-                        .font(.caption)
+                        .font(Theme.Fonts.ui(.caption))
                         .foregroundStyle(Theme.accent)
                 case .invalid(let message):
                     Label(message, systemImage: "exclamationmark.triangle.fill")
-                        .font(.caption)
+                        .font(Theme.Fonts.ui(.caption))
                         .foregroundStyle(Theme.error)
                 }
 
@@ -172,7 +187,7 @@ struct SettingsView: View {
             Section("About") {
                 LabeledContent("Workout parsing", value: "OpenAI GPT-4o")
                 LabeledContent("Transcription", value: "OpenAI Whisper (cloud)")
-                LabeledContent("Live counts", value: "Simulated in this build")
+                LabeledContent("Live counts", value: "Game Center players")
 
                 HStack {
                     Text("Version")
@@ -213,7 +228,7 @@ struct SettingsView: View {
 
                     if sampleDataLoaded {
                         Text("7 sample workouts loaded. Profile and level rebuilt.")
-                            .font(.caption)
+                            .font(Theme.Fonts.ui(.caption))
                             .foregroundStyle(Theme.accent)
                     }
 
@@ -226,6 +241,20 @@ struct SettingsView: View {
                         .onChange(of: skipMinimumDuration) {
                             ProgressionRules.minimumWorkoutDuration = skipMinimumDuration ? 0 : 10 * 60
                         }
+
+                    LabeledContent("Game Center", value: gameCenter.statusLine)
+                    LabeledContent("Last submission", value: gameCenter.lastSubmissionResult)
+                    if let live = presence as? GameCenterLivePresence {
+                        LabeledContent("Presence", value: live.snapshot.updatedAt.map { $0.formatted(date: .omitted, time: .standard) } ?? "never")
+                        ForEach(live.counts.keys.sorted(), id: \.self) { id in
+                            LabeledContent(id, value: "\(live.counts[id] ?? 0)")
+                        }
+                        if let error = live.lastError {
+                            Text(error).font(.caption).foregroundStyle(Theme.error)
+                        }
+                        Button("Refresh presence") { live.refreshNow() }
+                    }
+                    Button("Flush Game Center now") { gameCenter.flushNow() }
                 } header: {
                     Text("Developer")
                 } footer: {
@@ -248,10 +277,11 @@ struct SettingsView: View {
                 workoutManager.workoutStore.deleteAllData()
                 insightsStore.resetAll()
                 progression.resetAll()
+                gameCenter.clearLocalCache()
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("This will permanently remove all workouts, transcripts, XP, and level progress from this device. This cannot be undone.")
+            Text("This will permanently remove all workouts, transcripts, XP, and level progress from this device. Scores already posted to Game Center stay on its leaderboards. This cannot be undone.")
         }
         .sheet(isPresented: $showSoulEditor) {
             TrainerSoulEditor(soul: $soul)

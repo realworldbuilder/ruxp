@@ -210,7 +210,7 @@ struct InsightsTab: View {
     private var statsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Label(periodLabel, systemImage: "chart.bar.fill")
-                .font(.subheadline.bold())
+                .font(Theme.Fonts.ui(.subheadline, weight: .bold))
                 .foregroundStyle(.secondary)
                 .padding(.horizontal)
 
@@ -278,24 +278,24 @@ struct InsightsTab: View {
     private func statCard(icon: String, value: String, title: String, subtitle: String?, color: Color) -> some View {
         HStack(spacing: 10) {
             Image(systemName: icon)
-                .font(.caption)
+                .font(Theme.Fonts.ui(.caption))
                 .foregroundStyle(color)
                 .frame(width: 20)
 
             VStack(alignment: .leading, spacing: 2) {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text(value)
-                        .font(.title3.bold())
+                        .font(Theme.Fonts.ui(.title3, weight: .bold))
                         .lineLimit(1)
                         .minimumScaleFactor(0.6)
                     Text(title)
-                        .font(.caption)
+                        .font(Theme.Fonts.ui(.caption))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
                 if let subtitle {
                     Text(subtitle)
-                        .font(.caption2)
+                        .font(Theme.Fonts.ui(.caption2))
                         .foregroundStyle(.tertiary)
                         .lineLimit(1)
                 }
@@ -307,7 +307,7 @@ struct InsightsTab: View {
                 shareStatCard(icon: icon, value: value, title: title, subtitle: subtitle, color: color)
             }) {
                 Image(systemName: "square.and.arrow.up")
-                    .font(.caption2)
+                    .font(Theme.Fonts.ui(.caption2))
                     .foregroundStyle(Theme.textTertiary)
             }
             .buttonStyle(.plain)
@@ -320,7 +320,7 @@ struct InsightsTab: View {
     private var recentInsightsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Label("Recent Insights", systemImage: "lightbulb.fill")
-                .font(.subheadline.bold())
+                .font(Theme.Fonts.ui(.subheadline, weight: .bold))
                 .foregroundStyle(.secondary)
                 .padding(.horizontal)
 
@@ -345,13 +345,13 @@ struct InsightsTab: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Label("Personal Records", systemImage: "star.fill")
-                    .font(.subheadline.bold())
+                    .font(Theme.Fonts.ui(.subheadline, weight: .bold))
                     .foregroundStyle(.secondary)
                 Spacer()
                 Button("See All") {
                     showingPRDetail = true
                 }
-                .font(.caption)
+                .font(Theme.Fonts.ui(.caption))
                 .foregroundStyle(Theme.accent)
             }
             .padding(.horizontal)
@@ -370,16 +370,16 @@ struct InsightsTab: View {
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(pr.exercise)
-                                    .font(.subheadline.bold())
+                                    .font(Theme.Fonts.ui(.subheadline, weight: .bold))
                                 if let date = pr.date as Date? {
                                     Text(date, format: .dateTime.month(.abbreviated).day())
-                                        .font(.caption2)
+                                        .font(Theme.Fonts.ui(.caption2))
                                         .foregroundStyle(.tertiary)
                                 }
                             }
                             Spacer()
                             Text("\(Int(pr.weight)) lbs")
-                                .font(.headline)
+                                .font(Theme.Fonts.ui(.headline))
                                 .foregroundStyle(Theme.accent)
                         }
                         .themeCard()
@@ -398,22 +398,22 @@ struct InsightsTab: View {
                     .fill(rankColor(rank).opacity(0.2))
                     .frame(width: 24, height: 24)
                 Text("\(rank)")
-                    .font(.caption2.weight(.bold))
+                    .font(Theme.Fonts.ui(.caption2, weight: .bold))
                     .foregroundStyle(rankColor(rank))
             }
 
             // Weight
             Text("\(Int(pr.weight))")
-                .font(.system(size: 22, weight: .bold, design: .rounded))
+                .font(Theme.Fonts.title(22))
                 .foregroundStyle(Theme.accent)
 
             Text("lbs")
-                .font(.caption2.weight(.medium))
+                .font(Theme.Fonts.ui(.caption2, weight: .medium))
                 .foregroundStyle(Theme.textSecondary)
 
             // Exercise name
             Text(pr.exercise)
-                .font(.caption2.weight(.semibold))
+                .font(Theme.Fonts.ui(.caption2, weight: .semibold))
                 .foregroundStyle(Theme.textPrimary)
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
@@ -422,11 +422,11 @@ struct InsightsTab: View {
             // Improvement
             if let improvement = pr.improvement, improvement > 0 {
                 Text("+\(Int(improvement))")
-                    .font(.caption2.weight(.medium))
+                    .font(Theme.Fonts.ui(.caption2, weight: .medium))
                     .foregroundStyle(.green)
             } else {
                 Text(" ")
-                    .font(.caption2)
+                    .font(Theme.Fonts.ui(.caption2))
             }
         }
         .frame(maxWidth: .infinity, minHeight: 130)
@@ -574,10 +574,10 @@ struct InsightsTab: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text(linked.story.title)
-                    .font(.headline)
+                    .font(Theme.Fonts.ui(.headline))
                 Spacer()
                 Text(linked.story.type.displayName)
-                    .font(.caption2)
+                    .font(Theme.Fonts.ui(.caption2))
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)
                     .background(linked.story.type.color.opacity(0.15), in: Capsule())
@@ -585,16 +585,16 @@ struct InsightsTab: View {
             }
 
             Text(linked.story.body)
-                .font(.subheadline)
+                .font(Theme.Fonts.ui(.subheadline))
                 .foregroundStyle(.secondary)
                 .lineLimit(3)
 
             HStack(spacing: 4) {
                 Image(systemName: "dumbbell.fill")
-                    .font(.caption2)
+                    .font(Theme.Fonts.ui(.caption2))
                     .foregroundStyle(Theme.accent)
                 Text(linked.workoutDate, format: .dateTime.month(.abbreviated).day())
-                    .font(.caption)
+                    .font(Theme.Fonts.ui(.caption))
                     .foregroundStyle(Theme.accent)
             }
 
@@ -602,7 +602,7 @@ struct InsightsTab: View {
                 HStack(spacing: 4) {
                     ForEach(linked.story.tags, id: \.self) { tag in
                         Text(tag)
-                            .font(.caption2)
+                            .font(Theme.Fonts.ui(.caption2))
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
                             .background(.secondary.opacity(0.1), in: Capsule())
@@ -617,19 +617,19 @@ struct InsightsTab: View {
     private var aiProgressSummarySection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Label("AI Training Summary", systemImage: "brain.head.profile")
-                .font(.subheadline.bold())
+                .font(Theme.Fonts.ui(.subheadline, weight: .bold))
                 .foregroundStyle(.secondary)
                 .padding(.horizontal)
             
             VStack(alignment: .leading, spacing: 12) {
                 HStack(alignment: .top, spacing: 12) {
                     Image(systemName: "quote.bubble.fill")
-                        .font(.title2)
+                        .font(Theme.Fonts.ui(.title2))
                         .foregroundStyle(Theme.accent.opacity(0.7))
                         .padding(.top, 2)
                     
                     Text(intelligenceEngine?.aiProgressSummary ?? "")
-                        .font(.body)
+                        .font(Theme.Fonts.ui(.body))
                         .foregroundStyle(Theme.textPrimary)
                         .lineSpacing(2)
                 }
@@ -655,7 +655,7 @@ struct InsightsTab: View {
     private var prPredictionsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Label("PR Predictions", systemImage: "crystal.ball")
-                .font(.subheadline.bold())
+                .font(Theme.Fonts.ui(.subheadline, weight: .bold))
                 .foregroundStyle(.secondary)
                 .padding(.horizontal)
             
@@ -665,19 +665,19 @@ struct InsightsTab: View {
                         VStack(alignment: .leading, spacing: 4) {
                             HStack {
                                 Text("\(Int(prediction.targetWeight))")
-                                    .font(.title2.bold())
+                                    .font(Theme.Fonts.ui(.title2, weight: .bold))
                                     .foregroundStyle(Theme.accent)
                                 Text("lbs")
-                                    .font(.subheadline)
+                                    .font(Theme.Fonts.ui(.subheadline))
                                     .foregroundStyle(.secondary)
                             }
                             
                             Text(prediction.exercise)
-                                .font(.headline)
+                                .font(Theme.Fonts.ui(.headline))
                                 .foregroundStyle(Theme.textPrimary)
                             
                             Text("from \(Int(prediction.currentWeight))lbs")
-                                .font(.caption)
+                                .font(Theme.Fonts.ui(.caption))
                                 .foregroundStyle(.tertiary)
                         }
                         
@@ -685,7 +685,7 @@ struct InsightsTab: View {
                         
                         VStack(alignment: .trailing, spacing: 4) {
                             Text("~\(prediction.weeksEstimate) weeks")
-                                .font(.subheadline.bold())
+                                .font(Theme.Fonts.ui(.subheadline, weight: .bold))
                                 .foregroundStyle(Theme.textSecondary)
                             
                             HStack(spacing: 4) {
@@ -709,7 +709,7 @@ struct InsightsTab: View {
     private var muscleBalanceSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Label("Muscle Balance", systemImage: "figure.strengthtraining.traditional")
-                .font(.subheadline.bold())
+                .font(Theme.Fonts.ui(.subheadline, weight: .bold))
                 .foregroundStyle(.secondary)
                 .padding(.horizontal)
             
@@ -718,7 +718,7 @@ struct InsightsTab: View {
                 ForEach(intelligenceEngine?.muscleBalance.muscleGroups ?? []) { muscle in
                     HStack {
                         Text(muscle.muscleGroup)
-                            .font(.caption.bold())
+                            .font(Theme.Fonts.ui(.caption, weight: .bold))
                             .frame(width: 60, alignment: .leading)
                             .foregroundStyle(Theme.textPrimary)
                         
@@ -738,7 +738,7 @@ struct InsightsTab: View {
                         .frame(height: 8)
                         
                         Text("\(Int(muscle.percentage))%")
-                            .font(.caption2)
+                            .font(Theme.Fonts.ui(.caption2))
                             .foregroundStyle(.secondary)
                             .frame(width: 35, alignment: .trailing)
                     }
@@ -751,13 +751,13 @@ struct InsightsTab: View {
                             Image(systemName: "exclamationmark.triangle.fill")
                                 .foregroundStyle(.orange)
                             Text("Balance Notes")
-                                .font(.caption.bold())
+                                .font(Theme.Fonts.ui(.caption, weight: .bold))
                                 .foregroundStyle(Theme.textPrimary)
                         }
                         
                         ForEach(intelligenceEngine?.muscleBalance.imbalances ?? [], id: \.self) { imbalance in
                             Text("• \(imbalance)")
-                                .font(.caption)
+                                .font(Theme.Fonts.ui(.caption))
                                 .foregroundStyle(.secondary)
                         }
                     }
@@ -775,7 +775,7 @@ struct InsightsTab: View {
     private var weeklyComparisonSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Label("This Week vs Last Week", systemImage: "chart.bar.xaxis")
-                .font(.subheadline.bold())
+                .font(Theme.Fonts.ui(.subheadline, weight: .bold))
                 .foregroundStyle(.secondary)
                 .padding(.horizontal)
             
@@ -792,12 +792,12 @@ struct InsightsTab: View {
     private func comparisonCard(_ title: String, change: WeeklyChange?) -> some View {
         VStack(spacing: 6) {
             Text(title)
-                .font(.caption2)
+                .font(Theme.Fonts.ui(.caption2))
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
             
             Text(change?.displayValue ?? "=")
-                .font(.subheadline.bold())
+                .font(Theme.Fonts.ui(.subheadline, weight: .bold))
                 .foregroundStyle(change?.color ?? .secondary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
@@ -811,7 +811,7 @@ struct InsightsTab: View {
     private var smartInsightsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Label("Smart Insights", systemImage: "lightbulb.2.fill")
-                .font(.subheadline.bold())
+                .font(Theme.Fonts.ui(.subheadline, weight: .bold))
                 .foregroundStyle(.secondary)
                 .padding(.horizontal)
             
@@ -820,27 +820,27 @@ struct InsightsTab: View {
                     VStack(alignment: .leading, spacing: 12) {
                         HStack {
                             Image(systemName: insight.type.icon)
-                                .font(.title3)
+                                .font(Theme.Fonts.ui(.title3))
                                 .foregroundStyle(insight.type.color)
                             
                             Text(insight.title)
-                                .font(.headline)
+                                .font(Theme.Fonts.ui(.headline))
                                 .foregroundStyle(Theme.textPrimary)
                             
                             Spacer()
                         }
                         
                         Text(insight.insight)
-                            .font(.subheadline)
+                            .font(Theme.Fonts.ui(.subheadline))
                             .foregroundStyle(Theme.textSecondary)
                         
                         HStack(spacing: 8) {
                             Image(systemName: "arrow.right.circle.fill")
-                                .font(.caption)
+                                .font(Theme.Fonts.ui(.caption))
                                 .foregroundStyle(insight.type.color)
                             
                             Text(insight.recommendation)
-                                .font(.caption)
+                                .font(Theme.Fonts.ui(.caption))
                                 .foregroundStyle(.secondary)
                         }
                         .padding(.top, 4)
@@ -887,31 +887,31 @@ struct MetricCard: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Image(systemName: metric.icon)
-                    .font(.caption)
+                    .font(Theme.Fonts.ui(.caption))
                     .foregroundStyle(metric.color)
                 Spacer()
                 if let trend = metric.trend, let trendValue = metric.trendValue {
                     HStack(spacing: 2) {
                         Image(systemName: trend.icon)
-                            .font(.caption2)
+                            .font(Theme.Fonts.ui(.caption2))
                         Text(trendValue)
-                            .font(.caption2)
+                            .font(Theme.Fonts.ui(.caption2))
                     }
                     .foregroundStyle(trend.color)
                 }
             }
 
             Text(metric.value)
-                .font(.title2)
+                .font(Theme.Fonts.ui(.title2))
                 .fontWeight(.bold)
 
             Text(metric.title)
-                .font(.caption)
+                .font(Theme.Fonts.ui(.caption))
                 .foregroundStyle(.secondary)
 
             if let subtitle = metric.subtitle {
                 Text(subtitle)
-                    .font(.caption2)
+                    .font(Theme.Fonts.ui(.caption2))
                     .foregroundStyle(.tertiary)
             }
         }
@@ -929,7 +929,7 @@ struct FilterChip: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.caption)
+                .font(Theme.Fonts.ui(.caption))
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
                 .background(
@@ -969,7 +969,7 @@ struct ShareableInsightCard: View {
                 .foregroundColor(accentColor)
 
             Text(value)
-                .font(.system(size: 48, weight: .black, design: .rounded))
+                .font(Theme.Fonts.display(48))
                 .foregroundColor(.white)
 
             Text(title)

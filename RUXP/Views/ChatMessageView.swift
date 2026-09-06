@@ -29,7 +29,7 @@ private struct UserBubble: View {
         HStack {
             Spacer(minLength: 60)
             Text(message.blocks.first?.payload.text ?? "")
-                .font(.body)
+                .font(Theme.Fonts.ui(.body))
                 .foregroundColor(.white)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)

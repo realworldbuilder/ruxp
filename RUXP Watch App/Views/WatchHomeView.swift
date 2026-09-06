@@ -12,30 +12,29 @@ struct WatchHomeView: View {
             VStack(spacing: 10) {
                 HStack {
                     Text("RUXP")
-                        .font(.system(size: 18, weight: .black, design: .rounded))
+                        .font(WatchTheme.Fonts.display(15))
                         .foregroundStyle(WatchTheme.textPrimary)
                     Spacer()
                     if let level = workoutManager.progression?.level {
                         Text("LVL \(level)")
-                            .font(.system(size: 11, weight: .black, design: .rounded))
-                            .foregroundStyle(WatchTheme.onAccent)
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(WatchTheme.accent)
                             .padding(.horizontal, 7).padding(.vertical, 3)
-                            .background(WatchTheme.accent, in: Capsule())
+                            .background(WatchTheme.accent.opacity(0.14), in: Capsule())
                     }
                 }
 
                 VStack(spacing: 2) {
                     HStack(alignment: .firstTextBaseline, spacing: 5) {
-                        Text(live.liftingNow.grouped)
-                            .font(.system(size: 30, weight: .heavy, design: .rounded).monospacedDigit())
+                        Text(live.isFresh() ? live.liftingNow.grouped : "—")
+                            .font(WatchTheme.Fonts.number(26))
                             .foregroundStyle(WatchTheme.textPrimary)
                             .contentTransition(.numericText())
                             .animation(.spring(response: 0.3, dampingFraction: 0.7), value: live.liftingNow)
                         WatchLiveDot(size: 5).offset(y: -8)
                     }
                     Text("LIFTING NOW")
-                        .font(.system(size: 10, weight: .bold, design: .rounded))
-                        .tracking(1.4)
+                        .watchEyebrow()
                         .foregroundStyle(WatchTheme.textSecondary)
                 }
                 .frame(maxWidth: .infinity)
@@ -44,12 +43,12 @@ struct WatchHomeView: View {
                     HStack(spacing: 5) {
                         WatchLiveDot(size: 4)
                         Text(event.title)
-                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .font(WatchTheme.Fonts.tagline(11))
                             .foregroundStyle(WatchTheme.accent)
                         Spacer(minLength: 0)
                         Text("+\(event.xpReward) XP")
-                            .font(.system(size: 11, weight: .bold, design: .rounded).monospacedDigit())
-                            .foregroundStyle(WatchTheme.textSecondary)
+                            .font(WatchTheme.Fonts.mono(10))
+                            .foregroundStyle(WatchTheme.xp)
                     }
                     .padding(.horizontal, 10).padding(.vertical, 6)
                     .background(WatchTheme.accent.opacity(0.14), in: RoundedRectangle(cornerRadius: 10))
@@ -62,24 +61,24 @@ struct WatchHomeView: View {
                         Image(systemName: "figure.strengthtraining.traditional")
                             .font(.system(size: 15, weight: .bold))
                         Text("Start Workout")
-                            .font(.system(size: 15, weight: .black, design: .rounded))
+                            .font(WatchTheme.Fonts.tagline(15))
                     }
-                    .foregroundStyle(WatchTheme.onAccent)
+                    .foregroundStyle(WatchTheme.onButton)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
-                    .background(WatchTheme.accent, in: RoundedRectangle(cornerRadius: 14))
+                    .background(WatchTheme.button, in: Capsule())
                 }
                 .buttonStyle(.plain)
 
                 if let daysSince = daysSinceLastWorkout, daysSince > 0 {
                     Text("\(daysSince) day\(daysSince == 1 ? "" : "s") since your last lift")
-                        .font(.system(.caption2, design: .rounded))
+                        .font(WatchTheme.Fonts.caption2)
                         .foregroundStyle(WatchTheme.textTertiary)
                 }
             }
             .padding(.horizontal, 6)
         }
-        .containerBackground(WatchTheme.background.gradient, for: .navigation)
+        .containerBackground(WatchTheme.backgroundGradient, for: .navigation)
     }
 
     private var daysSinceLastWorkout: Int? {

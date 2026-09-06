@@ -65,21 +65,21 @@ struct ActiveWorkoutView: View {
         TabView {
             // Page 1: Main controls
             mainPage
-                .containerBackground(WatchTheme.background.gradient, for: .tabView)
+                .containerBackground(WatchTheme.backgroundGradient, for: .tabView)
 
             // Page 2: Plan (only when the phone sent one)
             if workoutManager.currentPlan != nil {
                 planPage
-                    .containerBackground(WatchTheme.background.gradient, for: .tabView)
+                    .containerBackground(WatchTheme.backgroundGradient, for: .tabView)
             }
 
             // Page: Health stats
             statsPage
-                .containerBackground(WatchTheme.background.gradient, for: .tabView)
+                .containerBackground(WatchTheme.backgroundGradient, for: .tabView)
 
             // Page: Now Playing
             NowPlayingPage()
-                .containerBackground(WatchTheme.background.gradient, for: .tabView)
+                .containerBackground(WatchTheme.backgroundGradient, for: .tabView)
         }
         .tabViewStyle(.verticalPage)
     }
@@ -90,23 +90,22 @@ struct ActiveWorkoutView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 10) {
                 Text(workoutManager.currentPlan?.title.uppercased() ?? "PLAN")
-                    .font(.system(.caption2, weight: .semibold))
+                    .watchEyebrow()
                     .foregroundStyle(WatchTheme.textTertiary)
-                    .tracking(1.5)
                     .frame(maxWidth: .infinity)
 
                 ForEach(Array((workoutManager.currentPlan?.exercises ?? []).enumerated()), id: \.offset) { _, exercise in
                     VStack(alignment: .leading, spacing: 2) {
                         Text(exercise.name)
-                            .font(.system(.footnote, weight: .semibold))
+                            .font(WatchTheme.Fonts.title(13))
                             .foregroundStyle(WatchTheme.textPrimary)
                         HStack(spacing: 6) {
                             Text(exercise.prescription)
-                                .font(.caption2)
-                                .foregroundStyle(WatchTheme.accent)
+                                .font(WatchTheme.Fonts.mono(10))
+                                .foregroundStyle(WatchTheme.textSecondary)
                             if let rest = exercise.restSeconds {
                                 Text("R \(rest)s")
-                                    .font(.caption2)
+                                    .font(WatchTheme.Fonts.mono(10))
                                     .foregroundStyle(WatchTheme.textTertiary)
                             }
                         }
@@ -125,18 +124,21 @@ struct ActiveWorkoutView: View {
             // Timer — uses TimelineView so watchOS keeps it ticking
             TimelineView(.periodic(from: .now, by: 1.0)) { _ in
                 Text(formattedElapsed)
-                    .font(.system(.title2, design: .rounded, weight: .heavy).monospacedDigit())
+                    .font(WatchTheme.Fonts.mono(24, weight: .heavy))
                     .foregroundStyle(WatchTheme.textPrimary)
             }
             .padding(.top, 4)
 
             // Other people are doing this with you.
-            HStack(spacing: 4) {
-                WatchLiveDot(size: 4)
-                Text("\(workoutManager.livePresence.snapshot.liftingNow.grouped) still lifting")
-                    .font(.system(size: 11, weight: .semibold, design: .rounded).monospacedDigit())
-                    .foregroundStyle(WatchTheme.textSecondary)
-                    .contentTransition(.numericText())
+            if workoutManager.livePresence.snapshot.isFresh() {
+                let liftingNow = workoutManager.livePresence.snapshot.liftingNow
+                HStack(spacing: 4) {
+                    WatchLiveDot(size: 4)
+                    Text(liftingNow <= 1 ? "Only you right now" : "\(liftingNow.grouped) still lifting")
+                        .font(WatchTheme.Fonts.caption)
+                        .foregroundStyle(WatchTheme.textSecondary)
+                        .contentTransition(.numericText())
+                }
             }
 
             Spacer(minLength: 4)
@@ -159,14 +161,14 @@ struct ActiveWorkoutView: View {
                         .tint(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 8)
-                        .background(.red.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
+                        .background(WatchTheme.live.opacity(0.5), in: Capsule())
                 } else {
                     Text("End")
-                        .font(.system(.footnote, weight: .semibold))
+                        .font(WatchTheme.Fonts.tagline(13))
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 8)
-                        .background(.red.opacity(0.8), in: RoundedRectangle(cornerRadius: 10))
+                        .background(WatchTheme.live.opacity(0.85), in: Capsule())
                 }
             }
             .buttonStyle(.plain)
@@ -183,19 +185,18 @@ struct ActiveWorkoutView: View {
     private var statsPage: some View {
         VStack(spacing: 14) {
             Text("STATS")
-                .font(.system(.caption2, weight: .semibold))
+                .watchEyebrow()
                 .foregroundStyle(WatchTheme.textTertiary)
-                .tracking(1.5)
 
             if let event = workoutManager.events.activeEvent(at: ScheduledEventService.now()) {
                 HStack(spacing: 5) {
                     WatchLiveDot(size: 4)
                     Text(event.title)
-                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .font(WatchTheme.Fonts.tagline(11))
                         .foregroundStyle(WatchTheme.accent)
                     Text("+\(event.xpReward) XP")
-                        .font(.system(size: 11, weight: .bold, design: .rounded))
-                        .foregroundStyle(WatchTheme.textSecondary)
+                        .font(WatchTheme.Fonts.mono(10))
+                        .foregroundStyle(WatchTheme.xp)
                 }
             }
 
@@ -204,13 +205,13 @@ struct ActiveWorkoutView: View {
             // Heart Rate
             HStack(spacing: 6) {
                 Image(systemName: "heart.fill")
-                    .foregroundStyle(.red)
+                    .foregroundStyle(WatchTheme.live)
                 Text(workoutManager.healthKitService.heartRate > 0
                      ? "\(Int(workoutManager.healthKitService.heartRate))"
                      : "--")
-                    .font(.system(.title2, design: .monospaced, weight: .bold))
+                    .font(WatchTheme.Fonts.mono(22))
                 Text("BPM")
-                    .font(.caption)
+                    .watchEyebrow()
                     .foregroundStyle(WatchTheme.textTertiary)
             }
             .foregroundStyle(WatchTheme.textPrimary)
@@ -222,9 +223,9 @@ struct ActiveWorkoutView: View {
                 Text(workoutManager.healthKitService.activeCalories > 0
                      ? "\(Int(workoutManager.healthKitService.activeCalories))"
                      : "--")
-                    .font(.system(.title2, design: .monospaced, weight: .bold))
+                    .font(WatchTheme.Fonts.mono(22))
                 Text("CAL")
-                    .font(.caption)
+                    .watchEyebrow()
                     .foregroundStyle(WatchTheme.textTertiary)
             }
             .foregroundStyle(WatchTheme.textPrimary)
@@ -232,11 +233,11 @@ struct ActiveWorkoutView: View {
             // Moments
             HStack(spacing: 6) {
                 Image(systemName: "waveform")
-                    .foregroundStyle(WatchTheme.accent)
+                    .foregroundStyle(WatchTheme.cyan)
                 Text("\(workoutManager.momentCount)")
-                    .font(.system(.title2, design: .monospaced, weight: .bold))
+                    .font(WatchTheme.Fonts.mono(22))
                 Text(workoutManager.momentCount == 1 ? "MOMENT" : "MOMENTS")
-                    .font(.caption)
+                    .watchEyebrow()
                     .foregroundStyle(WatchTheme.textTertiary)
             }
             .foregroundStyle(WatchTheme.textPrimary)
@@ -253,12 +254,12 @@ struct ActiveWorkoutView: View {
             Spacer()
             TimelineView(.periodic(from: .now, by: 1.0)) { _ in
                 Text(formattedElapsed)
-                    .font(.system(.title2, design: .monospaced))
+                    .font(WatchTheme.Fonts.mono(22, weight: .medium))
                     .foregroundStyle(WatchTheme.textPrimary.opacity(0.6))
             }
             if workoutManager.healthKitService.heartRate > 0 {
                 HStack(spacing: 4) {
-                    Image(systemName: "heart.fill").font(.caption2).foregroundStyle(.red.opacity(0.5))
+                    Image(systemName: "heart.fill").font(.caption2).foregroundStyle(WatchTheme.live.opacity(0.5))
                     Text("\(Int(workoutManager.healthKitService.heartRate))").font(.caption)
                 }
                 .foregroundStyle(WatchTheme.textSecondary.opacity(0.6))
@@ -318,7 +319,7 @@ struct ActiveWorkoutView: View {
                             .frame(width: 6, height: 6)
                             .opacity(dotVisible ? 1.0 : 0.0)
                         Text(formattedRecordingDuration)
-                            .font(.system(.caption, design: .monospaced))
+                            .font(WatchTheme.Fonts.mono(12))
                             .foregroundStyle(WatchTheme.textPrimary)
                     }
                 }
@@ -326,7 +327,7 @@ struct ActiveWorkoutView: View {
                 HStack(spacing: 4) {
                     ProgressView().tint(WatchTheme.accent)
                     Text("Transcribing")
-                        .font(.caption2)
+                        .font(WatchTheme.Fonts.caption2)
                         .foregroundStyle(WatchTheme.accent)
                 }
                 .frame(maxWidth: .infinity)
@@ -339,10 +340,10 @@ struct ActiveWorkoutView: View {
                         HStack(spacing: 4) {
                             Image(systemName: "timer")
                                 .font(.caption2)
-                                .foregroundStyle(WatchTheme.accent)
+                                .foregroundStyle(WatchTheme.cyan)
                             Text("Rest: \(formattedRestTime)")
-                                .font(.system(.caption, design: .monospaced))
-                                .foregroundStyle(WatchTheme.accent)
+                                .font(WatchTheme.Fonts.mono(12))
+                                .foregroundStyle(WatchTheme.cyan)
                         }
                     }
                 }
@@ -350,7 +351,7 @@ struct ActiveWorkoutView: View {
                 .frame(maxWidth: .infinity)
             } else {
                 Text("\(workoutManager.momentCount) moment\(workoutManager.momentCount == 1 ? "" : "s")")
-                    .font(.caption2)
+                    .font(WatchTheme.Fonts.caption2)
                     .foregroundStyle(WatchTheme.textSecondary)
             }
         }
@@ -366,7 +367,7 @@ struct ActiveWorkoutView: View {
             // Post-set feedback (shows after transcript fades)
             if let feedback = workoutManager.postSetFeedback, workoutManager.showPostSetFeedback {
                 Text(feedback)
-                    .font(.caption)
+                    .font(WatchTheme.Fonts.caption)
                     .foregroundStyle(WatchTheme.accentBright)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 10)
@@ -378,7 +379,7 @@ struct ActiveWorkoutView: View {
             // Transcript snippet
             if let snippet = workoutManager.latestTranscriptSnippet, showSnippet {
                 Text(snippet.prefix(80) + (snippet.count > 80 ? "..." : ""))
-                    .font(.caption2)
+                    .font(WatchTheme.Fonts.caption2)
                     .foregroundStyle(WatchTheme.textPrimary.opacity(0.8))
                     .lineLimit(2)
                     .multilineTextAlignment(.center)
@@ -391,7 +392,7 @@ struct ActiveWorkoutView: View {
             
             if let error = workoutManager.lastError {
                 Label(error, systemImage: "exclamationmark.triangle.fill")
-                    .font(.caption2).foregroundStyle(.red).padding(.horizontal, 8)
+                    .font(WatchTheme.Fonts.caption2).foregroundStyle(WatchTheme.live).padding(.horizontal, 8)
             }
         }
     }

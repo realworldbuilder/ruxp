@@ -21,12 +21,22 @@ Single source of truth for XP. `@Observable @MainActor`, persisted at `Documents
 Level is seasonal (`LevelCurve.progress(seasonXP:)`), lifetime XP is a career total. A season rollover zeroes season XP on first launch inside the new season.
 
 ### LiveEventProviding (`Shared/RUXP/LiveEvents.swift`)
-"What is happening right now?" `ScheduledEventService` computes FRIDAY NIGHT (Fri 17:00–24:00, +500) and SUNDAY RESET (Sun, +250) from the clock, plus the season-wide BACK 2 SCHOOL theme. `featuredEvent(at:)` returns live → next → season.
+"What is happening right now?" `ScheduledEventService` computes FRIDAY NIGHT (Fri 17:00–24:00, +500) and SUNDAY RESET (Sun, +250) from the clock, plus the season-wide PRESS START theme. `featuredEvent(at:)` returns live → next → season.
 
 A backend implementation returns gym-hosted or brand events from the server with the same shape: title, description, start, end, xpReward, participant count.
 
 ### LivePresenceProviding (`Shared/RUXP/LivePresence.swift`)
-"Who is training right now?" `SimulatedLivePresence` is demo data: a time-of-day curve plus a random walk. `LiveSnapshot.isDemo` is true. Replace with a real-time provider (WebSocket, Firestore, etc.) and inject via `\.livePresence`. The watch runs its own instance with a slower tick.
+"Who is training right now?" Answered by Game Center recurring leaderboards, with no server. A recurring board's current occurrence reports `totalPlayerCount`: the players who submitted in that window.
+
+- `active_a` / `active_b`: two 30-minute windows staggered by 15 minutes. `WorkoutManager` (and `WatchGameCenter` during a watch-run workout) pings both every 5 minutes while a workout is active. `liftingNow` is the max of the two, so it never dips to zero at a boundary.
+- `trained_today`: 24-hour window, pinged on a rewarded completion. `workoutsToday`.
+- `event_friday_night` / `event_sunday_reset`: weekly windows padded to cover every US time zone's local event. `participantCount(for:)`.
+- `season_xp_*`: the classic season board's player count is "players this season".
+
+`GameCenterLivePresence` (`RUXP/GameCenter/`) polls the six boards every 60 seconds in the foreground and immediately after our own pings. `LiveSnapshot.isAvailable` is false until sign-in and a successful poll; views show a sign-in line instead of numbers. The watch never polls: `MirroredLivePresence` takes the snapshot from the application context (`ctx_liftingNow`, `ctx_trainedToday`, `ctx_presenceAvailable`, `ctx_presenceUpdatedAt`) and shows "—" once it is older than 10 minutes.
+
+### GameCenterService (`RUXP/GameCenter/GameCenterService.swift`)
+Sign-in, XP leaderboards, achievements, presence pings. `ProgressionService.onProgressChanged` fires after every `save()`; the service debounces about 8 seconds so the completion award and the later PR bonus collapse into one submission. Scores are absolute totals (Game Center keeps the best), one leaderboard ID per call so an unconfigured board cannot block the others, with a persisted dirty flag retried on sign-in, foreground, and toggle. Achievements are reported only when the percent grows. On first sign-in a card still named PLAYER takes the Game Center alias. IDs live in `Shared/RUXP/GameCenterCatalog.swift`; each season needs its own `season_xp_*` and `season_goal_*` created in App Store Connect before it starts. `-RUXPSkipGameCenter` (DEBUG) disables all of it.
 
 ## Phone ↔ watch
 
@@ -41,10 +51,16 @@ The watch never computes XP. It shows "Syncing XP" → "+1,000 XP · LVL 13", or
 
 `MainTabView` hosts one `fullScreenCover` (`WorkoutFlowCover`) that shows `ActiveWorkoutTab` while a session is active and `WorkoutCompletionSheet` once `completedWorkoutID` is set. `WorkoutManager` sets `completedWorkoutID` **before** clearing `activeSession` so the cover crossfades instead of dismissing. CONTINUE clears `completedWorkoutID` and returns to Home.
 
+## Design system
+
+`Theme.swift` (iOS) and `WatchTheme.swift` (watch) hold every token. The look is ChatGPT with hints of gaming: neutral near-black ground, flat surfaces with hairline borders, white pill buttons, system type for everything you read. The game shows up in small doses: Orbitron on the wordmark (with a one-pixel chromatic offset) and one hero number per screen, JetBrains Mono in terminal green for XP values, a magenta progress bar and tab tint, a red LIVE dot. Season 01 is "PRESS START".
+
+Orbitron and JetBrains Mono (plus Exo 2, currently unused) ship in `Shared/Fonts` under the SIL Open Font License and are registered at launch by `Typeface.registerFonts()` (CoreText, no `UIAppFonts` entry). `Theme.Fonts.ui(_:weight:mono:)` wraps the system text styles and switches to the mono face for readouts. `HUDBackground` is the flat ground with an optional faint glow for the workout and reward screens.
+
 ## What is hidden, not deleted
 
 The Momentary-era AI trainer chat, insights tab, story carousel, and social content generation still compile but are not reachable from navigation (`ChatView`, `InsightsTab`, `InsightStoryView`, `StoryCarouselView`, `TrainerSoulEditor`). `contentPack` is no longer persisted. The AI pipeline is kept for what matters: turning voice notes into exercises, sets, reps, weight, and PRs.
 
 ## Later (not built)
 
-Real-time backend, friends, squads, gym profiles, gym-hosted events, brand rewards, leaderboards, remote gym experiences, push notifications. Each plugs into one of the protocols above or into `PlayerProgress`. None of them are speculatively wired.
+Friends and squads (Game Center friends scope is one flag away), gym profiles, gym-hosted events, brand rewards, a rank line on Home, per-lift and total-volume leaderboards (they depend on the OpenAI parse), remote gym experiences, push notifications. Each plugs into one of the protocols above or into `PlayerProgress`. None of them are speculatively wired.

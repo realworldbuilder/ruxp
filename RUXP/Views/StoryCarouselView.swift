@@ -59,7 +59,7 @@ struct StoryBadgeView: View {
                 )
 
                 Text(story.type.displayName)
-                    .font(.caption2)
+                    .font(Theme.Fonts.ui(.caption2))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
             }

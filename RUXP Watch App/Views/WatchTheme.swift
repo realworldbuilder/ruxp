@@ -1,35 +1,69 @@
 import SwiftUI
 
-/// Watch tokens matching the iOS Theme: near-black ground, volt accent, red LIVE.
+/// Watch tokens matching the iOS Theme: neutral near-black, white buttons, system type,
+/// with gaming hints (Orbitron hero number, green mono XP, magenta level bar).
 enum WatchTheme {
     // MARK: - Colors
-    static let accent = Color(red: 0.776, green: 1.0, blue: 0.239)          // #C6FF3D volt
-    static let accentBright = Color(red: 0.85, green: 1.0, blue: 0.45)
-    static let onAccent = Color(red: 0.039, green: 0.039, blue: 0.047)      // #0A0A0C
-    static let live = Color(red: 1.0, green: 0.231, blue: 0.231)            // #FF3B3B
-    static let background = Color(red: 0.039, green: 0.039, blue: 0.047)    // #0A0A0C
-    static let surface = Color(red: 0.078, green: 0.078, blue: 0.094)       // #141418
-    static let surfaceElevated = Color(red: 0.118, green: 0.118, blue: 0.141) // #1E1E24
+    static let accent = Color(red: 1.0, green: 0.176, blue: 0.667)            // #FF2DAA magenta
+    static let accentBright = Color(red: 1.0, green: 0.45, blue: 0.78)
+    static let accentDim = Color(red: 0.761, green: 0.110, blue: 0.510)       // #C21C82
+    static let onAccent = Color(red: 1.0, green: 0.969, blue: 0.992)          // #FFF7FD
+    static let cyan = Color(red: 0.490, green: 0.827, blue: 0.988)            // #7DD3FC
+    static let button = Color(red: 0.949, green: 0.949, blue: 0.949)          // #F2F2F2
+    static let onButton = Color(red: 0.059, green: 0.059, blue: 0.063)        // #0F0F10
+    static let xp = Color(red: 0.361, green: 1.0, blue: 0.478)                // #5CFF7A
+    static let onXP = Color(red: 0.024, green: 0.129, blue: 0.047)            // #06210C
+    static let violet = Color(red: 0.608, green: 0.420, blue: 1.0)            // #9B6BFF
+    static let live = Color(red: 1.0, green: 0.231, blue: 0.361)              // #FF3B5C
+    static let background = Color(red: 0.059, green: 0.059, blue: 0.063)      // #0F0F10
+    static let surface = Color(red: 0.102, green: 0.102, blue: 0.114)         // #1A1A1D
+    static let surfaceElevated = Color(red: 0.149, green: 0.149, blue: 0.165) // #26262A
 
-    static let textPrimary = Color(red: 0.957, green: 0.957, blue: 0.961)   // #F4F4F5
-    static let textSecondary = Color(red: 0.604, green: 0.604, blue: 0.651) // #9A9AA6
-    static let textTertiary = Color(red: 0.361, green: 0.361, blue: 0.408)  // #5C5C68
+    static let textPrimary = Color(red: 0.925, green: 0.925, blue: 0.925)     // #ECECEC
+    static let textSecondary = Color(red: 0.627, green: 0.627, blue: 0.651)   // #A0A0A6
+    static let textTertiary = Color(red: 0.431, green: 0.431, blue: 0.459)    // #6E6E75
 
     // MARK: - Gradients
     static let accentGradient: [Color] = [
-        Color(red: 0.776, green: 1.0, blue: 0.239),
-        Color(red: 0.62, green: 0.84, blue: 0.16)
+        Color(red: 1.0, green: 0.176, blue: 0.667),
+        Color(red: 0.761, green: 0.110, blue: 0.510)
     ]
 
     static let recordingGradient: [Color] = [
-        Color(red: 1.0, green: 0.30, blue: 0.30),
-        Color(red: 0.85, green: 0.18, blue: 0.18)
+        Color(red: 1.0, green: 0.30, blue: 0.40),
+        Color(red: 0.85, green: 0.18, blue: 0.28)
     ]
 
     static let dangerGradient: [Color] = [
-        Color(red: 1.0, green: 0.231, blue: 0.231),
-        Color(red: 0.800, green: 0.200, blue: 0.200)
+        Color(red: 1.0, green: 0.231, blue: 0.361),
+        Color(red: 0.800, green: 0.180, blue: 0.280)
     ]
+
+    /// Flat ground with a faint lift at the top.
+    static let backgroundGradient = LinearGradient(
+        colors: [surface, background],
+        startPoint: .top, endPoint: .center
+    )
+
+    // MARK: - Type
+    enum Fonts {
+        static func display(_ size: CGFloat) -> Font { .custom(Typeface.orbitronBlack, size: size, relativeTo: .title) }
+        static func number(_ size: CGFloat) -> Font { .custom(Typeface.orbitronBold, size: size, relativeTo: .title) }
+        static func tagline(_ size: CGFloat) -> Font { .system(size: size, weight: .semibold) }
+        static func title(_ size: CGFloat) -> Font { .system(size: size, weight: .semibold) }
+        static func body(_ size: CGFloat = 13) -> Font { .system(size: size) }
+        static func mono(_ size: CGFloat, weight: Font.Weight = .bold) -> Font { .custom(Typeface.mono(weight), size: size, relativeTo: .body) }
+        static let eyebrow: Font = .system(size: 9, weight: .semibold)
+        static let caption: Font = .system(size: 11)
+        static let caption2: Font = .system(size: 10)
+    }
+}
+
+extension View {
+    /// Small caps mono label on the wrist.
+    func watchEyebrow() -> some View {
+        self.font(WatchTheme.Fonts.eyebrow).tracking(0.8).textCase(.uppercase)
+    }
 }
 
 /// Compact pulsing LIVE marker for the watch.
@@ -50,8 +84,7 @@ struct WatchLiveDot: View {
             .frame(width: size * 2, height: size * 2)
             if let label {
                 Text(label)
-                    .font(.system(size: 10, weight: .bold, design: .rounded))
-                    .tracking(1.2)
+                    .watchEyebrow()
                     .foregroundStyle(WatchTheme.live)
             }
         }

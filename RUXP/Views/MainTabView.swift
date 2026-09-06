@@ -14,15 +14,48 @@ enum AppTab: Hashable {
 /// (active workout → completion) so the transition never crosses presentation hosts.
 struct MainTabView: View {
     @Environment(WorkoutManager.self) private var workoutManager
-    @State private var selectedTab: AppTab = .home
+    @State private var selectedTab: AppTab = Self.initialTab
+
+    /// DEBUG: `-RUXPTab train|profile` opens on that tab for screenshots.
+    private static var initialTab: AppTab {
+        #if DEBUG
+        let args = ProcessInfo.processInfo.arguments
+        if let idx = args.firstIndex(of: "-RUXPTab"), idx + 1 < args.count {
+            switch args[idx + 1] {
+            case "train": return .train
+            case "profile": return .profile
+            default: break
+            }
+        }
+        #endif
+        return .home
+    }
 
     init() {
         let appearance = UITabBarAppearance()
         appearance.configureWithOpaqueBackground()
         appearance.backgroundColor = UIColor(Theme.background)
         appearance.shadowColor = UIColor.white.withAlphaComponent(0.08)
+        let itemFont = UIFont.systemFont(ofSize: 10, weight: .medium)
+        for item in [appearance.stackedLayoutAppearance, appearance.inlineLayoutAppearance, appearance.compactInlineLayoutAppearance] {
+            item.normal.iconColor = UIColor(Theme.textTertiary)
+            item.normal.titleTextAttributes = [.font: itemFont, .foregroundColor: UIColor(Theme.textTertiary)]
+            item.selected.iconColor = UIColor(Theme.accent)
+            item.selected.titleTextAttributes = [.font: itemFont, .foregroundColor: UIColor(Theme.accent)]
+        }
         UITabBar.appearance().standardAppearance = appearance
         UITabBar.appearance().scrollEdgeAppearance = appearance
+
+        let nav = UINavigationBarAppearance()
+        nav.configureWithOpaqueBackground()
+        nav.backgroundColor = UIColor(Theme.background)
+        nav.shadowColor = UIColor.white.withAlphaComponent(0.08)
+        nav.titleTextAttributes = [.foregroundColor: UIColor(Theme.textPrimary)]
+        nav.largeTitleTextAttributes = [.foregroundColor: UIColor(Theme.textPrimary)]
+        UINavigationBar.appearance().standardAppearance = nav
+        UINavigationBar.appearance().scrollEdgeAppearance = nav
+        UINavigationBar.appearance().compactAppearance = nav
+        UINavigationBar.appearance().tintColor = UIColor(Theme.textPrimary)
     }
 
     private var workoutFlowPresented: Binding<Bool> {
@@ -68,7 +101,7 @@ struct WorkoutFlowCover: View {
 
     var body: some View {
         ZStack {
-            Theme.background.ignoresSafeArea()
+            HUDBackground(glow: true)
             if workoutManager.activeSession != nil {
                 ActiveWorkoutTab()
                     .transition(.opacity)

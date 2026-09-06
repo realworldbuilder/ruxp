@@ -25,6 +25,8 @@ final class ProgressionService {
     private(set) var lastReward: WorkoutRewardSummary?
     /// Fired whenever a reward is created or amended (used to push XP to the watch).
     var onRewardChanged: ((WorkoutRewardSummary) -> Void)?
+    /// Fired after every persisted change (used to sync Game Center). Receivers coalesce.
+    var onProgressChanged: ((PlayerProgress) -> Void)?
 
     let season: Season
     private let fileURL: URL
@@ -124,7 +126,7 @@ final class ProgressionService {
         guard count > 0 else { return nil }
         let already = progress.prRewardsByWorkout[workoutID] ?? 0
         let grant = min(count, ProgressionRules.maxPRBonusesPerWorkout) - already
-        progress.prCount += count
+        if already == 0 { progress.prCount += count }
         guard grant > 0 else { save(); return nil }
         progress.prRewardsByWorkout[workoutID] = already + grant
 
@@ -168,6 +170,14 @@ final class ProgressionService {
         save()
     }
 
+    /// Season Pass: equip (or clear with nil) one cosmetic slot. The catalog lives in the iOS target.
+    func setEquippedCosmetic(kind: String, rewardID: String?) {
+        var map = progress.equippedCosmetics ?? [:]
+        map[kind] = rewardID
+        progress.equippedCosmetics = map.isEmpty ? nil : map
+        save()
+    }
+
     func resetAll() {
         progress = PlayerProgress(seasonID: season.id)
         lastReward = nil
@@ -178,7 +188,8 @@ final class ProgressionService {
     /// Replay history so an existing user (or the sample-data loader) gets a believable profile.
     func rebuild(from sessions: [WorkoutSession], events: LiveEventProviding) {
         let joinDate = sessions.map(\.startedAt).min() ?? Date()
-        progress = PlayerProgress(displayName: progress.displayName, joinDate: joinDate, seasonID: season.id)
+        progress = PlayerProgress(displayName: progress.displayName, joinDate: joinDate, seasonID: season.id,
+                                  equippedCosmetics: progress.equippedCosmetics)
         var bestByExercise: [String: Double] = [:]
         for session in sessions.sorted(by: { $0.startedAt < $1.startedAt }) {
             guard let endedAt = session.endedAt else { continue }
@@ -249,6 +260,7 @@ final class ProgressionService {
         } catch {
             Self.logger.error("Failed to save progression: \(error)")
         }
+        onProgressChanged?(progress)
     }
 
     private func load() {

@@ -15,6 +15,10 @@ final class ConnectivityService: NSObject, ObservableObject {
     /// Level / season XP snapshot merged into every application-context update so the watch
     /// can show "LVL 12" cold. Set by WorkoutManager whenever progression changes.
     var progressionContext: [String: Any] = [:]
+    /// Live counts and the Game Center sync flag, merged the same way so the watch mirrors them.
+    var presenceContext: [String: Any] = [:]
+    private var lastPresencePush: Date = .distantPast
+    private static let presencePushInterval: TimeInterval = 60
 
     override init() {
         self.session = WCSession.default
@@ -55,6 +59,7 @@ final class ConnectivityService: NSObject, ObservableObject {
             context[ConnectivityConstants.contextPlanDataKey] = planData
         }
         progressionContext.forEach { context[$0.key] = $0.value }
+        presenceContext.forEach { context[$0.key] = $0.value }
         try? session.updateApplicationContext(context)
     }
 
@@ -75,6 +80,27 @@ final class ConnectivityService: NSObject, ObservableObject {
     func pushProgressionContext() {
         var context = session.applicationContext
         progressionContext.forEach { context[$0.key] = $0.value }
+        presenceContext.forEach { context[$0.key] = $0.value }
+        try? session.updateApplicationContext(context)
+    }
+
+    /// Phone → watch: the latest live counts. Throttled; the next workout context carries them anyway.
+    func pushPresence(_ snapshot: LiveSnapshot, force: Bool = false) {
+        snapshot.toDictionary().forEach { presenceContext[$0.key] = $0.value }
+        guard force || Date().timeIntervalSince(lastPresencePush) >= Self.presencePushInterval else { return }
+        lastPresencePush = Date()
+        var context = session.applicationContext
+        progressionContext.forEach { context[$0.key] = $0.value }
+        presenceContext.forEach { context[$0.key] = $0.value }
+        try? session.updateApplicationContext(context)
+    }
+
+    /// Phone → watch: whether the watch may ping presence boards on its own.
+    func pushGameCenterSync(_ enabled: Bool) {
+        presenceContext[ConnectivityConstants.contextGameCenterSyncKey] = enabled
+        var context = session.applicationContext
+        progressionContext.forEach { context[$0.key] = $0.value }
+        presenceContext.forEach { context[$0.key] = $0.value }
         try? session.updateApplicationContext(context)
     }
 
@@ -91,6 +117,7 @@ final class ConnectivityService: NSObject, ObservableObject {
         context[ConnectivityConstants.contextWorkoutIDKey] = workoutID.uuidString
         context[ConnectivityConstants.contextIsActiveKey] = true
         progressionContext.forEach { context[$0.key] = $0.value }
+        presenceContext.forEach { context[$0.key] = $0.value }
         try? session.updateApplicationContext(context)
     }
 

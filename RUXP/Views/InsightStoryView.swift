@@ -106,7 +106,7 @@ struct InsightStoryView: View {
                 Spacer()
                 Button(action: { showingShareSheet = true }) {
                     Image(systemName: "square.and.arrow.up")
-                        .font(.title3)
+                        .font(Theme.Fonts.ui(.title3))
                         .foregroundColor(.white)
                 }
             }
@@ -172,17 +172,17 @@ struct InsightStoryView: View {
                     }
 
                     Text(currentStory.title)
-                        .font(.largeTitle)
+                        .font(Theme.Fonts.ui(.largeTitle))
                         .fontWeight(.bold)
                         .foregroundColor(.white)
 
                     Text(currentPage.title)
-                        .font(.title2)
+                        .font(Theme.Fonts.ui(.title2))
                         .foregroundColor(.white.opacity(0.9))
                 }
 
                 Text(currentPage.content)
-                    .font(.body)
+                    .font(Theme.Fonts.ui(.body))
                     .foregroundColor(.white)
                     .lineSpacing(4)
 
@@ -223,13 +223,13 @@ struct InsightStoryView: View {
                 Image(systemName: "lightbulb.fill")
                     .foregroundColor(Theme.accent.opacity(0.8))
                 Text("Action Item")
-                    .font(.headline)
+                    .font(Theme.Fonts.ui(.headline))
                     .foregroundColor(.white)
                 Spacer()
             }
 
             Text(actionable)
-                .font(.body)
+                .font(Theme.Fonts.ui(.body))
                 .foregroundColor(.white.opacity(0.9))
         }
         .padding(16)

@@ -51,7 +51,7 @@ private struct TextBlockView: View {
     var body: some View {
         Text(payload.text ?? "")
             .foregroundColor(Theme.textPrimary)
-            .font(.body)
+            .font(Theme.Fonts.ui(.body))
             .lineSpacing(2)
     }
 }
@@ -67,14 +67,14 @@ private struct WorkoutSummaryBlockView: View {
             // Smart workout title
             if let names = payload.exerciseNames, !names.isEmpty {
                 Text(WorkoutTitleGenerator.generate(from: names))
-                    .font(.title2)
+                    .font(Theme.Fonts.ui(.title2))
                     .fontWeight(.bold)
                     .foregroundColor(Theme.textPrimary)
             }
             
             if let date = payload.date {
                 Text(date)
-                    .font(.headline)
+                    .font(Theme.Fonts.ui(.headline))
                     .foregroundColor(Theme.textPrimary)
             }
 
@@ -92,14 +92,14 @@ private struct WorkoutSummaryBlockView: View {
 
             if let volume = payload.totalVolume, volume > 0 {
                 Text(formatVolume(volume))
-                    .font(.title3)
+                    .font(Theme.Fonts.ui(.title3))
                     .fontWeight(.bold)
                     .foregroundColor(Theme.accent)
             }
 
             if let names = payload.exerciseNames, !names.isEmpty {
                 Text(names.joined(separator: " \u{2022} "))
-                    .font(.caption)
+                    .font(Theme.Fonts.ui(.caption))
                     .foregroundColor(Theme.textSecondary)
             }
         }
@@ -114,10 +114,10 @@ private struct WorkoutSummaryBlockView: View {
     private func statPill(icon: String, value: String) -> some View {
         HStack(spacing: 4) {
             Image(systemName: icon)
-                .font(.caption2)
+                .font(Theme.Fonts.ui(.caption2))
                 .foregroundColor(Theme.textSecondary)
             Text(value)
-                .font(.caption)
+                .font(Theme.Fonts.ui(.caption))
                 .foregroundColor(Theme.textPrimary)
         }
         .padding(.horizontal, 8)
@@ -142,7 +142,7 @@ private struct ExerciseTableBlockView: View {
         VStack(alignment: .leading, spacing: 8) {
             if let name = payload.exerciseName {
                 Text(name)
-                    .font(.headline)
+                    .font(Theme.Fonts.ui(.headline))
                     .foregroundColor(Theme.textPrimary)
             }
 
@@ -155,7 +155,7 @@ private struct ExerciseTableBlockView: View {
                 Text("Weight")
                     .frame(maxWidth: .infinity, alignment: .trailing)
             }
-            .font(.caption)
+            .font(Theme.Fonts.ui(.caption))
             .fontWeight(.semibold)
             .foregroundColor(Theme.textSecondary)
 
@@ -171,7 +171,7 @@ private struct ExerciseTableBlockView: View {
                         Text(formatWeight(set.weight, unit: set.unit))
                             .frame(maxWidth: .infinity, alignment: .trailing)
                     }
-                    .font(.callout)
+                    .font(Theme.Fonts.ui(.callout))
                     .foregroundColor(Theme.textPrimary)
                     .padding(.vertical, 4)
                     .background(index % 2 == 0 ? Color.clear : Theme.surface.opacity(0.3))
@@ -186,7 +186,7 @@ private struct ExerciseTableBlockView: View {
                     HStack {
                         Spacer()
                         Text("Volume: \(formatVolume(totalVolume))")
-                            .font(.caption)
+                            .font(Theme.Fonts.ui(.caption))
                             .fontWeight(.medium)
                             .foregroundColor(Theme.accent)
                     }
@@ -237,23 +237,23 @@ private struct ChatMetricCard: View {
         VStack(spacing: 6) {
             if let icon = metric.icon {
                 Image(systemName: icon)
-                    .font(.title3)
+                    .font(Theme.Fonts.ui(.title3))
                     .foregroundColor(Theme.accent)
             }
             if let value = metric.value {
                 Text(value)
-                    .font(.title2)
+                    .font(Theme.Fonts.ui(.title2))
                     .fontWeight(.bold)
                     .foregroundColor(Theme.textPrimary)
             }
             if let title = metric.title {
                 Text(title)
-                    .font(.caption)
+                    .font(Theme.Fonts.ui(.caption))
                     .foregroundColor(Theme.textSecondary)
             }
             if let subtitle = metric.subtitle {
                 Text(subtitle)
-                    .font(.caption2)
+                    .font(Theme.Fonts.ui(.caption2))
                     .foregroundColor(Theme.textTertiary)
             }
         }
@@ -293,7 +293,7 @@ private struct InsightBlockView: View {
             HStack {
                 if let title = payload.title {
                     Text(title)
-                        .font(.headline)
+                        .font(Theme.Fonts.ui(.headline))
                         .foregroundColor(Theme.textPrimary)
                 }
 
@@ -302,7 +302,7 @@ private struct InsightBlockView: View {
                 if let typeStr = payload.insightType,
                    let type = InsightType(rawValue: typeStr) {
                     Text(type.displayName)
-                        .font(.caption2)
+                        .font(Theme.Fonts.ui(.caption2))
                         .fontWeight(.medium)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 3)
@@ -313,14 +313,14 @@ private struct InsightBlockView: View {
 
             if let body = payload.body {
                 Text(body)
-                    .font(.subheadline)
+                    .font(Theme.Fonts.ui(.subheadline))
                     .foregroundColor(Theme.textSecondary)
                     .lineLimit(isExpanded ? nil : 3)
             }
 
             if let body = payload.body, body.count > 100 {
                 Text(isExpanded ? "Show less" : "Show more")
-                    .font(.caption)
+                    .font(Theme.Fonts.ui(.caption))
                     .foregroundColor(Theme.accent)
             }
         }
@@ -348,7 +348,7 @@ private struct ActionButtonsBlockView: View {
                             onAction?(action)
                         } label: {
                             Text(action.label)
-                                .font(.subheadline)
+                                .font(Theme.Fonts.ui(.subheadline))
                                 .fontWeight(.medium)
                                 .foregroundColor(Theme.accent)
                                 .padding(.horizontal, 14)
@@ -381,13 +381,13 @@ private struct WorkoutListBlockView: View {
                             VStack(alignment: .leading, spacing: 4) {
                                 if let date = workout.date {
                                     Text(date)
-                                        .font(.subheadline)
+                                        .font(Theme.Fonts.ui(.subheadline))
                                         .fontWeight(.medium)
                                         .foregroundColor(Theme.textPrimary)
                                 }
                                 if let summary = workout.summary {
                                     Text(summary)
-                                        .font(.caption)
+                                        .font(Theme.Fonts.ui(.caption))
                                         .foregroundColor(Theme.textSecondary)
                                 }
                             }
@@ -396,13 +396,13 @@ private struct WorkoutListBlockView: View {
 
                             if let volume = workout.volume, volume > 0 {
                                 Text(formatVolume(volume))
-                                    .font(.caption)
+                                    .font(Theme.Fonts.ui(.caption))
                                     .fontWeight(.medium)
                                     .foregroundColor(Theme.accent)
                             }
 
                             Image(systemName: "chevron.right")
-                                .font(.caption)
+                                .font(Theme.Fonts.ui(.caption))
                                 .foregroundColor(Theme.textTertiary)
                         }
                         .themeCard()
@@ -431,7 +431,7 @@ private struct WorkoutPlanBlockView: View {
             // Title
             if let title = payload.planTitle {
                 Text(title)
-                    .font(.title2)
+                    .font(Theme.Fonts.ui(.title2))
                     .fontWeight(.bold)
                     .foregroundColor(Theme.textPrimary)
             }
@@ -440,10 +440,10 @@ private struct WorkoutPlanBlockView: View {
             if let duration = payload.estimatedDuration {
                 HStack {
                     Image(systemName: "clock")
-                        .font(.caption)
+                        .font(Theme.Fonts.ui(.caption))
                         .foregroundColor(Theme.textSecondary)
                     Text(duration)
-                        .font(.subheadline)
+                        .font(Theme.Fonts.ui(.subheadline))
                         .foregroundColor(Theme.textSecondary)
                 }
             }
@@ -452,10 +452,10 @@ private struct WorkoutPlanBlockView: View {
             if let warmup = payload.warmup {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Warmup")
-                        .font(.headline)
+                        .font(Theme.Fonts.ui(.headline))
                         .foregroundColor(Theme.textPrimary)
                     Text(warmup)
-                        .font(.subheadline)
+                        .font(Theme.Fonts.ui(.subheadline))
                         .foregroundColor(Theme.textSecondary)
                 }
                 .padding(.vertical, 8)
@@ -468,13 +468,13 @@ private struct WorkoutPlanBlockView: View {
                         VStack(alignment: .leading, spacing: 4) {
                             HStack {
                                 Text(exercise.name)
-                                    .font(.headline)
+                                    .font(Theme.Fonts.ui(.headline))
                                     .fontWeight(.semibold)
                                     .foregroundColor(Theme.textPrimary)
                                 Spacer()
                                 if let rpe = exercise.targetRPE {
                                     Text("RPE \(rpe)")
-                                        .font(.caption)
+                                        .font(Theme.Fonts.ui(.caption))
                                         .fontWeight(.medium)
                                         .padding(.horizontal, 6)
                                         .padding(.vertical, 2)
@@ -484,19 +484,19 @@ private struct WorkoutPlanBlockView: View {
                             }
 
                             Text(exercise.prescription)
-                                .font(.callout)
+                                .font(Theme.Fonts.ui(.callout))
                                 .fontWeight(.medium)
                                 .foregroundColor(Theme.accent)
 
                             if let rest = exercise.rest {
                                 Text("Rest: \(rest)")
-                                    .font(.caption)
+                                    .font(Theme.Fonts.ui(.caption))
                                     .foregroundColor(Theme.textSecondary)
                             }
 
                             if let notes = exercise.notes {
                                 Text(notes)
-                                    .font(.caption)
+                                    .font(Theme.Fonts.ui(.caption))
                                     .foregroundColor(Theme.textSecondary)
                                     .italic()
                             }
@@ -514,10 +514,10 @@ private struct WorkoutPlanBlockView: View {
             if let cooldown = payload.cooldown {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Cooldown")
-                        .font(.headline)
+                        .font(Theme.Fonts.ui(.headline))
                         .foregroundColor(Theme.textPrimary)
                     Text(cooldown)
-                        .font(.subheadline)
+                        .font(Theme.Fonts.ui(.subheadline))
                         .foregroundColor(Theme.textSecondary)
                 }
                 .padding(.vertical, 8)
@@ -528,7 +528,7 @@ private struct WorkoutPlanBlockView: View {
                 HStack {
                     Spacer()
                     Text("Estimated Volume: \(formatVolume(volume))")
-                        .font(.caption)
+                        .font(Theme.Fonts.ui(.caption))
                         .fontWeight(.medium)
                         .foregroundColor(Theme.accent)
                 }
@@ -541,9 +541,9 @@ private struct WorkoutPlanBlockView: View {
                 } label: {
                     HStack(spacing: 8) {
                         Image(systemName: "figure.strengthtraining.traditional")
-                            .font(.body.weight(.semibold))
+                            .font(Theme.Fonts.ui(.body, weight: .semibold))
                         Text("Start This Workout")
-                            .font(.body.weight(.semibold))
+                            .font(Theme.Fonts.ui(.body, weight: .semibold))
                     }
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
@@ -574,7 +574,7 @@ private struct ProgressCardBlockView: View {
         VStack(alignment: .leading, spacing: 12) {
             if let exerciseName = payload.exerciseName {
                 Text(exerciseName)
-                    .font(.title3)
+                    .font(Theme.Fonts.ui(.title3))
                     .fontWeight(.bold)
                     .foregroundColor(Theme.textPrimary)
             }
@@ -583,18 +583,18 @@ private struct ProgressCardBlockView: View {
                 // Previous column
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Previous")
-                        .font(.caption)
+                        .font(Theme.Fonts.ui(.caption))
                         .foregroundColor(Theme.textSecondary)
                     if let previous = payload.previous {
                         Text(previous.date)
-                            .font(.subheadline)
+                            .font(Theme.Fonts.ui(.subheadline))
                             .fontWeight(.medium)
                             .foregroundColor(Theme.textPrimary)
                         Text(previous.topSet)
-                            .font(.callout)
+                            .font(Theme.Fonts.ui(.callout))
                             .foregroundColor(Theme.textSecondary)
                         Text(formatVolume(previous.totalVolume))
-                            .font(.caption)
+                            .font(Theme.Fonts.ui(.caption))
                             .foregroundColor(Theme.textTertiary)
                     }
                 }
@@ -603,12 +603,12 @@ private struct ProgressCardBlockView: View {
                 VStack {
                     if let trend = payload.trend {
                         Image(systemName: trendIcon(trend))
-                            .font(.title2)
+                            .font(Theme.Fonts.ui(.title2))
                             .foregroundColor(trendColor(trend))
                     }
                     if let change = payload.volumeChange {
                         Text(change)
-                            .font(.caption)
+                            .font(Theme.Fonts.ui(.caption))
                             .fontWeight(.semibold)
                             .foregroundColor(trendColor(payload.trend ?? "up"))
                     }
@@ -617,18 +617,18 @@ private struct ProgressCardBlockView: View {
                 // Current column
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Current")
-                        .font(.caption)
+                        .font(Theme.Fonts.ui(.caption))
                         .foregroundColor(Theme.textSecondary)
                     if let current = payload.current {
                         Text(current.date)
-                            .font(.subheadline)
+                            .font(Theme.Fonts.ui(.subheadline))
                             .fontWeight(.medium)
                             .foregroundColor(Theme.textPrimary)
                         Text(current.topSet)
-                            .font(.callout)
+                            .font(Theme.Fonts.ui(.callout))
                             .foregroundColor(Theme.textSecondary)
                         Text(formatVolume(current.totalVolume))
-                            .font(.caption)
+                            .font(Theme.Fonts.ui(.caption))
                             .foregroundColor(Theme.textTertiary)
                     }
                 }
@@ -672,7 +672,7 @@ private struct SplitOverviewBlockView: View {
         VStack(alignment: .leading, spacing: 12) {
             if let title = payload.title {
                 Text(title)
-                    .font(.title3)
+                    .font(Theme.Fonts.ui(.title3))
                     .fontWeight(.bold)
                     .foregroundColor(Theme.textPrimary)
             }
@@ -687,13 +687,13 @@ private struct SplitOverviewBlockView: View {
                                     .frame(width: 40, height: 40)
                                     .overlay(
                                         Text(day.day)
-                                            .font(.caption)
+                                            .font(Theme.Fonts.ui(.caption))
                                             .fontWeight(.semibold)
                                             .foregroundColor(day.completed ? .black : Theme.textPrimary)
                                     )
 
                                 Text(day.focus)
-                                    .font(.caption2)
+                                    .font(Theme.Fonts.ui(.caption2))
                                     .foregroundColor(Theme.textSecondary)
                                     .multilineTextAlignment(.center)
                                     .lineLimit(2)
@@ -720,7 +720,7 @@ private struct PRBoardBlockView: View {
                     Image(systemName: "trophy.fill")
                         .foregroundColor(.yellow)
                     Text(title)
-                        .font(.title3)
+                        .font(Theme.Fonts.ui(.title3))
                         .fontWeight(.bold)
                         .foregroundColor(Theme.textPrimary)
                 }
@@ -733,33 +733,33 @@ private struct PRBoardBlockView: View {
                             if record.isNew {
                                 Image(systemName: "trophy.fill")
                                     .foregroundColor(.yellow)
-                                    .font(.caption)
+                                    .font(Theme.Fonts.ui(.caption))
                             } else {
                                 Image(systemName: "trophy")
                                     .foregroundColor(Theme.textTertiary)
-                                    .font(.caption)
+                                    .font(Theme.Fonts.ui(.caption))
                             }
 
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(record.exercise)
-                                    .font(.subheadline)
+                                    .font(Theme.Fonts.ui(.subheadline))
                                     .fontWeight(.medium)
                                     .foregroundColor(Theme.textPrimary)
                                 Text(record.date)
-                                    .font(.caption)
+                                    .font(Theme.Fonts.ui(.caption))
                                     .foregroundColor(Theme.textSecondary)
                             }
 
                             Spacer()
 
                             Text(record.value)
-                                .font(.callout)
+                                .font(Theme.Fonts.ui(.callout))
                                 .fontWeight(.semibold)
                                 .foregroundColor(record.isNew ? Theme.accent : Theme.textPrimary)
 
                             if record.isNew {
                                 Text("NEW")
-                                    .font(.caption2)
+                                    .font(Theme.Fonts.ui(.caption2))
                                     .fontWeight(.bold)
                                     .padding(.horizontal, 6)
                                     .padding(.vertical, 2)
@@ -787,13 +787,13 @@ private struct TipCardBlockView: View {
             HStack {
                 if let icon = payload.icon {
                     Image(systemName: icon)
-                        .font(.title3)
+                        .font(Theme.Fonts.ui(.title3))
                         .foregroundColor(categoryColor(payload.category))
                 }
 
                 if let title = payload.title {
                     Text(title)
-                        .font(.headline)
+                        .font(Theme.Fonts.ui(.headline))
                         .fontWeight(.semibold)
                         .foregroundColor(Theme.textPrimary)
                 }
@@ -802,7 +802,7 @@ private struct TipCardBlockView: View {
 
                 if let category = payload.category {
                     Text(category.capitalized)
-                        .font(.caption2)
+                        .font(Theme.Fonts.ui(.caption2))
                         .fontWeight(.medium)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
@@ -813,13 +813,13 @@ private struct TipCardBlockView: View {
 
             if let body = payload.body {
                 Text(body)
-                    .font(.subheadline)
+                    .font(Theme.Fonts.ui(.subheadline))
                     .foregroundColor(Theme.textSecondary)
                     .lineLimit(isExpanded ? nil : 3)
 
                 if body.count > 100 {
                     Text(isExpanded ? "Show less" : "Show more")
-                        .font(.caption)
+                        .font(Theme.Fonts.ui(.caption))
                         .foregroundColor(Theme.accent)
                         .onTapGesture {
                             withAnimation(.easeInOut(duration: 0.2)) {
@@ -860,7 +860,7 @@ private struct ChecklistBlockView: View {
         VStack(alignment: .leading, spacing: 12) {
             if let title = payload.title {
                 Text(title)
-                    .font(.title3)
+                    .font(Theme.Fonts.ui(.title3))
                     .fontWeight(.bold)
                     .foregroundColor(Theme.textPrimary)
             }
@@ -876,14 +876,14 @@ private struct ChecklistBlockView: View {
                                 .overlay(
                                     item.checked ?
                                     Image(systemName: "checkmark")
-                                        .font(.caption)
+                                        .font(Theme.Fonts.ui(.caption))
                                         .fontWeight(.bold)
                                         .foregroundColor(.black)
                                     : nil
                                 )
 
                             Text(item.text)
-                                .font(.subheadline)
+                                .font(Theme.Fonts.ui(.subheadline))
                                 .foregroundColor(item.checked ? Theme.textSecondary : Theme.textPrimary)
                                 .strikethrough(item.checked)
 
@@ -907,7 +907,7 @@ private struct ComparisonBlockView: View {
         VStack(alignment: .leading, spacing: 12) {
             if let title = payload.title {
                 Text(title)
-                    .font(.title3)
+                    .font(Theme.Fonts.ui(.title3))
                     .fontWeight(.bold)
                     .foregroundColor(Theme.textPrimary)
             }
@@ -916,7 +916,7 @@ private struct ComparisonBlockView: View {
             if let leftLabel = payload.leftLabel, let rightLabel = payload.rightLabel {
                 HStack {
                     Text(leftLabel)
-                        .font(.subheadline)
+                        .font(Theme.Fonts.ui(.subheadline))
                         .fontWeight(.semibold)
                         .foregroundColor(Theme.textSecondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -924,7 +924,7 @@ private struct ComparisonBlockView: View {
                     Spacer().frame(width: 40) // Space for trend arrow
 
                     Text(rightLabel)
-                        .font(.subheadline)
+                        .font(Theme.Fonts.ui(.subheadline))
                         .fontWeight(.semibold)
                         .foregroundColor(Theme.textSecondary)
                         .frame(maxWidth: .infinity, alignment: .trailing)
@@ -940,10 +940,10 @@ private struct ComparisonBlockView: View {
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(row.label)
-                                    .font(.caption)
+                                    .font(Theme.Fonts.ui(.caption))
                                     .foregroundColor(Theme.textSecondary)
                                 Text(row.left)
-                                    .font(.callout)
+                                    .font(Theme.Fonts.ui(.callout))
                                     .fontWeight(.medium)
                                     .foregroundColor(Theme.textPrimary)
                             }
@@ -951,16 +951,16 @@ private struct ComparisonBlockView: View {
 
                             // Trend arrow
                             Image(systemName: trendIcon(row.trend))
-                                .font(.callout)
+                                .font(Theme.Fonts.ui(.callout))
                                 .foregroundColor(trendColor(row.trend))
                                 .frame(width: 40)
 
                             VStack(alignment: .trailing, spacing: 2) {
                                 Text(row.label)
-                                    .font(.caption)
+                                    .font(Theme.Fonts.ui(.caption))
                                     .foregroundColor(Theme.textSecondary)
                                 Text(row.right)
-                                    .font(.callout)
+                                    .font(Theme.Fonts.ui(.callout))
                                     .fontWeight(.medium)
                                     .foregroundColor(Theme.textPrimary)
                             }

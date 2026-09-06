@@ -85,7 +85,7 @@ struct WorkoutDetailView: View {
     private func heroSection(_ session: WorkoutSession) -> some View {
         VStack(spacing: 12) {
             Text(session.startedAt, format: .dateTime.weekday(.wide).month(.wide).day())
-                .font(.title3.bold())
+                .font(Theme.Fonts.ui(.title3, weight: .bold))
             HStack(spacing: 20) {
                 if let duration = session.duration {
                     statPill(icon: "clock", value: formatDuration(duration), label: "Duration")
@@ -99,7 +99,7 @@ struct WorkoutDetailView: View {
             let volume = computeVolume(session)
             if volume > 0 {
                 Text("\(formatVolume(volume)) \(weightUnit) total volume")
-                    .font(.subheadline.bold()).foregroundStyle(Theme.accent)
+                    .font(Theme.Fonts.ui(.subheadline, weight: .bold)).foregroundStyle(Theme.accent)
             }
 
             // Apple Health data
@@ -110,24 +110,24 @@ struct WorkoutDetailView: View {
                     if let hr = session.averageHeartRate, hr > 0 {
                         VStack(spacing: 4) {
                             Image(systemName: "heart.fill")
-                                .font(.caption)
+                                .font(Theme.Fonts.ui(.caption))
                                 .foregroundStyle(.red)
                             Text("\(Int(hr))")
-                                .font(.headline.monospacedDigit())
+                                .font(Theme.Fonts.ui(.headline, mono: true))
                             Text("Avg BPM")
-                                .font(.caption2)
+                                .font(Theme.Fonts.ui(.caption2))
                                 .foregroundStyle(.secondary)
                         }
                     }
                     if let cal = session.activeCalories, cal > 0 {
                         VStack(spacing: 4) {
                             Image(systemName: "flame.fill")
-                                .font(.caption)
+                                .font(Theme.Fonts.ui(.caption))
                                 .foregroundStyle(.orange)
                             Text("\(Int(cal))")
-                                .font(.headline.monospacedDigit())
+                                .font(Theme.Fonts.ui(.headline, mono: true))
                             Text("Calories")
-                                .font(.caption2)
+                                .font(Theme.Fonts.ui(.caption2))
                                 .foregroundStyle(.secondary)
                         }
                     }
@@ -140,9 +140,9 @@ struct WorkoutDetailView: View {
 
     private func statPill(icon: String, value: String, label: String) -> some View {
         VStack(spacing: 4) {
-            Image(systemName: icon).font(.caption).foregroundStyle(.secondary)
-            Text(value).font(.headline)
-            Text(label).font(.caption2).foregroundStyle(.secondary)
+            Image(systemName: icon).font(Theme.Fonts.ui(.caption)).foregroundStyle(.secondary)
+            Text(value).font(Theme.Fonts.ui(.headline))
+            Text(label).font(Theme.Fonts.ui(.caption2)).foregroundStyle(.secondary)
         }
     }
 
@@ -153,7 +153,7 @@ struct WorkoutDetailView: View {
         if isProcessing, case .processing(let stage) = processor.state {
             HStack(spacing: 10) {
                 ProgressView()
-                Text(stage).font(.subheadline).foregroundStyle(.secondary)
+                Text(stage).font(Theme.Fonts.ui(.subheadline)).foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading).themeCard()
         }
@@ -161,10 +161,10 @@ struct WorkoutDetailView: View {
         if case .failed(let message) = processor.state {
             VStack(alignment: .leading, spacing: 8) {
                 Label("Analysis Failed", systemImage: "exclamationmark.triangle.fill")
-                    .font(.subheadline.bold()).foregroundStyle(.red)
-                Text(message).font(.caption).foregroundStyle(.secondary)
+                    .font(Theme.Fonts.ui(.subheadline, weight: .bold)).foregroundStyle(.red)
+                Text(message).font(Theme.Fonts.ui(.caption)).foregroundStyle(.secondary)
                 Button { Task { await analyzeWorkout() } } label: {
-                    Label("Retry", systemImage: "arrow.clockwise").font(.subheadline.bold()).frame(maxWidth: .infinity)
+                    Label("Retry", systemImage: "arrow.clockwise").font(Theme.Fonts.ui(.subheadline, weight: .bold)).frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent).tint(.red)
             }
@@ -175,8 +175,8 @@ struct WorkoutDetailView: View {
             HStack(spacing: 10) {
                 Image(systemName: "clock.fill").foregroundStyle(.orange)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Queued for Processing").font(.subheadline.bold())
-                    Text("Will process automatically when back online.").font(.caption).foregroundStyle(.secondary)
+                    Text("Queued for Processing").font(Theme.Fonts.ui(.subheadline, weight: .bold))
+                    Text("Will process automatically when back online.").font(Theme.Fonts.ui(.caption)).foregroundStyle(.secondary)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading).themeCard()
@@ -194,7 +194,7 @@ struct WorkoutDetailView: View {
     private func readOnlyExerciseCards(_ exercises: [ExerciseGroup]) -> some View {
         ForEach(exercises) { exercise in
             VStack(alignment: .leading, spacing: 10) {
-                Text(exercise.exerciseName).font(.headline)
+                Text(exercise.exerciseName).font(Theme.Fonts.ui(.headline))
                 setsTableHeader
                 ForEach(exercise.sets) { set in
                     HStack {
@@ -206,13 +206,13 @@ struct WorkoutDetailView: View {
                             .foregroundStyle(set.weight == nil ? .tertiary : .primary)
                         Spacer()
                         if let notes = set.notes {
-                            Text(notes).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                            Text(notes).font(Theme.Fonts.ui(.caption2)).foregroundStyle(.secondary).lineLimit(1)
                         }
                     }
-                    .font(.subheadline)
+                    .font(Theme.Fonts.ui(.subheadline))
                 }
                 if let notes = exercise.notes {
-                    Text(notes).font(.caption).foregroundStyle(.secondary)
+                    Text(notes).font(Theme.Fonts.ui(.caption)).foregroundStyle(.secondary)
                 }
             }
             .themeCard()
@@ -226,7 +226,7 @@ struct WorkoutDetailView: View {
             Text("Weight").frame(minWidth: 60, alignment: .center)
             Spacer()
         }
-        .font(.caption.bold()).foregroundStyle(.secondary)
+        .font(Theme.Fonts.ui(.caption, weight: .bold)).foregroundStyle(.secondary)
     }
 
     @ViewBuilder
@@ -239,11 +239,11 @@ struct WorkoutDetailView: View {
                         get: { session?.structuredLog?.exercises[exerciseIndex].exerciseName ?? "" },
                         set: { session?.structuredLog?.exercises[exerciseIndex].exerciseName = $0 }
                     ))
-                    .font(.headline).textFieldStyle(.roundedBorder)
+                    .font(Theme.Fonts.ui(.headline)).textFieldStyle(.roundedBorder)
 
                     Button(role: .destructive) {
                         withAnimation { deleteExercise(at: exerciseIndex) }
-                    } label: { Image(systemName: "trash").font(.caption) }
+                    } label: { Image(systemName: "trash").font(Theme.Fonts.ui(.caption)) }
                     .buttonStyle(.borderless)
                 }
 
@@ -252,34 +252,34 @@ struct WorkoutDetailView: View {
                 let setCount = session?.structuredLog?.exercises[exerciseIndex].sets.count ?? 0
                 ForEach(0..<setCount, id: \.self) { setIndex in
                     HStack(spacing: 8) {
-                        Text("\(setIndex + 1)").frame(width: 36, alignment: .leading).font(.subheadline)
+                        Text("\(setIndex + 1)").frame(width: 36, alignment: .leading).font(Theme.Fonts.ui(.subheadline))
                         TextField("—", text: Binding(
                             get: { session?.structuredLog?.exercises[exerciseIndex].sets[setIndex].reps.map { "\($0)" } ?? "" },
                             set: { session?.structuredLog?.exercises[exerciseIndex].sets[setIndex].reps = Int($0) }
                         ))
                         .frame(width: 50).multilineTextAlignment(.center).textFieldStyle(.roundedBorder)
-                        .keyboardType(.numberPad).font(.subheadline)
+                        .keyboardType(.numberPad).font(Theme.Fonts.ui(.subheadline))
 
                         TextField("—", text: Binding(
                             get: { session?.structuredLog?.exercises[exerciseIndex].sets[setIndex].weight.map { String(format: "%.0f", $0) } ?? "" },
                             set: { session?.structuredLog?.exercises[exerciseIndex].sets[setIndex].weight = Double($0) }
                         ))
                         .frame(width: 70).multilineTextAlignment(.center).textFieldStyle(.roundedBorder)
-                        .keyboardType(.decimalPad).font(.subheadline)
+                        .keyboardType(.decimalPad).font(Theme.Fonts.ui(.subheadline))
 
                         Spacer()
 
                         Button(role: .destructive) {
                             withAnimation { deleteSet(exerciseIndex: exerciseIndex, setIndex: setIndex) }
                         } label: {
-                            Image(systemName: "minus.circle.fill").foregroundStyle(.red).font(.caption)
+                            Image(systemName: "minus.circle.fill").foregroundStyle(.red).font(Theme.Fonts.ui(.caption))
                         }
                         .buttonStyle(.borderless)
                     }
                 }
 
                 Button { withAnimation { addSet(exerciseIndex: exerciseIndex) } } label: {
-                    Label("Add Set", systemImage: "plus.circle").font(.caption)
+                    Label("Add Set", systemImage: "plus.circle").font(Theme.Fonts.ui(.caption))
                 }
                 .buttonStyle(.borderless)
             }
@@ -291,18 +291,18 @@ struct WorkoutDetailView: View {
 
     private func summaryCard(_ summary: String) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label("Summary", systemImage: "text.quote").font(.subheadline.bold()).foregroundStyle(.secondary)
-            Text(summary).font(.subheadline)
+            Label("Summary", systemImage: "text.quote").font(Theme.Fonts.ui(.subheadline, weight: .bold)).foregroundStyle(.secondary)
+            Text(summary).font(Theme.Fonts.ui(.subheadline))
         }
         .frame(maxWidth: .infinity, alignment: .leading).themeCard()
     }
 
     private func highlightsCard(_ highlights: [String]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label("Highlights", systemImage: "star.fill").font(.subheadline.bold()).foregroundStyle(.secondary)
+            Label("Highlights", systemImage: "star.fill").font(Theme.Fonts.ui(.subheadline, weight: .bold)).foregroundStyle(.secondary)
             FlowLayout(spacing: 6) {
                 ForEach(highlights, id: \.self) { highlight in
-                    Text(highlight).font(.caption)
+                    Text(highlight).font(Theme.Fonts.ui(.caption))
                         .lineLimit(nil)
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.horizontal, 10).padding(.vertical, 5)
@@ -319,9 +319,9 @@ struct WorkoutDetailView: View {
             VStack(alignment: .leading, spacing: 6) {
                 ForEach(ambiguities) { ambiguity in
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(ambiguity.field).font(.caption.bold())
-                        Text("Heard: \"\(ambiguity.rawTranscript)\"").font(.caption).foregroundStyle(.secondary)
-                        Text("Best guess: \(ambiguity.bestGuess)").font(.caption)
+                        Text(ambiguity.field).font(Theme.Fonts.ui(.caption, weight: .bold))
+                        Text("Heard: \"\(ambiguity.rawTranscript)\"").font(Theme.Fonts.ui(.caption)).foregroundStyle(.secondary)
+                        Text("Best guess: \(ambiguity.bestGuess)").font(Theme.Fonts.ui(.caption))
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
@@ -329,7 +329,7 @@ struct WorkoutDetailView: View {
             .padding(.top, 4)
         } label: {
             Label("Ambiguities (\(ambiguities.count))", systemImage: "questionmark.circle")
-                .font(.subheadline.bold()).foregroundStyle(.orange)
+                .font(Theme.Fonts.ui(.subheadline, weight: .bold)).foregroundStyle(.orange)
         }
         .themeCard()
     }
@@ -340,13 +340,13 @@ struct WorkoutDetailView: View {
         ForEach(stories) { story in
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
-                    Text(story.title).font(.subheadline.bold())
+                    Text(story.title).font(Theme.Fonts.ui(.subheadline, weight: .bold))
                     Spacer()
-                    Text(story.type.rawValue).font(.caption2)
+                    Text(story.type.rawValue).font(Theme.Fonts.ui(.caption2))
                         .padding(.horizontal, 8).padding(.vertical, 2)
                         .background(Theme.accentSubtle, in: Capsule())
                 }
-                Text(story.body).font(.caption).foregroundStyle(.secondary)
+                Text(story.body).font(Theme.Fonts.ui(.caption)).foregroundStyle(.secondary)
             }
             .themeCard()
         }
@@ -357,11 +357,11 @@ struct WorkoutDetailView: View {
             VStack(alignment: .leading, spacing: 8) {
                 ForEach(moments) { moment in
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(moment.transcript).font(.body)
+                        Text(moment.transcript).font(Theme.Fonts.ui(.body))
                         HStack(spacing: 4) {
-                            Text(moment.timestamp, style: .time).font(.caption).foregroundStyle(.secondary)
+                            Text(moment.timestamp, style: .time).font(Theme.Fonts.ui(.caption)).foregroundStyle(.secondary)
                             if moment.source == .watch {
-                                Image(systemName: "applewatch").font(.caption2).foregroundStyle(.secondary)
+                                Image(systemName: "applewatch").font(Theme.Fonts.ui(.caption2)).foregroundStyle(.secondary)
                             }
                         }
                     }
@@ -374,7 +374,7 @@ struct WorkoutDetailView: View {
             }
             .padding(.top, 4)
         } label: {
-            Label("Transcript (\(moments.count) \(moments.count == 1 ? "moment" : "moments"))", systemImage: "waveform").font(.subheadline.bold())
+            Label("Transcript (\(moments.count) \(moments.count == 1 ? "moment" : "moments"))", systemImage: "waveform").font(Theme.Fonts.ui(.subheadline, weight: .bold))
         }
         .themeCard()
     }

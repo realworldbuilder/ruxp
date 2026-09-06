@@ -2,15 +2,20 @@ import SwiftUI
 
 // MARK: - Wordmark
 
+/// RUXP in Orbitron Black with a one-pixel chromatic offset. The one loud thing on a screen.
 struct RUXPWordmark: View {
     var size: CGFloat = 28
     var color: Color = Theme.textPrimary
+    var glitch: Bool = true
 
     var body: some View {
-        Text("RUXP")
-            .font(.system(size: size, weight: .black, design: .rounded))
-            .tracking(-size * 0.04)
-            .foregroundStyle(color)
+        if glitch {
+            GlitchText(text: "RUXP", font: Theme.Fonts.display(size), color: color, offset: max(1.0, size * 0.035))
+        } else {
+            Text("RUXP")
+                .font(Theme.Fonts.display(size))
+                .foregroundStyle(color)
+        }
     }
 }
 
@@ -78,17 +83,16 @@ struct XPBar: View {
     var body: some View {
         VStack(alignment: .leading, spacing: compact ? 6 : 10) {
             HStack(alignment: .firstTextBaseline) {
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text("LVL").eyebrow().foregroundStyle(Theme.textSecondary)
                     Text("\(level)")
-                        .font(Theme.Fonts.number(compact ? 24 : 36))
+                        .font(Theme.Fonts.number(compact ? 20 : 28))
                         .foregroundStyle(Theme.textPrimary)
                         .contentTransition(.numericText(value: Double(level)))
                 }
                 Spacer()
                 Text(xpToNext > 0 ? "\(xpIntoLevel.grouped) / \(xpToNext.grouped) XP" : "MAX LEVEL")
-                    .font(Theme.Fonts.label)
-                    .monospacedDigit()
+                    .font(Theme.Fonts.mono(12))
                     .foregroundStyle(Theme.textSecondary)
             }
             GeometryReader { geo in
@@ -97,10 +101,9 @@ struct XPBar: View {
                     Capsule()
                         .fill(Theme.accent)
                         .frame(width: max(10, geo.size.width * fraction))
-                        .shadow(color: Theme.accent.opacity(0.45), radius: 6)
                 }
             }
-            .frame(height: compact ? 8 : 12)
+            .frame(height: compact ? 5 : 6)
             .animation(Theme.Motion.reveal, value: fraction)
         }
     }
@@ -108,22 +111,44 @@ struct XPBar: View {
 
 // MARK: - XP chip
 
+/// "+240 XP" in terminal green mono. Prominent = filled.
 struct XPChip: View {
     let amount: Int
     var prominent = true
 
     var body: some View {
         Text("+\(amount.grouped) XP")
-            .font(.system(size: 13, weight: .black, design: .rounded))
-            .monospacedDigit()
-            .foregroundStyle(prominent ? Theme.onAccent : Theme.accent)
+            .font(Theme.Fonts.mono(12, weight: .heavy))
+            .foregroundStyle(prominent ? Theme.onXP : Theme.xp)
             .padding(.horizontal, 10)
             .padding(.vertical, 5)
-            .background(prominent ? Theme.accent : Theme.accentSubtle, in: Capsule())
+            .background(prominent ? Theme.xp : Theme.xpSubtle, in: Capsule())
     }
 }
 
-// MARK: - Primary button
+// MARK: - Slanted tag
+
+/// Quiet outlined chip: season code, LEVEL UP. Magenta text is the hint.
+struct SlantTag: View {
+    let text: String
+    var fill: Color = Theme.accentSubtle
+    var textColor: Color = Theme.accent
+    var size: CGFloat = 11
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: size, weight: .semibold))
+            .tracking(0.8)
+            .textCase(.uppercase)
+            .foregroundStyle(textColor)
+            .lineLimit(1)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(fill, in: Capsule())
+    }
+}
+
+// MARK: - Buttons
 
 struct PressableButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
@@ -134,27 +159,26 @@ struct PressableButtonStyle: ButtonStyle {
     }
 }
 
+/// Full-width white pill, ChatGPT style. Title case, no shouting.
 struct PrimaryButton: View {
     let title: String
     var icon: String? = nil
-    var height: CGFloat = 64
+    var height: CGFloat = 52
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             HStack(spacing: 8) {
                 if let icon {
-                    Image(systemName: icon).font(.system(size: 18, weight: .bold))
+                    Image(systemName: icon).font(.system(size: 16, weight: .semibold))
                 }
-                Text(title)
-                    .font(.system(size: height > 56 ? 20 : 16, weight: .black, design: .rounded))
-                    .tracking(1)
+                Text(title.capitalized)
+                    .font(.system(size: 16, weight: .semibold))
             }
-            .foregroundStyle(Theme.onAccent)
+            .foregroundStyle(Theme.onButton)
             .frame(maxWidth: .infinity)
             .frame(height: height)
-            .background(Theme.accent, in: RoundedRectangle(cornerRadius: Theme.radiusLarge, style: .continuous))
-            .shadow(color: Theme.accent.opacity(0.35), radius: 16, y: 6)
+            .background(Theme.button, in: Capsule())
         }
         .buttonStyle(PressableButtonStyle())
     }
@@ -168,13 +192,34 @@ struct SecondaryButton: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 8) {
-                if let icon { Image(systemName: icon).font(.system(size: 15, weight: .bold)) }
-                Text(title).font(.system(size: 15, weight: .bold, design: .rounded)).tracking(0.5)
+                if let icon { Image(systemName: icon).font(.system(size: 14, weight: .semibold)) }
+                Text(title.capitalized)
+                    .font(.system(size: 15, weight: .semibold))
             }
             .foregroundStyle(Theme.textPrimary)
             .frame(maxWidth: .infinity)
-            .frame(height: 50)
-            .background(Theme.surfaceElevated, in: RoundedRectangle(cornerRadius: Theme.radiusMedium, style: .continuous))
+            .frame(height: 48)
+            .background(Theme.surfaceElevated, in: Capsule())
+            .overlay(Capsule().stroke(Theme.border, lineWidth: 1))
+        }
+        .buttonStyle(PressableButtonStyle())
+    }
+}
+
+/// Small pill action: "START" on a plan row, "End" in a toolbar.
+struct PillButton: View {
+    let title: String
+    var fill: Color = Theme.button
+    var textColor: Color = Theme.onButton
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(textColor)
+                .padding(.horizontal, 14).padding(.vertical, 8)
+                .background(fill, in: Capsule())
         }
         .buttonStyle(PressableButtonStyle())
     }
@@ -188,16 +233,33 @@ struct StatTile: View {
     var accent = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title).eyebrow().foregroundStyle(Theme.textSecondary)
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title).eyebrow().foregroundStyle(Theme.textTertiary)
             Text(value)
-                .font(Theme.Fonts.number(26))
-                .foregroundStyle(accent ? Theme.accent : Theme.textPrimary)
+                .font(.system(size: 22, weight: .semibold).monospacedDigit())
+                .foregroundStyle(accent ? Theme.xp : Theme.textPrimary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
+        .padding(16)
         .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.radiusMedium, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Theme.radiusMedium, style: .continuous).stroke(Theme.border, lineWidth: 1))
+    }
+}
+
+// MARK: - Section header
+
+/// Quiet mono eyebrow with a hairline, ChatGPT-style section rhythm.
+struct SectionHeader: View {
+    let title: String
+    var trailing: String? = nil
+
+    var body: some View {
+        HStack {
+            Text(title).eyebrow().foregroundStyle(Theme.textTertiary)
+            Spacer()
+            if let trailing { Text(trailing).eyebrow().foregroundStyle(Theme.textTertiary) }
+        }
     }
 }

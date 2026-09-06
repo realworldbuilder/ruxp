@@ -15,6 +15,8 @@ final class WatchConnectivityManager: NSObject, ObservableObject {
     var onMomentCountUpdated: ((_ count: Int) -> Void)?
     var onPlanReceived: ((PlanWirePayload?) -> Void)?
     var onProgressionReceived: ((ProgressionContext) -> Void)?
+    var onPresenceReceived: ((LiveSnapshot) -> Void)?
+    var onGameCenterSyncReceived: ((Bool) -> Void)?
 
     private let session: WCSession
     private var sendingTimeout: DispatchWorkItem?
@@ -89,6 +91,14 @@ final class WatchConnectivityManager: NSObject, ObservableObject {
         // Level / season XP snapshot (phone pushes it with every context update)
         if let progression = ProgressionContext.from(context) {
             onProgressionReceived?(progression)
+        }
+
+        // Live counts mirrored from the phone, and whether the watch may ping presence itself
+        if let presence = LiveSnapshot.from(context) {
+            onPresenceReceived?(presence)
+        }
+        if let sync = context[ConnectivityConstants.contextGameCenterSyncKey] as? Bool {
+            onGameCenterSyncReceived?(sync)
         }
 
         // Sync planned workout if present (absent = no plan for this workout)

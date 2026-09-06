@@ -25,7 +25,7 @@ struct ActiveWorkoutTab: View {
                 momentsFeed
                 micBlock
             }
-            .background(Theme.background)
+            .background(HUDBackground(glow: true))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {
@@ -37,19 +37,12 @@ struct ActiveWorkoutTab: View {
                 ToolbarItem(placement: .topBarLeading) {
                     Button { showDiscardConfirmation = true } label: {
                         Image(systemName: "xmark")
-                            .font(.subheadline.weight(.semibold))
+                            .font(Theme.Fonts.ui(.subheadline, weight: .semibold))
                             .foregroundStyle(Theme.textSecondary)
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { showEndConfirmation = true } label: {
-                        Text("End")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 6)
-                            .background(.red, in: Capsule())
-                    }
+                    PillButton(title: "End", fill: Theme.live, textColor: .white) { showEndConfirmation = true }
                 }
             }
             .alert("Microphone Access Required", isPresented: $showMicPermissionDenied) {
@@ -87,24 +80,24 @@ struct ActiveWorkoutTab: View {
     private var timerBlock: some View {
         VStack(spacing: 6) {
             Text(elapsedText)
-                .font(Theme.Fonts.number(46))
+                .font(Theme.Fonts.mono(44, weight: .heavy))
                 .foregroundStyle(Theme.textPrimary)
 
             HStack(spacing: 16) {
                 Label("\(workoutManager.activeSession?.moments.count ?? 0) moments", systemImage: "waveform")
-                    .font(.caption).foregroundStyle(Theme.textSecondary)
+                    .font(Theme.Fonts.ui(.caption)).foregroundStyle(Theme.textSecondary)
 
                 if workoutManager.isProcessingMoment {
                     HStack(spacing: 4) {
                         ProgressView().controlSize(.small)
-                        Text("Transcribing...").font(.caption).foregroundStyle(Theme.textSecondary)
+                        Text("Transcribing...").font(Theme.Fonts.ui(.caption)).foregroundStyle(Theme.textSecondary)
                     }
                 }
             }
         }
         .padding(.vertical, 16)
         .frame(maxWidth: .infinity)
-        .background(Theme.cardBackground)
+        .background(Theme.surface.opacity(0.7))
     }
 
     private var momentsFeed: some View {
@@ -120,21 +113,21 @@ struct ActiveWorkoutTab: View {
             .padding(.horizontal, 16)
             .padding(.top, 12)
         }
-        .background(Theme.background)
+        .background(Color.clear)
     }
 
     private func momentRow(_ moment: Moment) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(moment.transcript)
-                .font(.body)
+                .font(Theme.Fonts.ui(.body))
                 .foregroundStyle(Theme.textPrimary)
             HStack {
                 Text(moment.timestamp, style: .time)
-                    .font(.caption)
+                    .font(Theme.Fonts.ui(.caption))
                     .foregroundStyle(Theme.textSecondary)
                 if moment.source == .watch {
                     Image(systemName: "applewatch")
-                        .font(.caption2)
+                        .font(Theme.Fonts.ui(.caption2))
                         .foregroundStyle(Theme.textSecondary)
                 }
             }
@@ -142,9 +135,9 @@ struct ActiveWorkoutTab: View {
         .padding(.horizontal, 20)
         .padding(.vertical, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 0.5))
+        .background(Theme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.radiusMedium, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Theme.radiusMedium, style: .continuous).stroke(Theme.border, lineWidth: 1))
     }
 
     private var micBlock: some View {
@@ -152,7 +145,7 @@ struct ActiveWorkoutTab: View {
             if recorder.isRecording {
                 HStack(spacing: 8) {
                     Circle().fill(Theme.live).frame(width: 10, height: 10)
-                    Text(formattedRecordingDuration).font(.body.monospacedDigit())
+                    Text(formattedRecordingDuration).font(Theme.Fonts.mono(16)).foregroundStyle(Theme.textPrimary)
                 }
             }
             Button {
@@ -160,16 +153,16 @@ struct ActiveWorkoutTab: View {
                 else { requestMicAndRecord() }
             } label: {
                 Image(systemName: recorder.isRecording ? "stop.fill" : "mic.fill")
-                    .font(.title2)
+                    .font(Theme.Fonts.ui(.title2))
                     .foregroundStyle(recorder.isRecording ? Color.white : Theme.onAccent)
-                    .frame(width: 64, height: 64)
+                    .frame(width: 68, height: 68)
                     .background(recorder.isRecording ? Theme.live : Theme.accent, in: Circle())
-                    .shadow(color: (recorder.isRecording ? Theme.live : Theme.accent).opacity(0.4), radius: 8, y: 2)
+                    .overlay(Circle().stroke(Color.white.opacity(0.12), lineWidth: 1))
             }
             .padding(.bottom, 16)
         }
         .padding()
-        .background(Theme.background)
+        .background(Color.clear)
     }
 
     private var emptyEndMessage: String {
@@ -185,20 +178,22 @@ struct ActiveWorkoutTab: View {
 
     /// Other people are doing this with you.
     private var liveStrip: some View {
-        let live = presence?.snapshot ?? .empty
+        let live = presence?.snapshot ?? .unavailable
         let event = events.activeEvent(at: ScheduledEventService.now())
         return HStack(spacing: 10) {
-            LiveDot(label: nil, size: 7)
-            Text("\(live.liftingNow.grouped) still lifting")
-                .font(Theme.Fonts.label).monospacedDigit()
-                .foregroundStyle(Theme.textSecondary)
-                .contentTransition(.numericText())
-                .animation(Theme.Motion.snappy, value: live.liftingNow)
+            if live.isAvailable {
+                LiveDot(label: nil, size: 7)
+                Text(live.liftingNow <= 1 ? "You're the only one on right now" : "\(live.liftingNow.grouped) still lifting")
+                    .font(Theme.Fonts.label).monospacedDigit()
+                    .foregroundStyle(Theme.textSecondary)
+                    .contentTransition(.numericText())
+                    .animation(Theme.Motion.snappy, value: live.liftingNow)
+            }
             Spacer()
             if let event {
                 HStack(spacing: 6) {
                     Text(event.title).eyebrow().foregroundStyle(Theme.accent)
-                    Text("+\(event.xpReward) XP").eyebrow().foregroundStyle(Theme.textSecondary)
+                    Text("+\(event.xpReward) XP").eyebrow().foregroundStyle(Theme.xp)
                 }
                 .padding(.horizontal, 10).padding(.vertical, 5)
                 .background(Theme.accentSubtle, in: Capsule())
@@ -206,7 +201,7 @@ struct ActiveWorkoutTab: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
-        .background(Theme.background)
+        .background(Color.clear)
         .overlay(alignment: .bottom) { Divider().overlay(Theme.divider) }
     }
 
@@ -269,18 +264,18 @@ private struct PlanStripView: View {
             } label: {
                 HStack(spacing: 8) {
                     Image(systemName: "list.bullet.clipboard")
-                        .font(.caption)
+                        .font(Theme.Fonts.ui(.caption))
                         .foregroundStyle(Theme.accent)
                     Text(plan.title)
-                        .font(.subheadline.weight(.medium))
+                        .font(Theme.Fonts.ui(.subheadline, weight: .medium))
                         .foregroundStyle(.primary)
                         .lineLimit(1)
                     Spacer()
                     Text("\(mentionedCount)/\(plan.exercises.count)")
-                        .font(.caption.monospacedDigit())
+                        .font(Theme.Fonts.ui(.caption, mono: true))
                         .foregroundStyle(Theme.textSecondary)
                     Image(systemName: "chevron.down")
-                        .font(.caption2.weight(.semibold))
+                        .font(Theme.Fonts.ui(.caption2, weight: .semibold))
                         .foregroundStyle(Theme.textSecondary)
                         .rotationEffect(.degrees(expanded ? 180 : 0))
                 }
@@ -296,19 +291,19 @@ private struct PlanStripView: View {
                         let mentioned = PlanMatching.blobMentions(exercise.name, in: transcriptBlob)
                         HStack(spacing: 8) {
                             Image(systemName: mentioned ? "checkmark.circle.fill" : "circle")
-                                .font(.caption)
+                                .font(Theme.Fonts.ui(.caption))
                                 .foregroundStyle(mentioned ? Theme.accent : Theme.textSecondary)
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(exercise.name)
-                                    .font(.subheadline)
+                                    .font(Theme.Fonts.ui(.subheadline))
                                     .foregroundStyle(.primary)
                                 HStack(spacing: 8) {
                                     Text(exercise.prescription)
-                                        .font(.caption)
+                                        .font(Theme.Fonts.ui(.caption))
                                         .foregroundStyle(Theme.accent)
                                     if let rest = exercise.restDisplay {
                                         Text("Rest \(rest)")
-                                            .font(.caption)
+                                            .font(Theme.Fonts.ui(.caption))
                                             .foregroundStyle(Theme.textSecondary)
                                     }
                                 }
@@ -322,7 +317,7 @@ private struct PlanStripView: View {
                 .padding(.bottom, 12)
             }
         }
-        .background(Theme.cardBackground)
+        .background(Theme.surface.opacity(0.7))
         .overlay(alignment: .bottom) {
             Divider().overlay(Theme.border)
         }

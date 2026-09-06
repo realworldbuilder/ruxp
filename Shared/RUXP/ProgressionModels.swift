@@ -72,6 +72,9 @@ struct PlayerProgress: Codable, Equatable {
     var weeklyBonusWeeks: Set<String> = []
     /// Event occurrence IDs the player has earned a bonus for.
     var eventsJoined: [String: Date] = [:]
+    /// Season Pass cosmetics by kind ("title", "nameColor", "badge") → reward ID ("S01-T05").
+    /// Optional so progress files written before this field existed still decode.
+    var equippedCosmetics: [String: String]? = nil
 
     var levelProgress: LevelCurve.Progress { LevelCurve.progress(seasonXP: seasonXP) }
     var level: Int { levelProgress.level }

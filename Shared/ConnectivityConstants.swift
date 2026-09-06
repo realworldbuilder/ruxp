@@ -31,6 +31,13 @@ enum ConnectivityConstants {
     static let contextXPIntoLevelKey = "ctx_xpIntoLevel"
     static let contextXPToNextKey = "ctx_xpToNext"
 
+    // Live presence context keys (phone → watch, piggyback on application context)
+    static let contextLiftingNowKey = "ctx_liftingNow"
+    static let contextTrainedTodayKey = "ctx_trainedToday"
+    static let contextPresenceAvailableKey = "ctx_presenceAvailable"
+    static let contextPresenceUpdatedAtKey = "ctx_presenceUpdatedAt"
+    static let contextGameCenterSyncKey = "ctx_gameCenterSync"
+
     // File transfer metadata keys
     static let fileTypeMomentAudio = "momentAudio"
     static let fileTypeKey = "fileType"

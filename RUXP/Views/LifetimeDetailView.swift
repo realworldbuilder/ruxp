@@ -13,11 +13,11 @@ struct LifetimeDetailView: View {
                 // Hero Section
                 VStack(spacing: 8) {
                     Text("\(stats.totalWorkouts)")
-                        .font(.system(size: 72, weight: .bold, design: .rounded))
+                        .font(Theme.Fonts.number(72))
                         .foregroundStyle(Theme.accent)
                     
                     Text("LIFETIME")
-                        .font(.title2.weight(.semibold))
+                        .font(Theme.Fonts.ui(.title2, weight: .semibold))
                         .foregroundStyle(Theme.textSecondary)
                         .tracking(2)
                 }
@@ -93,7 +93,7 @@ struct LifetimeDetailView: View {
         .overlay(alignment: .topTrailing) {
             Button { dismiss() } label: {
                 Image(systemName: "xmark")
-                    .font(.title3.weight(.semibold))
+                    .font(Theme.Fonts.ui(.title3, weight: .semibold))
                     .foregroundStyle(Theme.textSecondary)
                     .frame(width: 32, height: 32)
                     .background(Theme.surface.opacity(0.8), in: Circle())
@@ -109,20 +109,20 @@ struct LifetimeDetailView: View {
     private func lifetimeStatCard(title: String, value: String, subtitle: String, icon: String) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Image(systemName: icon)
-                .font(.title3)
+                .font(Theme.Fonts.ui(.title3))
                 .foregroundStyle(Theme.accent)
             
             VStack(alignment: .leading, spacing: 4) {
                 Text(value)
-                    .font(.system(size: 32, weight: .bold, design: .rounded))
+                    .font(Theme.Fonts.number(32))
                     .foregroundStyle(Theme.textPrimary)
                 
                 Text(title)
-                    .font(.headline.weight(.medium))
+                    .font(Theme.Fonts.ui(.headline, weight: .medium))
                     .foregroundStyle(Theme.textSecondary)
                 
                 Text(subtitle)
-                    .font(.caption)
+                    .font(Theme.Fonts.ui(.caption))
                     .foregroundStyle(Theme.textTertiary)
             }
             
@@ -153,7 +153,7 @@ struct LifetimeDetailView: View {
     private var weeklyVolumeChart: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Weekly Volume")
-                .font(.headline.weight(.semibold))
+                .font(Theme.Fonts.ui(.headline, weight: .semibold))
                 .foregroundStyle(Theme.textPrimary)
             
             Chart {
@@ -215,7 +215,7 @@ struct LifetimeDetailView: View {
     private var averageStatsSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Average Per Workout")
-                .font(.headline.weight(.semibold))
+                .font(Theme.Fonts.ui(.headline, weight: .semibold))
                 .foregroundStyle(Theme.textPrimary)
             
             VStack(spacing: 12) {
@@ -262,23 +262,23 @@ struct LifetimeDetailView: View {
     private func averageStatRow(title: String, value: String, unit: String, icon: String) -> some View {
         HStack {
             Image(systemName: icon)
-                .font(.title3)
+                .font(Theme.Fonts.ui(.title3))
                 .foregroundStyle(Theme.accent)
                 .frame(width: 24)
             
             Text(title)
-                .font(.body.weight(.medium))
+                .font(Theme.Fonts.ui(.body, weight: .medium))
                 .foregroundStyle(Theme.textPrimary)
             
             Spacer()
             
             HStack(spacing: 4) {
                 Text(value)
-                    .font(.title3.weight(.bold).monospacedDigit())
+                    .font(Theme.Fonts.ui(.title3, weight: .bold, mono: true))
                     .foregroundStyle(Theme.textPrimary)
                 
                 Text(unit)
-                    .font(.caption)
+                    .font(Theme.Fonts.ui(.caption))
                     .foregroundStyle(Theme.textSecondary)
             }
         }

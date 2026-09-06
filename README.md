@@ -10,7 +10,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/platform-iOS_18+_|_watchOS_11+-black?style=flat-square" alt="Platform">
-  <img src="https://img.shields.io/badge/swift-5.9-C6FF3D?style=flat-square&logo=swift&logoColor=black" alt="Swift">
+  <img src="https://img.shields.io/badge/swift-5.9-FF2DAA?style=flat-square&logo=swift&logoColor=white" alt="Swift">
   <img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="License">
 </p>
 
@@ -31,7 +31,7 @@ That is the whole MVP. Everything in the app exists to serve it.
 **Home** answers four questions in one glance: who is training right now, is anything special happening, what level am I, should I start lifting.
 
 ```
-RUXP                              S01 · BACK 2 SCHOOL
+RUXP                              S01 · PRESS START
 12,481 ● LIFTING NOW
 482 workouts finished in the last hour
 
@@ -74,11 +74,15 @@ Users earn XP for healthy, useful behavior. Grinding is not rewarded.
 | Weekly consistency | +500 | 4th workout of the ISO week |
 | Personal record | +250 | Max 2 per workout, only after AI parses your notes |
 
-Level 1–100 is derived from **season XP**; **lifetime XP** is a career total. Season 01 is BACK 2 SCHOOL (Sep 1 – Nov 30, 2026): 32 workouts, finish the season. Everything lives in `ProgressionService`.
+Level 1–100 is derived from **season XP**; **lifetime XP** is a career total. Season 01 is PRESS START (Sep 1 – Nov 30, 2026): 32 workouts, finish the season. The first season is themed around the game itself. Everything lives in `ProgressionService`.
 
 ## Live presence and events
 
-Live counts are **simulated in this build**. `SimulatedLivePresence` generates believable numbers from a time-of-day curve so the UX can be felt before a backend exists. It sits behind `LivePresenceProviding`; a real-time service replaces it without touching a view. Events (FRIDAY NIGHT, SUNDAY RESET, the BACK 2 SCHOOL season theme) come from `ScheduledEventService` behind `LiveEventProviding`.
+Live counts are **real**. They come from Game Center, with no server of our own: an active workout pings a short recurring leaderboard every five minutes, and the number of players in that window is "lifting now". A daily board pinged on completion is "trained today"; weekly boards whose windows match the events are "players joined". `GameCenterLivePresence` polls those counts and sits behind `LivePresenceProviding`; the watch mirrors the phone's numbers (`MirroredLivePresence`) and pings on its own during a watch-run workout. Counts include only RUXP players signed into Game Center, so early on they are small and shown as they are. Events (FRIDAY NIGHT, SUNDAY RESET, the PRESS START season theme) come from `ScheduledEventService` behind `LiveEventProviding`.
+
+## Game Center
+
+Sign-in is silent if the player is already in Game Center. Three leaderboards (lifetime XP, season XP, longest week streak) and ten achievements (first workout, first PR, four-workout week, four-week streak, Friday Night, season goal, levels 5/10/25/50) are submitted from `ProgressionService` totals, never deltas. Profile opens each leaderboard; Settings has an off switch. IDs and the App Store Connect window configuration are documented in `Shared/RUXP/GameCenterCatalog.swift`. A new season needs its own `season_xp_*` and `season_goal_*` entries created before it starts.
 
 ## Architecture
 
@@ -94,11 +98,16 @@ RUXP/
 │       ├── LevelCurve.swift       Levels 1–100
 │       ├── ProgressionModels.swift PlayerProgress, XPAward, WorkoutRewardSummary
 │       ├── ProgressionService.swift Centralized XP / level / streak (player_progress.json)
-│       ├── Season.swift           SEASON 01 — BACK 2 SCHOOL
+│       ├── Season.swift           SEASON 01 — PRESS START
 │       ├── LiveEvents.swift       LiveEvent, LiveEventProviding, ScheduledEventService
-│       └── LivePresence.swift     LiveSnapshot, LivePresenceProviding, SimulatedLivePresence
+│       ├── LivePresence.swift     LiveSnapshot, LivePresenceProviding
+│       ├── MirroredLivePresence.swift  Watch copy of the phone's counts
+│       └── GameCenterCatalog.swift Leaderboard / achievement IDs, PlayerProgress → scores
 ├── RUXP/                          (iOS target)
 │   ├── RUXPApp.swift
+│   ├── GameCenter/
+│   │   ├── GameCenterService.swift      Sign-in, XP + achievement submission, presence pings
+│   │   └── GameCenterLivePresence.swift Polls recurring boards for real live counts
 │   ├── WorkoutManager.swift       Start/end, awards completion XP, pushes reward to watch
 │   ├── AIProcessingPipeline.swift OpenAI parse → structured log → PR detection → PR XP
 │   ├── InsightsStore.swift        Lifetime stats, personal records
@@ -135,11 +144,11 @@ Schemes: `RUXP` (iPhone) and `RUXP Watch App`. Bundle IDs `com.whussey.ruxp` and
 3. Optional: add an OpenAI API key in Profile › Settings. It powers transcription and parsing voice notes into sets, reps, weight, and PRs. XP for completing workouts never depends on it.
 
 ### Debug helpers
-Debug builds add a Developer section in Settings (load 7 sample workouts, pretend it is Friday night, skip the 10-minute minimum) and accept launch arguments `-RUXPSkipMinimum` and `-RUXPEventClock friday|sunday|tuesday`.
+Debug builds add a Developer section in Settings (load 7 sample workouts, pretend it is Friday night, skip the 10-minute minimum, Game Center state and presence counts) and accept launch arguments `-RUXPSkipMinimum`, `-RUXPEventClock friday|sunday|tuesday`, `-RUXPSkipHealthKit`, and `-RUXPSkipGameCenter`.
 
 ## Privacy
 
-Voice notes are sent to OpenAI for transcription and parsing only when you add your own API key. No analytics, no tracking, no accounts. Live counts are generated on device.
+Voice notes are sent to OpenAI for transcription and parsing only when you add your own API key. No analytics, no tracking, no accounts of our own. Game Center is optional and can be turned off in Settings; when on, only your XP totals, week streak, milestones, and an "I'm training" ping leave the device, and the live counts are read back from it.
 
 ## License
 

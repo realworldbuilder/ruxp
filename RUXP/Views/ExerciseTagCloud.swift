@@ -135,7 +135,7 @@ struct ExerciseTagCloud: View, WorkoutCanvasComponent {
         VStack(spacing: 16) {
             if !reason.isEmpty {
                 Text(reason)
-                    .font(.caption2)
+                    .font(Theme.Fonts.ui(.caption2))
                     .foregroundColor(Theme.textTertiary)
                     .textCase(.uppercase)
                     .tracking(1.2)
@@ -164,13 +164,13 @@ struct ExerciseTagCloud: View, WorkoutCanvasComponent {
             if let selected = selectedTag {
                 VStack(spacing: 8) {
                     Text("CURRENT EXERCISE")
-                        .font(.caption2)
+                        .font(Theme.Fonts.ui(.caption2))
                         .foregroundColor(Theme.textTertiary)
                         .textCase(.uppercase)
                         .tracking(1.2)
                     
                     Text(selected)
-                        .font(.title3.weight(.semibold))
+                        .font(Theme.Fonts.ui(.title3, weight: .semibold))
                         .foregroundColor(Theme.accent)
                         .transition(.scale.combined(with: .opacity))
                 }

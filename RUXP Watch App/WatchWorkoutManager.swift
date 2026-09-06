@@ -36,7 +36,8 @@ final class WatchWorkoutManager {
     var rewardStatus: RewardSyncStatus = .idle
     var progression: ProgressionContext? = WatchWorkoutManager.cachedProgression()
     private var rewardTimeout: Task<Void, Never>?
-    let livePresence = SimulatedLivePresence(tickInterval: 15)
+    let livePresence = MirroredLivePresence()
+    let gameCenter = WatchGameCenter()
     let events = ScheduledEventService()
     
     // AI Intelligence features
@@ -65,7 +66,13 @@ final class WatchWorkoutManager {
             self?.progression = context
             Self.cache(context)
         }
-        livePresence.start()
+        connectivity.onPresenceReceived = { [weak self] snapshot in
+            self?.livePresence.apply(snapshot)
+        }
+        connectivity.onGameCenterSyncReceived = { [weak self] enabled in
+            self?.gameCenter.setSyncEnabled(enabled)
+        }
+        gameCenter.start()
     }
 
     // MARK: - Progression cache (so LVL shows before the session activates)
@@ -117,6 +124,7 @@ final class WatchWorkoutManager {
         workoutStartTime = Date()
 
         extendedSession.startSession()
+        gameCenter.startHeartbeat()
         startElapsedTimer()
 
         let message = WorkoutMessage(command: .start, workoutID: workoutID)
@@ -161,6 +169,7 @@ final class WatchWorkoutManager {
             awaitReward()
 
             extendedSession.endSession()
+            gameCenter.stopHeartbeat()
             isEndingWorkout = false
             workoutEndReady = true
 
@@ -351,6 +360,7 @@ final class WatchWorkoutManager {
                     self.lastError = nil
                     self.workoutStartTime = message.timestamp
                     self.extendedSession.startSession()
+                    self.gameCenter.startHeartbeat()
                     self.startElapsedTimer()
                     Task { await self.healthKitService.startWorkout() }
                     self.connectivity.updateWorkoutContext(workoutID: message.workoutID, isActive: true, startedAt: message.timestamp)
@@ -359,6 +369,7 @@ final class WatchWorkoutManager {
                 if self.currentWorkoutID == message.workoutID {
                     self.stopElapsedTimer()
                     self.extendedSession.endSession()
+                    self.gameCenter.stopHeartbeat()
                     Task { await self.healthKitService.endWorkout() }
                     self.didReceiveRemoteStop = true
                     self.connectivity.updateWorkoutContext(workoutID: message.workoutID, isActive: false, startedAt: nil)
@@ -415,11 +426,13 @@ final class WatchWorkoutManager {
                 self.lastError = nil
                 self.workoutStartTime = startedAt ?? Date()
                 self.extendedSession.startSession()
+                self.gameCenter.startHeartbeat()
                 self.startElapsedTimer()
                 Task { await self.healthKitService.startWorkout() }
             } else if !isActive, self.isWorkoutActive, self.currentWorkoutID == workoutID {
                 self.stopElapsedTimer()
                 self.extendedSession.endSession()
+                self.gameCenter.stopHeartbeat()
                 Task { await self.healthKitService.endWorkout() }
                 self.didReceiveRemoteStop = true
             }

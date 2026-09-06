@@ -4,14 +4,24 @@ import SwiftUI
 struct ProfileView: View {
     @Environment(ProgressionService.self) private var progression
     @Environment(InsightsStore.self) private var insightsStore
+    @Environment(GameCenterService.self) private var gameCenter
 
     @State private var showNameEditor = false
     @State private var nameDraft = ""
     @State private var showPRs = false
     @State private var showLifetime = false
     @State private var showSettings = false
+    @State private var showSeasonPass = false
 
     private var p: PlayerProgress { progression.progress }
+    private var loadout: SeasonPassLoadout { SeasonPassCatalog.loadout(for: p, season: progression.season) }
+    private var seasonPassSubtitle: String {
+        let tier = SeasonPassCatalog.currentTier(level: p.level)
+        if let next = SeasonPassCatalog.next(after: p.level, season: progression.season) {
+            return "Tier \(tier) of \(SeasonPassCatalog.tierCount) · next: \(next.name.capitalized)"
+        }
+        return "All \(SeasonPassCatalog.tierCount) tiers unlocked"
+    }
 
     var body: some View {
         NavigationStack {
@@ -19,8 +29,9 @@ struct ProfileView: View {
                 VStack(alignment: .leading, spacing: 18) {
                     identity
                     XPBar(level: p.level, xpIntoLevel: p.xpIntoLevel, xpToNext: p.xpToNextLevel)
-                        .padding(18)
+                        .padding(20)
                         .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.radiusLarge, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: Theme.radiusLarge, style: .continuous).stroke(Theme.border, lineWidth: 1))
                     statsGrid
                     links
                 }
@@ -28,7 +39,7 @@ struct ProfileView: View {
                 .padding(.top, 8)
                 .padding(.bottom, 32)
             }
-            .background(Theme.background.ignoresSafeArea())
+            .background(HUDBackground())
             .toolbar(.hidden, for: .navigationBar)
         }
         .alert("Display name", isPresented: $showNameEditor) {
@@ -37,6 +48,9 @@ struct ProfileView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("Shown on your player card.")
+        }
+        .fullScreenCover(isPresented: $showSeasonPass) {
+            SeasonPassView()
         }
         .fullScreenCover(isPresented: $showPRs) {
             PRDetailView(personalRecords: insightsStore.personalRecords)
@@ -61,36 +75,46 @@ struct ProfileView: View {
                 } label: {
                     HStack(spacing: 8) {
                         Text(p.displayName)
-                            .font(Theme.Fonts.display(32))
-                            .foregroundStyle(Theme.textPrimary)
+                            .font(.system(size: 28, weight: .bold))
+                            .foregroundStyle(loadout.nameColor ?? Theme.textPrimary)
                             .lineLimit(1)
                             .minimumScaleFactor(0.6)
+                        if let badge = loadout.badge {
+                            Image(systemName: badge)
+                                .font(.system(size: 16, weight: .bold))
+                                .foregroundStyle(loadout.nameColor ?? Theme.accent)
+                        }
                         Image(systemName: "pencil")
-                            .font(.caption.bold())
+                            .font(Theme.Fonts.ui(.caption, weight: .bold))
                             .foregroundStyle(Theme.textTertiary)
                     }
                 }
                 .buttonStyle(.plain)
-                Text("\(progression.season.code) · \(progression.season.name)")
-                    .eyebrow()
-                    .foregroundStyle(Theme.secondary)
+                if let title = loadout.title {
+                    Text(title)
+                        .font(Theme.Fonts.mono(12))
+                        .foregroundStyle(loadout.nameColor ?? Theme.textSecondary)
+                }
+                SlantTag(text: "\(progression.season.code) · \(progression.season.name)")
+                    .padding(.top, 2)
             }
             Spacer()
-            VStack(spacing: 0) {
-                Text("LVL").eyebrow().foregroundStyle(Theme.onAccent.opacity(0.7))
+            VStack(spacing: 2) {
+                Text("LVL").eyebrow().foregroundStyle(Theme.textSecondary)
                 Text("\(p.level)")
-                    .font(Theme.Fonts.number(34))
-                    .foregroundStyle(Theme.onAccent)
+                    .font(Theme.Fonts.number(28))
+                    .foregroundStyle(loadout.nameColor ?? Theme.textPrimary)
             }
-            .frame(width: 84, height: 84)
-            .background(Theme.accent, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-            .shadow(color: Theme.accent.opacity(0.35), radius: 14, y: 4)
+            .frame(width: 80, height: 80)
+            .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.radiusLarge, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: Theme.radiusLarge, style: .continuous).stroke(Theme.border, lineWidth: 1))
             Button { showSettings = true } label: {
                 Image(systemName: "gearshape.fill")
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(Theme.textSecondary)
                     .frame(width: 36, height: 36)
                     .background(Theme.surface, in: Circle())
+                    .overlay(Circle().stroke(Theme.border, lineWidth: 1))
             }
             .padding(.leading, 10)
         }
@@ -116,11 +140,25 @@ struct ProfileView: View {
 
     private var links: some View {
         VStack(spacing: 10) {
+            linkRow(title: "Season Pass", subtitle: seasonPassSubtitle, icon: "ticket.fill") {
+                showSeasonPass = true
+            }
             linkRow(title: "Personal records", subtitle: "\(insightsStore.personalRecords.count) lifts tracked", icon: "trophy.fill") {
                 showPRs = true
             }
             linkRow(title: "Career stats", subtitle: "Volume, sets, streaks", icon: "chart.bar.fill") {
                 showLifetime = true
+            }
+            if gameCenter.authState != .disabled {
+                linkRow(title: "Lifetime XP leaderboard", subtitle: gameCenter.statusLine, icon: "list.number") {
+                    gameCenter.presentLeaderboard(id: GameCenterCatalog.lifetimeXP)
+                }
+                linkRow(title: "Season XP leaderboard", subtitle: progression.season.displayName, icon: "flag.checkered") {
+                    gameCenter.presentLeaderboard(id: GameCenterCatalog.seasonXP(progression.season))
+                }
+                linkRow(title: "Week streak leaderboard", subtitle: "Longest run of weeks with a workout", icon: "flame.fill") {
+                    gameCenter.presentLeaderboard(id: GameCenterCatalog.weekStreak)
+                }
             }
         }
     }
@@ -135,13 +173,14 @@ struct ProfileView: View {
                     .background(Theme.accentSubtle, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title).font(Theme.Fonts.title(16)).foregroundStyle(Theme.textPrimary)
-                    Text(subtitle).font(.caption).foregroundStyle(Theme.textSecondary)
+                    Text(subtitle).font(Theme.Fonts.ui(.caption)).foregroundStyle(Theme.textSecondary)
                 }
                 Spacer()
-                Image(systemName: "chevron.right").font(.caption.bold()).foregroundStyle(Theme.textTertiary)
+                Image(systemName: "chevron.right").font(Theme.Fonts.ui(.caption, weight: .bold)).foregroundStyle(Theme.textTertiary)
             }
             .padding(14)
             .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.radiusMedium, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: Theme.radiusMedium, style: .continuous).stroke(Theme.border, lineWidth: 1))
         }
         .buttonStyle(PressableButtonStyle())
     }
