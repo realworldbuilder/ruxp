@@ -20,8 +20,18 @@ final class HealthKitService: NSObject {
     var isAuthorized = false
     var workoutUUID: UUID?
 
+    /// DEBUG-only: launch with `-RUXPSkipHealthKit` to bypass HealthKit entirely in simulators,
+    /// where the permission sheet cannot be automated. Never true in release builds.
+    nonisolated static var isDisabledForTesting: Bool {
+        #if DEBUG
+        return ProcessInfo.processInfo.arguments.contains("-RUXPSkipHealthKit")
+        #else
+        return false
+        #endif
+    }
+
     var isHealthKitAvailable: Bool {
-        HKHealthStore.isHealthDataAvailable()
+        !Self.isDisabledForTesting && HKHealthStore.isHealthDataAvailable()
     }
 
     func requestAuthorization() async {
@@ -141,7 +151,7 @@ final class HealthKitService: NSObject {
 
     /// Fallback: manually save a workout to HealthKit if the live session fails
     private func saveManualWorkout() async {
-        guard let startDate = workoutStartDate else { return }
+        guard isHealthKitAvailable, let startDate = workoutStartDate else { return }
         let endDate = Date()
 
         let workout = HKWorkout(
@@ -175,7 +185,7 @@ final class HealthKitService: NSObject {
     }
     
     private func saveManualWorkout() async {
-        guard let startDate = workoutStartDate else { return }
+        guard isHealthKitAvailable, let startDate = workoutStartDate else { return }
         let endDate = Date()
 
         let workout = HKWorkout(

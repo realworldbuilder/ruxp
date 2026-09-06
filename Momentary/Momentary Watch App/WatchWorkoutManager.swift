@@ -139,9 +139,15 @@ final class WatchWorkoutManager {
 
         stopElapsedTimer()
 
-        // End HealthKit workout FIRST to capture final stats, then send to phone
+        // End HealthKit workout FIRST to capture final stats, then send to phone.
+        // Bounded so a stalled HealthKit session can never leave the End button spinning.
         Task {
-            await healthKitService.endWorkout()
+            await withTaskGroup(of: Void.self) { group in
+                group.addTask { await self.healthKitService.endWorkout() }
+                group.addTask { try? await Task.sleep(for: .seconds(8)) }
+                await group.next()
+                group.cancelAll()
+            }
 
             let message = WorkoutMessage(
                 command: .stop,
