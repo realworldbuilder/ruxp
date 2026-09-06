@@ -15,6 +15,7 @@ struct RUXPApp: App {
     private let eventService = ScheduledEventService()
 
     init() {
+        Self.applyDebugLaunchArguments()
         let store = WorkoutStore()
         let plannedStore = PlannedWorkoutStore()
         let aiService = AIService()
@@ -70,7 +71,7 @@ struct RUXPApp: App {
     /// DEBUG-only knobs for exercising the reward flow quickly:
     ///   -RUXPSkipMinimum   no 10-minute minimum for completion XP
     ///   -RUXPEventClock friday|sunday|tuesday   pretend it is that day
-    private func applyDebugLaunchArguments() {
+    private static func applyDebugLaunchArguments() {
         #if DEBUG
         let args = ProcessInfo.processInfo.arguments
         if args.contains("-RUXPSkipMinimum") { ProgressionRules.minimumWorkoutDuration = 0 }
@@ -105,7 +106,6 @@ struct RUXPApp: App {
                 .environment(\.liveEvents, eventService)
                 .preferredColorScheme(.dark)
                 .task {
-                    applyDebugLaunchArguments()
                     livePresence.start()
                     await workoutProcessor.processPendingQueue()
                     await insightsEngine.generateInsights()

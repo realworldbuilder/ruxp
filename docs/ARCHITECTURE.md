@@ -43,7 +43,7 @@ The watch never computes XP. It shows "Syncing XP" → "+1,000 XP · LVL 13", or
 
 ## What is hidden, not deleted
 
-The Momentary AI trainer chat, insights tab, story carousel, and social content generation still compile but are not reachable from navigation (`ChatView`, `InsightsTab`, `InsightStoryView`, `StoryCarouselView`, `TrainerSoulEditor`). `contentPack` is no longer persisted. The AI pipeline is kept for what matters: turning voice notes into exercises, sets, reps, weight, and PRs.
+The Momentary-era AI trainer chat, insights tab, story carousel, and social content generation still compile but are not reachable from navigation (`ChatView`, `InsightsTab`, `InsightStoryView`, `StoryCarouselView`, `TrainerSoulEditor`). `contentPack` is no longer persisted. The AI pipeline is kept for what matters: turning voice notes into exercises, sets, reps, weight, and PRs.
 
 ## Later (not built)
 

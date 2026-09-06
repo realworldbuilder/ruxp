@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		EP000002 /* Momentary Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = C2000001 /* Momentary Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		EP000002 /* RUXP Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = C2000001 /* RUXP Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -16,7 +16,7 @@
 			containerPortal = P0000001 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = T2000001;
-			remoteInfo = "Momentary Watch App";
+			remoteInfo = "RUXP Watch App";
 		};
 /* End PBXContainerItemProxy section */
 
@@ -27,7 +27,7 @@
 			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
 			dstSubfolderSpec = 16;
 			files = (
-				EP000002 /* Momentary Watch App.app in Embed Watch Content */,
+				EP000002 /* RUXP Watch App.app in Embed Watch Content */,
 			);
 			name = "Embed Watch Content";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -35,8 +35,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		C1000001 /* Momentary.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Momentary.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		C2000001 /* Momentary Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Momentary Watch App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		C1000001 /* RUXP.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RUXP.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		C2000001 /* RUXP Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "RUXP Watch App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -45,14 +45,14 @@
 			path = Shared;
 			sourceTree = "<group>";
 		};
-		FS000002 /* Momentary */ = {
+		FS000002 /* RUXP */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = Momentary;
+			path = RUXP;
 			sourceTree = "<group>";
 		};
-		FS000003 /* Momentary Watch App */ = {
+		FS000003 /* RUXP Watch App */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "Momentary Watch App";
+			path = "RUXP Watch App";
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -79,8 +79,8 @@
 			isa = PBXGroup;
 			children = (
 				FS000001 /* Shared */,
-				FS000002 /* Momentary */,
-				FS000003 /* Momentary Watch App */,
+				FS000002 /* RUXP */,
+				FS000003 /* RUXP Watch App */,
 				F9000001 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -88,8 +88,8 @@
 		F9000001 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				C1000001 /* Momentary.app */,
-				C2000001 /* Momentary Watch App.app */,
+				C1000001 /* RUXP.app */,
+				C2000001 /* RUXP Watch App.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -97,9 +97,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		T1000001 /* Momentary */ = {
+		T1000001 /* RUXP */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = L1000001 /* Build configuration list for PBXNativeTarget "Momentary" */;
+			buildConfigurationList = L1000001 /* Build configuration list for PBXNativeTarget "RUXP" */;
 			buildPhases = (
 				S1000001 /* Sources */,
 				E1000001 /* Frameworks */,
@@ -113,16 +113,16 @@
 			);
 			fileSystemSynchronizedGroups = (
 				FS000001 /* Shared */,
-				FS000002 /* Momentary */,
+				FS000002 /* RUXP */,
 			);
-			name = Momentary;
-			productName = Momentary;
-			productReference = C1000001 /* Momentary.app */;
+			name = RUXP;
+			productName = RUXP;
+			productReference = C1000001 /* RUXP.app */;
 			productType = "com.apple.product-type.application";
 		};
-		T2000001 /* Momentary Watch App */ = {
+		T2000001 /* RUXP Watch App */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = L2000001 /* Build configuration list for PBXNativeTarget "Momentary Watch App" */;
+			buildConfigurationList = L2000001 /* Build configuration list for PBXNativeTarget "RUXP Watch App" */;
 			buildPhases = (
 				S2000001 /* Sources */,
 				E2000001 /* Frameworks */,
@@ -134,11 +134,11 @@
 			);
 			fileSystemSynchronizedGroups = (
 				FS000001 /* Shared */,
-				FS000003 /* Momentary Watch App */,
+				FS000003 /* RUXP Watch App */,
 			);
-			name = "Momentary Watch App";
-			productName = "Momentary Watch App";
-			productReference = C2000001 /* Momentary Watch App.app */;
+			name = "RUXP Watch App";
+			productName = "RUXP Watch App";
+			productReference = C2000001 /* RUXP Watch App.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -159,7 +159,7 @@
 					};
 				};
 			};
-			buildConfigurationList = L0000001 /* Build configuration list for PBXProject "Momentary" */;
+			buildConfigurationList = L0000001 /* Build configuration list for PBXProject "RUXP" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -173,8 +173,8 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				T1000001 /* Momentary */,
-				T2000001 /* Momentary Watch App */,
+				T1000001 /* RUXP */,
+				T2000001 /* RUXP Watch App */,
 			);
 		};
 /* End PBXProject section */
@@ -216,7 +216,7 @@
 /* Begin PBXTargetDependency section */
 		DD000001 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = T2000001 /* Momentary Watch App */;
+			target = T2000001 /* RUXP Watch App */;
 			targetProxy = DP000001 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -347,7 +347,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = Momentary/Momentary.entitlements;
+				CODE_SIGN_ENTITLEMENTS = RUXP/RUXP.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -384,7 +384,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = Momentary/Momentary.entitlements;
+				CODE_SIGN_ENTITLEMENTS = RUXP/RUXP.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -422,7 +422,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = "Momentary Watch App/Momentary Watch App.entitlements";
+				CODE_SIGN_ENTITLEMENTS = "RUXP Watch App/RUXP Watch App.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -456,7 +456,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = "Momentary Watch App/Momentary Watch App.entitlements";
+				CODE_SIGN_ENTITLEMENTS = "RUXP Watch App/RUXP Watch App.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -489,7 +489,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		L0000001 /* Build configuration list for PBXProject "Momentary" */ = {
+		L0000001 /* Build configuration list for PBXProject "RUXP" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				X0D00001 /* Debug */,
@@ -498,7 +498,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		L1000001 /* Build configuration list for PBXNativeTarget "Momentary" */ = {
+		L1000001 /* Build configuration list for PBXNativeTarget "RUXP" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				X1D00001 /* Debug */,
@@ -507,7 +507,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		L2000001 /* Build configuration list for PBXNativeTarget "Momentary Watch App" */ = {
+		L2000001 /* Build configuration list for PBXNativeTarget "RUXP Watch App" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				X2D00001 /* Debug */,

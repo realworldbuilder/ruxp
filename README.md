@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="Momentary/Momentary/Assets.xcassets/AppIcon.appiconset/AppIcon.png" width="120" alt="RUXP">
+  <img src="RUXP/Assets.xcassets/AppIcon.appiconset/AppIcon.png" width="120" alt="RUXP">
 </p>
 
 <h1 align="center">RUXP</h1>
@@ -83,7 +83,8 @@ Live counts are **simulated in this build**. `SimulatedLivePresence` generates b
 ## Architecture
 
 ```
-Momentary/
+RUXP/
+├── RUXP.xcodeproj
 ├── Shared/                        (both targets)
 │   ├── Models.swift               Workout, exercise/set/rep/weight, wire messages
 │   ├── WorkoutStore.swift         Directory-per-workout JSON persistence
@@ -96,7 +97,7 @@ Momentary/
 │       ├── Season.swift           SEASON 01 — BACK 2 SCHOOL
 │       ├── LiveEvents.swift       LiveEvent, LiveEventProviding, ScheduledEventService
 │       └── LivePresence.swift     LiveSnapshot, LivePresenceProviding, SimulatedLivePresence
-├── Momentary/                     (iOS target, product name RUXP)
+├── RUXP/                          (iOS target)
 │   ├── RUXPApp.swift
 │   ├── WorkoutManager.swift       Start/end, awards completion XP, pushes reward to watch
 │   ├── AIProcessingPipeline.swift OpenAI parse → structured log → PR detection → PR XP
@@ -109,7 +110,7 @@ Momentary/
 │       ├── ActiveWorkoutTab.swift Live workout
 │       ├── WorkoutCompletionSheet.swift  Reward screen
 │       └── Components/RUXPComponents.swift
-└── Momentary Watch App/           (watchOS target, product name RUXP Watch App)
+└── RUXP Watch App/                (watchOS target)
     ├── WatchWorkoutManager.swift  Workout lifecycle, receives XP from phone
     └── Views/                     WatchHomeView, ActiveWorkoutView, WorkoutSummaryView
 ```
@@ -119,7 +120,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the protocols and what a re
 ## Quick start
 
 ```bash
-open Momentary/Momentary.xcodeproj
+open RUXP.xcodeproj
 ```
 
 Schemes: `RUXP` (iPhone) and `RUXP Watch App`. Bundle IDs `com.whussey.ruxp` and `com.whussey.ruxp.watchkitapp`.

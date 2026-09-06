@@ -14,10 +14,10 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "T2000001"
-               BuildableName = "Momentary Watch App.app"
-               BlueprintName = "Momentary Watch App"
-               ReferencedContainer = "container:Momentary.xcodeproj">
+               BlueprintIdentifier = "T1000001"
+               BuildableName = "RUXP.app"
+               BlueprintName = "RUXP"
+               ReferencedContainer = "container:RUXP.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -43,10 +43,10 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "T2000001"
-            BuildableName = "Momentary Watch App.app"
-            BlueprintName = "Momentary Watch App"
-            ReferencedContainer = "container:Momentary.xcodeproj">
+            BlueprintIdentifier = "T1000001"
+            BuildableName = "RUXP.app"
+            BlueprintName = "RUXP"
+            ReferencedContainer = "container:RUXP.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -60,10 +60,10 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "T2000001"
-            BuildableName = "Momentary Watch App.app"
-            BlueprintName = "Momentary Watch App"
-            ReferencedContainer = "container:Momentary.xcodeproj">
+            BlueprintIdentifier = "T1000001"
+            BuildableName = "RUXP.app"
+            BlueprintName = "RUXP"
+            ReferencedContainer = "container:RUXP.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

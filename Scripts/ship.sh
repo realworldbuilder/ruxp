@@ -13,7 +13,7 @@
 set -eo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-PROJECT_DIR="$REPO_ROOT/Momentary"
+PROJECT_DIR="$REPO_ROOT"
 SCHEME="RUXP"
 ARCHIVE_PATH="/tmp/ruxp.xcarchive"
 EXPORT_PATH="/tmp/ruxp-export"
