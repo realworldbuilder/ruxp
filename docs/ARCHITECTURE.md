@@ -38,6 +38,9 @@ A backend implementation returns gym-hosted or brand events from the server with
 ### GameCenterService (`RUXP/GameCenter/GameCenterService.swift`)
 Sign-in, XP leaderboards, achievements, presence pings. `ProgressionService.onProgressChanged` fires after every `save()`; the service debounces about 8 seconds so the completion award and the later PR bonus collapse into one submission. Scores are absolute totals (Game Center keeps the best), one leaderboard ID per call so an unconfigured board cannot block the others, with a persisted dirty flag retried on sign-in, foreground, and toggle. Achievements are reported only when the percent grows. On first sign-in a card still named PLAYER takes the Game Center alias. IDs live in `Shared/RUXP/GameCenterCatalog.swift`; each season needs its own `season_xp_*` and `season_goal_*` created in App Store Connect before it starts. `-RUXPSkipGameCenter` (DEBUG) disables all of it.
 
+### SeasonPassCatalog (`RUXP/SeasonPass/SeasonPassCatalog.swift`)
+The free reward track. Twenty tiers for the current season, one cosmetic each (title, name color, badge); tier N is unlocked when `PlayerProgress.level >= N`, so there is no claim step and a season rollover relocks the ladder on its own. Pure functions of `PlayerProgress` + `Season`; nothing here writes XP. Equipped cosmetics live in `PlayerProgress.equippedCosmetics` (`[kind: rewardID]`, **Optional so older progress files decode**) and are written through `ProgressionService.setEquippedCosmetic(kind:rewardID:)`. `SeasonPassView` (Profile → Season Pass, or the Home season card) renders the ladder; `SeasonPassCatalog.loadout(for:season:)` is what Profile and the share card draw; `newlyUnlocked(from:to:season:)` feeds the tier-unlock rows on the reward screen. iOS target only.
+
 ## Phone ↔ watch
 
 `WorkoutMessage` (`Shared/Models.swift`) carries commands over WatchConnectivity. RUXP adds:
