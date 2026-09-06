@@ -25,6 +25,7 @@ struct SeasonPassView: View {
             .padding(.top, 8)
             .padding(.bottom, 40)
         }
+        .statusBarBackdrop()
         .background(HUDBackground())
     }
 

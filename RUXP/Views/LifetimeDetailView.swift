@@ -88,6 +88,7 @@ struct LifetimeDetailView: View {
                 Spacer(minLength: 80)
             }
         }
+        .statusBarBackdrop()
         .background(Theme.background)
         .navigationBarHidden(true)
         .overlay(alignment: .topTrailing) {

@@ -213,6 +213,20 @@ struct HUDBackground: View {
     }
 }
 
+extension View {
+    /// Paints an opaque strip over the top safe area so scrolled content slides under the
+    /// status bar instead of through it. `fade` extends a soft gradient below the strip
+    /// (use on screens with a glow so the hard edge doesn't show).
+    func statusBarBackdrop(_ color: Color = Theme.background, fade: CGFloat = 0) -> some View {
+        safeAreaInset(edge: .top, spacing: 0) {
+            LinearGradient(colors: [color, color.opacity(0)], startPoint: .top, endPoint: .bottom)
+                .frame(height: fade)
+                .background(color.ignoresSafeArea(edges: .top))
+                .allowsHitTesting(false)
+        }
+    }
+}
+
 // MARK: - Glitch text
 
 /// Display text with a one-pixel chromatic offset (cyan left, magenta right). Static by

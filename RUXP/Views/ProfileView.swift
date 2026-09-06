@@ -39,6 +39,7 @@ struct ProfileView: View {
                 .padding(.top, 8)
                 .padding(.bottom, 32)
             }
+            .statusBarBackdrop()
             .background(HUDBackground())
             .toolbar(.hidden, for: .navigationBar)
         }

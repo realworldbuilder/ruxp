@@ -32,6 +32,7 @@ struct HomeView: View {
             .padding(.top, 8)
             .padding(.bottom, 32)
         }
+        .statusBarBackdrop()
         .background(HUDBackground())
         .fullScreenCover(isPresented: $showSeasonPass) { SeasonPassView() }
         .onReceive(clock) { _ in now = ScheduledEventService.now() }

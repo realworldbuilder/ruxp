@@ -55,9 +55,9 @@ struct WorkoutCompletionSheet: View {
                     }
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, 24)
                 .padding(.bottom, 40)
             }
+            .statusBarBackdrop(fade: 24)
         }
         .onAppear {
             loadSession()

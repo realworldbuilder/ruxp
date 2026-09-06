@@ -64,6 +64,7 @@ struct TrainView: View {
             }
             .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
+            .statusBarBackdrop()
             .background(HUDBackground())
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: UUID.self) { workoutID in
