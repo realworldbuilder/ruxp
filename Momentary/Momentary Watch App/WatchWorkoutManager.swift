@@ -310,7 +310,7 @@ final class WatchWorkoutManager {
                     self.lastError = error
                     self.connectivity.isSending = false
                 }
-            case .momentRecorded:
+            case .momentRecorded, .workoutReward:
                 break
             }
         }

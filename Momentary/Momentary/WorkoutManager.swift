@@ -309,7 +309,7 @@ final class WorkoutManager {
                 if self.activeSession?.id == message.workoutID {
                     self.handleRemoteStop(workoutID: message.workoutID, healthWorkoutUUID: message.healthWorkoutUUID, avgHeartRate: message.avgHeartRate, activeCalories: message.activeCalories)
                 }
-            case .momentRecorded, .momentTranscribed:
+            case .momentRecorded, .momentTranscribed, .workoutReward:
                 break
             }
         }

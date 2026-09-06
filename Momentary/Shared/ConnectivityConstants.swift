@@ -25,6 +25,12 @@ enum ConnectivityConstants {
     static let contextMomentCountKey = "ctx_momentCount"
     static let contextPlanDataKey = "ctx_planData"
 
+    // Progression context keys (phone → watch, piggyback on application context)
+    static let contextLevelKey = "ctx_level"
+    static let contextSeasonXPKey = "ctx_seasonXP"
+    static let contextXPIntoLevelKey = "ctx_xpIntoLevel"
+    static let contextXPToNextKey = "ctx_xpToNext"
+
     // File transfer metadata keys
     static let fileTypeMomentAudio = "momentAudio"
     static let fileTypeKey = "fileType"

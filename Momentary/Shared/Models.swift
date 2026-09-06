@@ -666,6 +666,8 @@ enum WorkoutCommand: String, Codable {
     case stop
     case momentRecorded
     case momentTranscribed
+    /// Phone → watch: XP earned for a finished workout. May be sent more than once (PR update).
+    case workoutReward
 }
 
 struct WorkoutMessage: Codable {
@@ -679,6 +681,10 @@ struct WorkoutMessage: Codable {
     var healthWorkoutUUID: UUID?
     var avgHeartRate: Double?
     var activeCalories: Double?
+    var xpEarned: Int?
+    var level: Int?
+    var levelUp: Bool?
+    var prCount: Int?
 
     init(
         command: WorkoutCommand,
@@ -690,7 +696,11 @@ struct WorkoutMessage: Codable {
         error: String? = nil,
         healthWorkoutUUID: UUID? = nil,
         avgHeartRate: Double? = nil,
-        activeCalories: Double? = nil
+        activeCalories: Double? = nil,
+        xpEarned: Int? = nil,
+        level: Int? = nil,
+        levelUp: Bool? = nil,
+        prCount: Int? = nil
     ) {
         self.command = command
         self.workoutID = workoutID
@@ -702,6 +712,10 @@ struct WorkoutMessage: Codable {
         self.healthWorkoutUUID = healthWorkoutUUID
         self.avgHeartRate = avgHeartRate
         self.activeCalories = activeCalories
+        self.xpEarned = xpEarned
+        self.level = level
+        self.levelUp = levelUp
+        self.prCount = prCount
     }
 
     func toDictionary() -> [String: Any] {
@@ -717,6 +731,10 @@ struct WorkoutMessage: Codable {
         if let healthWorkoutUUID { dict["healthWorkoutUUID"] = healthWorkoutUUID.uuidString }
         if let avgHeartRate { dict["avgHeartRate"] = avgHeartRate }
         if let activeCalories { dict["activeCalories"] = activeCalories }
+        if let xpEarned { dict["xpEarned"] = xpEarned }
+        if let level { dict["level"] = level }
+        if let levelUp { dict["levelUp"] = levelUp }
+        if let prCount { dict["prCount"] = prCount }
         return dict
     }
 
@@ -739,7 +757,11 @@ struct WorkoutMessage: Codable {
             error: dict["error"] as? String,
             healthWorkoutUUID: (dict["healthWorkoutUUID"] as? String).flatMap(UUID.init),
             avgHeartRate: dict["avgHeartRate"] as? Double,
-            activeCalories: dict["activeCalories"] as? Double
+            activeCalories: dict["activeCalories"] as? Double,
+            xpEarned: dict["xpEarned"] as? Int,
+            level: dict["level"] as? Int,
+            levelUp: dict["levelUp"] as? Bool,
+            prCount: dict["prCount"] as? Int
         )
     }
 }
