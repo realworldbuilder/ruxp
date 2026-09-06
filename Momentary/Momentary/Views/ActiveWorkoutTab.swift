@@ -250,6 +250,14 @@ struct ActiveWorkoutTab: View {
                 .frame(maxWidth: .infinity)
                 .background(Theme.cardBackground)
 
+                // Plan strip (advisory — only when this session was started from a plan)
+                if let plan = workoutManager.activeSession?.plannedWorkout {
+                    PlanStripView(
+                        plan: plan,
+                        transcriptBlob: transcriptBlob
+                    )
+                }
+
                 // Moments feed
                 ScrollView {
                     VStack(spacing: 8) {
@@ -392,5 +400,90 @@ struct ActiveWorkoutTab: View {
     private func stopAndAddMoment() {
         guard let url = recorder.stopRecording() else { return }
         Task { await workoutManager.addMoment(audioURL: url, source: .phone) }
+    }
+
+    /// All moment transcripts joined lowercase, for cheap "was this exercise mentioned" checks.
+    private var transcriptBlob: String {
+        (workoutManager.activeSession?.moments ?? [])
+            .map { $0.transcript.lowercased() }
+            .joined(separator: " ")
+    }
+}
+
+// MARK: - Plan Strip
+
+private struct PlanStripView: View {
+    let plan: PlannedWorkout
+    let transcriptBlob: String
+    @State private var expanded = false
+
+    private var mentionedCount: Int {
+        plan.exercises.filter { PlanMatching.blobMentions($0.name, in: transcriptBlob) }.count
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) { expanded.toggle() }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "list.bullet.clipboard")
+                        .font(.caption)
+                        .foregroundStyle(Theme.accent)
+                    Text(plan.title)
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                    Spacer()
+                    Text("\(mentionedCount)/\(plan.exercises.count)")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(Theme.textSecondary)
+                    Image(systemName: "chevron.down")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(Theme.textSecondary)
+                        .rotationEffect(.degrees(expanded ? 180 : 0))
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            if expanded {
+                VStack(spacing: 6) {
+                    ForEach(plan.exercises) { exercise in
+                        let mentioned = PlanMatching.blobMentions(exercise.name, in: transcriptBlob)
+                        HStack(spacing: 8) {
+                            Image(systemName: mentioned ? "checkmark.circle.fill" : "circle")
+                                .font(.caption)
+                                .foregroundStyle(mentioned ? Theme.accent : Theme.textSecondary)
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(exercise.name)
+                                    .font(.subheadline)
+                                    .foregroundStyle(.primary)
+                                HStack(spacing: 8) {
+                                    Text(exercise.prescription)
+                                        .font(.caption)
+                                        .foregroundStyle(Theme.accent)
+                                    if let rest = exercise.restDisplay {
+                                        Text("Rest \(rest)")
+                                            .font(.caption)
+                                            .foregroundStyle(Theme.textSecondary)
+                                    }
+                                }
+                            }
+                            Spacer()
+                        }
+                        .opacity(mentioned ? 0.4 : 1.0)
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 12)
+            }
+        }
+        .background(Theme.cardBackground)
+        .overlay(alignment: .bottom) {
+            Divider().overlay(Theme.border)
+        }
     }
 }

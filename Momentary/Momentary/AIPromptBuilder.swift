@@ -43,6 +43,7 @@ enum AIPromptBuilder {
         moments: [Moment],
         workoutDate: Date,
         duration: TimeInterval,
+        plan: PlannedWorkout? = nil,
         preferredUnit: String = UserDefaults.standard.string(forKey: "weightUnit") ?? "lbs"
     ) -> String {
         let dateFormatter = DateFormatter()
@@ -57,9 +58,28 @@ enum AIPromptBuilder {
         Duration: \(durationMinutes) minutes
         Total moments recorded: \(moments.count)
         Preferred weight unit: \(preferredUnit)
-
-        VOICE TRANSCRIPTS (in chronological order):
         """
+
+        if let plan, !plan.exercises.isEmpty {
+            prompt += "\n\nPLANNED WORKOUT (advisory — the user may deviate, skip, or substitute freely):"
+            prompt += "\nPlan: \"\(plan.title)\""
+            for (index, exercise) in plan.exercises.enumerated() {
+                var line = "\n\(index + 1). \(exercise.name) — \(exercise.prescription)"
+                if let rest = exercise.restDisplay { line += " (rest \(rest))" }
+                if let rpe = exercise.targetRPE { line += " [RPE \(rpe)]" }
+                prompt += line
+            }
+            prompt += """
+            \n
+            PLAN RULES:
+            - When a spoken exercise is clearly the same movement as a planned one, use the plan's EXACT exercise name in the structured log.
+            - If the user says they did an exercise "as planned" or "as prescribed", expand it using the prescription (e.g. "4×8 @185 lbs" becomes 4 sets of 8 reps at 185 lbs).
+            - Do NOT invent sets, reps, or weights that were neither spoken nor explicitly claimed as done-as-planned. Skipped exercises simply do not appear in the log.
+            - The plan never overrides what was actually said; the transcripts are the source of truth.
+            """
+        }
+
+        prompt += "\n\nVOICE TRANSCRIPTS (in chronological order):"
 
         for (index, moment) in moments.enumerated() {
             let relativeTime = moment.timestamp.timeIntervalSince(workoutDate)

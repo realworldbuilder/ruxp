@@ -242,3 +242,36 @@ struct ChatAPIBlock: Codable {
         return ChatBlock(type: blockType, payload: payload ?? ChatBlockPayload())
     }
 }
+
+// MARK: - Plan Conversion
+
+extension PlannedWorkout {
+    /// Convert a `workoutPlan` chat block payload into a real plan.
+    /// Returns nil when the payload carries no exercises.
+    init?(payload: ChatBlockPayload) {
+        guard let planExercises = payload.exercises, !planExercises.isEmpty else { return nil }
+        let exercises = planExercises.map { ex -> PlannedExercise in
+            let parsed = PrescriptionParser.parse(ex.prescription)
+            return PlannedExercise(
+                name: ex.name,
+                prescription: ex.prescription,
+                targetSets: parsed.sets,
+                targetReps: parsed.reps,
+                targetWeight: parsed.weight,
+                weightUnit: parsed.unit,
+                restSeconds: ex.rest.flatMap { PrescriptionParser.parseRestSeconds($0) },
+                restDisplay: ex.rest,
+                notes: ex.notes,
+                targetRPE: ex.targetRPE
+            )
+        }
+        self.init(
+            title: payload.planTitle ?? "Workout Plan",
+            estimatedDuration: payload.estimatedDuration,
+            warmup: payload.warmup,
+            cooldown: payload.cooldown,
+            exercises: exercises,
+            source: "trainer"
+        )
+    }
+}

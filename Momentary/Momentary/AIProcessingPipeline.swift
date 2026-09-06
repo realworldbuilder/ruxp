@@ -78,7 +78,8 @@ final class WorkoutProcessor {
         let userPrompt = AIPromptBuilder.buildUserPrompt(
             moments: session.moments,
             workoutDate: session.startedAt,
-            duration: duration
+            duration: duration,
+            plan: session.plannedWorkout
         )
 
         var lastError: Error?

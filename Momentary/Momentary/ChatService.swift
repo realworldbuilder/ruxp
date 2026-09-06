@@ -99,10 +99,7 @@ final class ChatEngine {
             
             let responseJSON = try await aiService.complete(messages: conversationMessages)
             let blocks = parseResponse(responseJSON)
-            
-            // Extract planned exercises from trainer response
-            extractPlannedExercises(from: blocks)
-            
+
             let assistantMessage = ChatMessage(role: .assistant, blocks: blocks)
             messages.append(assistantMessage)
             
@@ -178,9 +175,6 @@ final class ChatEngine {
             let conversationMessages = buildConversationMessages(systemPrompt: systemPrompt)
             let responseJSON = try await aiService.complete(messages: conversationMessages)
             let blocks = parseResponse(responseJSON)
-
-            // Extract planned exercises from trainer response
-            extractPlannedExercises(from: blocks)
 
             let assistantMessage = ChatMessage(role: .assistant, blocks: blocks)
             if let idx = messages.firstIndex(where: { $0.id == loadingID }) {
@@ -438,65 +432,4 @@ final class ChatEngine {
         }
     }
     
-    // MARK: - Extract Planned Exercises
-    
-    private func extractPlannedExercises(from blocks: [ChatBlock]) {
-        var exercises: [String] = []
-        var planTitle = ""
-        var hasStartWorkoutButton = false
-        
-        for block in blocks {
-            switch block.type {
-            case .exerciseTable:
-                if let name = block.payload.exerciseName {
-                    exercises.append(name)
-                }
-            case .actionButtons:
-                if let actions = block.payload.actions {
-                    for action in actions where action.actionType == .startWorkout {
-                        hasStartWorkoutButton = true
-                        planTitle = planTitle.isEmpty ? "Trainer Plan" : planTitle
-                    }
-                }
-            case .text:
-                // Scan text blocks for exercise mentions and workout plan indicators
-                if let text = block.payload.text {
-                    let lowerText = text.lowercased()
-                    
-                    // Identify this as a workout plan
-                    if lowerText.contains("workout plan") || lowerText.contains("today's workout") || 
-                       lowerText.contains("here's your") || lowerText.contains("try this") ||
-                       lowerText.contains("program") || lowerText.contains("routine") {
-                        planTitle = planTitle.isEmpty ? "Trainer Suggestion" : planTitle
-                    }
-                    
-                    // Extract exercise names from text (backup for when exerciseTable blocks aren't used)
-                    if hasStartWorkoutButton || !planTitle.isEmpty {
-                        let exerciseKeywords = [
-                            "bench press", "squat", "deadlift", "pull-up", "push-up", "row",
-                            "overhead press", "lateral raise", "bicep curl", "tricep extension",
-                            "leg press", "calf raise", "plank", "lunge", "dip"
-                        ]
-                        
-                        for exercise in exerciseKeywords {
-                            if lowerText.contains(exercise) && !exercises.contains { $0.lowercased() == exercise } {
-                                exercises.append(exercise.capitalized)
-                            }
-                        }
-                    }
-                }
-            default:
-                break
-            }
-        }
-        
-        // Only save if we have exercises and this looks like a planned workout
-        if !exercises.isEmpty && (hasStartWorkoutButton || !planTitle.isEmpty) {
-            let store = PlannedWorkoutStore()
-            let source = planTitle.isEmpty ? "★ Trainer: Custom Plan" : "★ \(planTitle)"
-            store.setPlan(exercises: exercises, source: source)
-            
-            Self.logger.info("Extracted planned exercises: \(exercises) with source: \(source)")
-        }
-    }
 }

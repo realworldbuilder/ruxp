@@ -10,6 +10,7 @@ final class WorkoutManager {
     let connectivity: ConnectivityService
     let transcription: TranscriptionService
     let healthKit: HealthKitService
+    let plannedWorkoutStore: PlannedWorkoutStore
 
     var activeSession: WorkoutSession?
     var isProcessingMoment = false
@@ -27,13 +28,15 @@ final class WorkoutManager {
         connectivity: ConnectivityService,
         transcription: TranscriptionService,
         healthKit: HealthKitService,
-        processor: WorkoutProcessor
+        processor: WorkoutProcessor,
+        plannedWorkoutStore: PlannedWorkoutStore
     ) {
         self.workoutStore = workoutStore
         self.connectivity = connectivity
         self.transcription = transcription
         self.healthKit = healthKit
         self.processor = processor
+        self.plannedWorkoutStore = plannedWorkoutStore
         setupConnectivityCallbacks()
         workoutStore.migrateFromLegacyTranscriptions()
         restoreActiveWorkout()
@@ -79,19 +82,23 @@ final class WorkoutManager {
 
     // MARK: - Workout Lifecycle
 
-    func startWorkout() {
+    func startWorkout(plan: PlannedWorkout? = nil) {
+        // A workout is already running — starting another would orphan it
+        guard activeSession == nil else { return }
+
         // Reset stale state from previous workout
         isProcessingMoment = false
         lastError = nil
 
-        let session = WorkoutSession()
+        var session = WorkoutSession()
+        session.plannedWorkout = plan
         activeSession = session
         workoutStore.saveSession(session)
         persistActiveWorkoutID(session.id)
 
         let message = WorkoutMessage(command: .start, workoutID: session.id)
         connectivity.sendWorkoutMessage(message)
-        connectivity.updateWorkoutContext(workoutID: session.id, isActive: true, startedAt: session.startedAt)
+        connectivity.updateWorkoutContext(workoutID: session.id, isActive: true, startedAt: session.startedAt, plan: plan)
 
         // Start HealthKit tracking (on phone, just records start time for manual save)
         Task { await healthKit.startWorkout() }
@@ -104,6 +111,7 @@ final class WorkoutManager {
         activeSession = nil
         isProcessingMoment = false
         persistActiveWorkoutID(nil)
+        clearPlanIfUsed(by: session)
 
         // Delete the session file entirely
         workoutStore.deleteSession(id: session.id)
@@ -131,6 +139,7 @@ final class WorkoutManager {
         activeSession = nil
         isProcessingMoment = false
         persistActiveWorkoutID(nil)
+        clearPlanIfUsed(by: session)
 
         let message = WorkoutMessage(command: .stop, workoutID: session.id)
         connectivity.sendWorkoutMessage(message)
@@ -175,6 +184,7 @@ final class WorkoutManager {
         completedWorkoutID = session.id
         activeSession = nil
         persistActiveWorkoutID(nil)
+        clearPlanIfUsed(by: session)
         connectivity.updateWorkoutContext(workoutID: nil, isActive: false, startedAt: nil)
 
         // Still try HealthKit query as fallback (in case watch didn't send data)
@@ -187,6 +197,13 @@ final class WorkoutManager {
                 await self.attachHealthData(workoutID: session.id, start: start, end: end)
             }
             self.finalizeEnd(workoutID: session.id)
+        }
+    }
+
+    /// The plan slot is one-shot: once its workout ends (or is discarded), clear it.
+    private func clearPlanIfUsed(by session: WorkoutSession) {
+        if let planID = session.plannedWorkout?.id, plannedWorkoutStore.currentPlan?.id == planID {
+            plannedWorkoutStore.clearPlan()
         }
     }
 

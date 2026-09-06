@@ -26,6 +26,9 @@ struct WorkoutCompletionSheet: View {
                             if let log = session.structuredLog {
                                 summarySection(log)
                                 exerciseList(log.exercises)
+                                if let plan = session.plannedWorkout {
+                                    adherenceSection(plan: plan, log: log)
+                                }
                                 if !log.highlights.isEmpty { highlightsSection(log.highlights) }
                             }
                             shareButton
@@ -226,6 +229,63 @@ struct WorkoutCompletionSheet: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .themeCard()
+    }
+
+    // MARK: - Plan Check
+
+    private func adherenceSection(plan: PlannedWorkout, log: StructuredLog) -> some View {
+        let result = PlanAdherenceCalculator.compute(plan: plan, log: log)
+        return VStack(alignment: .leading, spacing: 8) {
+            Label("Plan Check", systemImage: "list.bullet.clipboard")
+                .font(.subheadline.bold())
+                .foregroundStyle(Theme.accent)
+
+            ForEach(result.entries) { entry in
+                HStack(spacing: 8) {
+                    Image(systemName: adherenceIcon(entry.status))
+                        .font(.caption)
+                        .foregroundStyle(adherenceColor(entry.status))
+                    Text(entry.plannedName)
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.textPrimary)
+                    Spacer()
+                    if let target = entry.targetSets {
+                        Text("\(entry.actualSets)/\(target) sets")
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(Theme.textSecondary)
+                    } else if entry.actualSets > 0 {
+                        Text("\(entry.actualSets) sets")
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(Theme.textSecondary)
+                    }
+                }
+            }
+
+            if !result.extras.isEmpty {
+                Text("Off-plan: \(result.extras.joined(separator: ", "))")
+                    .font(.caption)
+                    .foregroundStyle(Theme.textSecondary)
+                    .padding(.top, 4)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .themeCard()
+    }
+
+    private func adherenceIcon(_ status: PlanAdherenceStatus) -> String {
+        switch status {
+        case .completed: "checkmark.circle.fill"
+        case .partial: "circle.lefthalf.filled"
+        case .skipped: "circle"
+        }
+    }
+
+    private func adherenceColor(_ status: PlanAdherenceStatus) -> Color {
+        switch status {
+        case .completed: .green
+        case .partial: .orange
+        case .skipped: Theme.textSecondary
+        }
     }
 
     // MARK: - Highlights

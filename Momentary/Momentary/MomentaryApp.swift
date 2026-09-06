@@ -9,10 +9,11 @@ struct Mind2MuscleApp: App {
     @State private var conversationStore: ConversationStore
     @State private var insightsStore: InsightsStore
     @State private var workoutStore: WorkoutStore
-    @State private var plannedWorkoutStore = PlannedWorkoutStore()
+    @State private var plannedWorkoutStore: PlannedWorkoutStore
 
     init() {
         let store = WorkoutStore()
+        let plannedStore = PlannedWorkoutStore()
         let aiService = AIService()
         let transcription = TranscriptionService(aiService: aiService)
         let connectivity = ConnectivityService()
@@ -27,7 +28,8 @@ struct Mind2MuscleApp: App {
             connectivity: connectivity,
             transcription: transcription,
             healthKit: healthKit,
-            processor: processor
+            processor: processor,
+            plannedWorkoutStore: plannedStore
         )
         processor.insightsEngine = insights
         processor.insightsStore = persistentInsights
@@ -39,6 +41,7 @@ struct Mind2MuscleApp: App {
         _conversationStore = State(initialValue: convoStore)
         _insightsStore = State(initialValue: persistentInsights)
         _workoutStore = State(initialValue: store)
+        _plannedWorkoutStore = State(initialValue: plannedStore)
 
         // Rebuild persistent insights if empty (first launch / migration)
         if persistentInsights.lifetimeStats.totalWorkouts == 0 && !store.index.isEmpty {

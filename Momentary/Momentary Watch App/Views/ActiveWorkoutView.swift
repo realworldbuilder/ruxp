@@ -65,15 +65,55 @@ struct ActiveWorkoutView: View {
             mainPage
                 .containerBackground(WatchTheme.background.gradient, for: .tabView)
 
-            // Page 2: Health stats
+            // Page 2: Plan (only when the phone sent one)
+            if workoutManager.currentPlan != nil {
+                planPage
+                    .containerBackground(WatchTheme.background.gradient, for: .tabView)
+            }
+
+            // Page: Health stats
             statsPage
                 .containerBackground(WatchTheme.background.gradient, for: .tabView)
 
-            // Page 3: Now Playing
+            // Page: Now Playing
             NowPlayingPage()
                 .containerBackground(WatchTheme.background.gradient, for: .tabView)
         }
         .tabViewStyle(.verticalPage)
+    }
+
+    // MARK: - Plan Page
+
+    private var planPage: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(workoutManager.currentPlan?.title.uppercased() ?? "PLAN")
+                    .font(.system(.caption2, weight: .semibold))
+                    .foregroundStyle(WatchTheme.textTertiary)
+                    .tracking(1.5)
+                    .frame(maxWidth: .infinity)
+
+                ForEach(Array((workoutManager.currentPlan?.exercises ?? []).enumerated()), id: \.offset) { _, exercise in
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(exercise.name)
+                            .font(.system(.footnote, weight: .semibold))
+                            .foregroundStyle(WatchTheme.textPrimary)
+                        HStack(spacing: 6) {
+                            Text(exercise.prescription)
+                                .font(.caption2)
+                                .foregroundStyle(WatchTheme.accent)
+                            if let rest = exercise.restSeconds {
+                                Text("R \(rest)s")
+                                    .font(.caption2)
+                                    .foregroundStyle(WatchTheme.textTertiary)
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            .padding(.horizontal, 6)
+        }
     }
 
     // MARK: - Page 1: Main Controls

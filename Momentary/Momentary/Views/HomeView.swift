@@ -3,6 +3,7 @@ import SwiftUI
 struct HomeView: View {
     @Environment(WorkoutManager.self) private var workoutManager
     @Environment(InsightsStore.self) private var insightsStore
+    @Environment(PlannedWorkoutStore.self) private var plannedWorkoutStore
     @State private var editMode: EditMode = .inactive
     @State private var showDeleteConfirmation = false
     @State private var selectedWorkouts = Set<UUID>()
@@ -242,6 +243,11 @@ struct HomeView: View {
             if workoutManager.activeSession != nil {
                 activeWorkoutBanner
             } else {
+                // Pending trainer plan (fresh, not yet started)
+                if let plan = pendingPlan {
+                    pendingPlanCard(plan)
+                }
+
                 // Workout suggestion or today's summary
                 workoutSuggestionCard
             }
@@ -277,6 +283,60 @@ struct HomeView: View {
         .scrollContentBackground(.hidden)
         .background(Theme.background)
         .listRowSeparator(.hidden)
+    }
+
+    // MARK: - Pending Plan Card
+
+    /// A trainer plan saved in the last 24h that hasn't been used yet.
+    private var pendingPlan: PlannedWorkout? {
+        guard let plan = plannedWorkoutStore.currentPlan,
+              Date().timeIntervalSince(plan.createdAt) < 24 * 3600 else { return nil }
+        return plan
+    }
+
+    private func pendingPlanCard(_ plan: PlannedWorkout) -> some View {
+        Section {
+            HStack(spacing: 12) {
+                Image(systemName: "list.bullet.clipboard")
+                    .font(.title3)
+                    .foregroundStyle(.white)
+                    .frame(width: 44, height: 44)
+                    .background(Theme.accent, in: Circle())
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(plan.title)
+                        .font(.headline)
+                        .foregroundStyle(Theme.textPrimary)
+                    Text("\(plan.exercises.count) exercises planned by your trainer")
+                        .font(.caption)
+                        .foregroundStyle(Theme.textSecondary)
+                }
+
+                Spacer()
+
+                Button {
+                    workoutManager.startWorkout(plan: plan)
+                } label: {
+                    Text("Start")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 6)
+                        .background(Theme.accent, in: Capsule())
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    plannedWorkoutStore.clearPlan()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Theme.textSecondary)
+                }
+                .buttonStyle(.plain)
+            }
+            .listRowBackground(Theme.cardBackground)
+        }
     }
 
     // MARK: - Compact Start Card (when there's workout history)

@@ -4,6 +4,7 @@ struct ChatMessageView: View {
     let message: ChatMessage
     var onAction: ((ChatAction) -> Void)?
     var onWorkoutTap: ((UUID) -> Void)?
+    var onStartPlan: ((PlannedWorkout) -> Void)?
 
     var body: some View {
         if message.isLoading {
@@ -14,7 +15,7 @@ struct ChatMessageView: View {
         } else if message.role == .user {
             UserBubble(message: message)
         } else {
-            AssistantMessage(message: message, onAction: onAction, onWorkoutTap: onWorkoutTap)
+            AssistantMessage(message: message, onAction: onAction, onWorkoutTap: onWorkoutTap, onStartPlan: onStartPlan)
         }
     }
 }
@@ -43,12 +44,13 @@ private struct AssistantMessage: View {
     let message: ChatMessage
     var onAction: ((ChatAction) -> Void)?
     var onWorkoutTap: ((UUID) -> Void)?
+    var onStartPlan: ((PlannedWorkout) -> Void)?
 
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 12) {
                 ForEach(message.blocks) { block in
-                    ChatBlockView(block: block, onAction: onAction, onWorkoutTap: onWorkoutTap)
+                    ChatBlockView(block: block, onAction: onAction, onWorkoutTap: onWorkoutTap, onStartPlan: onStartPlan)
                 }
             }
             Spacer(minLength: 40)

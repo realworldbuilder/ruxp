@@ -6,6 +6,7 @@ struct ChatView: View {
     @Environment(WorkoutManager.self) private var workoutManager
     @Environment(WorkoutProcessor.self) private var aiPipeline
     @Environment(WorkoutStore.self) private var workoutStore
+    @Environment(PlannedWorkoutStore.self) private var plannedWorkoutStore
     @State private var inputText = ""
     @State private var navigationPath = NavigationPath()
     @State private var showExportSheet = false
@@ -247,7 +248,8 @@ struct ChatView: View {
                         ChatMessageView(
                             message: message,
                             onAction: { action in handleAction(action) },
-                            onWorkoutTap: { id in navigationPath.append(id) }
+                            onWorkoutTap: { id in navigationPath.append(id) },
+                            onStartPlan: { plan in startPlannedWorkout(plan) }
                         )
                         .id(message.id)
                     }
@@ -303,10 +305,31 @@ struct ChatView: View {
         }
     }
 
+    private func startPlannedWorkout(_ plan: PlannedWorkout) {
+        plannedWorkoutStore.setPlan(plan)
+        workoutManager.startWorkout(plan: plan)
+    }
+
+    /// The most recent workoutPlan block in the current conversation, if any.
+    private func latestPlanInConversation() -> PlannedWorkout? {
+        for message in chatService.messages.reversed() where message.role == .assistant {
+            for block in message.blocks.reversed() where block.type == .workoutPlan {
+                if let plan = PlannedWorkout(payload: block.payload) {
+                    return plan
+                }
+            }
+        }
+        return nil
+    }
+
     private func handleAction(_ action: ChatAction) {
         switch action.actionType {
         case .startWorkout:
-            workoutManager.startWorkout()
+            if let plan = latestPlanInConversation() {
+                startPlannedWorkout(plan)
+            } else {
+                workoutManager.startWorkout()
+            }
         case .viewWorkout:
             if let idStr = action.workoutId, let uuid = UUID(uuidString: idStr) {
                 navigationPath.append(uuid)

@@ -23,6 +23,7 @@ enum ConnectivityConstants {
     static let contextIsActiveKey = "ctx_isActive"
     static let contextStartedAtKey = "ctx_startedAt"
     static let contextMomentCountKey = "ctx_momentCount"
+    static let contextPlanDataKey = "ctx_planData"
 
     // File transfer metadata keys
     static let fileTypeMomentAudio = "momentAudio"

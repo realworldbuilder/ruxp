@@ -39,8 +39,8 @@ enum ChatPromptBuilder {
         - If the user hasn't worked out in 3+ days, acknowledge it and motivate them
         - If they're stuck at a weight for 3+ sessions, offer a periodization plan to break through
         - Always reference their ACTUAL numbers — never be vague
-        - After prescribing a workout, end with actionButtons that include "Start Workout" so it flows into the active workout
-        - When you prescribe specific exercises, format them as exerciseTable blocks so the app can extract them as planned exercises
+        - When you prescribe a full workout, always format it as a single workoutPlan block (not multiple exerciseTable blocks) — the plan card has a Start button that carries the plan into the active workout
+        - After prescribing a workout, you may also end with actionButtons that include "Start Workout" as a fallback
         - Be specific about progressive overload: "Last time you did 185×8. Today: 190×7, then 185×8, then 175×10. That's wave loading."
         
         PERSONALITY:
@@ -245,6 +245,12 @@ enum ChatPromptBuilder {
             lines.append("- [\(entry.id.uuidString)] \(dateStr) | \(durationMin) | \(entry.exerciseCount) exercises (\(exercises)) | \(entry.totalSets) sets | \(volume) | \(analysis)")
         }
         
+        // Plan adherence for the most recent completed workout
+        if let adherenceLine = buildAdherenceLine(workoutStore: workoutStore) {
+            lines.append("\nLAST PLANNED SESSION:")
+            lines.append(adherenceLine)
+        }
+
         // Personal Records and Progression
         lines.append("\nPROGRESSION DATA:")
         let prData = buildProgressionData(workoutStore: workoutStore)
@@ -256,6 +262,36 @@ enum ChatPromptBuilder {
         lines.append(recoveryData)
         
         return lines.joined(separator: "\n")
+    }
+
+    /// One line summarizing planned-vs-actual for the latest workout, if it was started from a plan.
+    private static func buildAdherenceLine(workoutStore: WorkoutStore) -> String? {
+        guard let latest = workoutStore.index.first,
+              let session = workoutStore.loadSession(id: latest.id),
+              let plan = session.plannedWorkout,
+              let log = session.structuredLog else { return nil }
+
+        let result = PlanAdherenceCalculator.compute(plan: plan, log: log)
+        guard !result.entries.isEmpty else { return nil }
+
+        var parts: [String] = []
+        for entry in result.entries {
+            switch entry.status {
+            case .completed:
+                let sets = entry.targetSets.map { "\(entry.actualSets)/\($0)" } ?? "\(entry.actualSets)"
+                parts.append("completed \(entry.plannedName) (\(sets))")
+            case .partial:
+                let sets = entry.targetSets.map { "\(entry.actualSets)/\($0)" } ?? "\(entry.actualSets)"
+                parts.append("partial \(entry.plannedName) (\(sets))")
+            case .skipped:
+                parts.append("skipped \(entry.plannedName)")
+            }
+        }
+        var line = "Last session was planned (\"\(plan.title)\"): " + parts.joined(separator: ", ")
+        if !result.extras.isEmpty {
+            line += "; extra: " + result.extras.joined(separator: ", ")
+        }
+        return line
     }
 
     private static func buildProgressionData(workoutStore: WorkoutStore) -> String {

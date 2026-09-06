@@ -14,6 +14,7 @@ struct WorkoutSession: Codable, Identifiable {
     var stories: [InsightStory]
     var averageHeartRate: Double?
     var activeCalories: Double?
+    var plannedWorkout: PlannedWorkout?
 
     init(
         id: UUID = UUID(),
@@ -25,7 +26,8 @@ struct WorkoutSession: Codable, Identifiable {
         contentPack: ContentPack? = nil,
         stories: [InsightStory] = [],
         averageHeartRate: Double? = nil,
-        activeCalories: Double? = nil
+        activeCalories: Double? = nil,
+        plannedWorkout: PlannedWorkout? = nil
     ) {
         self.id = id
         self.startedAt = startedAt
@@ -37,6 +39,7 @@ struct WorkoutSession: Codable, Identifiable {
         self.stories = stories
         self.averageHeartRate = averageHeartRate
         self.activeCalories = activeCalories
+        self.plannedWorkout = plannedWorkout
     }
 
     var duration: TimeInterval? {
@@ -975,4 +978,273 @@ struct LegacyTranscriptionRecord: Codable, Identifiable {
     let id: UUID
     let text: String
     let timestamp: Date
+}
+
+// MARK: - Planned Workout
+
+struct PlannedExercise: Codable, Identifiable, Hashable {
+    let id: UUID
+    var name: String
+    var prescription: String
+    var targetSets: Int?
+    var targetReps: Int?
+    var targetWeight: Double?
+    var weightUnit: WeightUnit?
+    var restSeconds: Int?
+    var restDisplay: String?
+    var notes: String?
+    var targetRPE: String?
+
+    private enum CodingKeys: String, CodingKey {
+        case id, name, prescription, targetSets, targetReps, targetWeight
+        case weightUnit, restSeconds, restDisplay, notes, targetRPE
+    }
+
+    init(
+        id: UUID = UUID(),
+        name: String,
+        prescription: String,
+        targetSets: Int? = nil,
+        targetReps: Int? = nil,
+        targetWeight: Double? = nil,
+        weightUnit: WeightUnit? = nil,
+        restSeconds: Int? = nil,
+        restDisplay: String? = nil,
+        notes: String? = nil,
+        targetRPE: String? = nil
+    ) {
+        self.id = id
+        self.name = name
+        self.prescription = prescription
+        self.targetSets = targetSets
+        self.targetReps = targetReps
+        self.targetWeight = targetWeight
+        self.weightUnit = weightUnit
+        self.restSeconds = restSeconds
+        self.restDisplay = restDisplay
+        self.notes = notes
+        self.targetRPE = targetRPE
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = (try? container.decode(UUID.self, forKey: .id)) ?? UUID()
+        self.name = (try? container.decode(String.self, forKey: .name)) ?? "Exercise"
+        self.prescription = (try? container.decode(String.self, forKey: .prescription)) ?? ""
+        self.targetSets = try? container.decodeIfPresent(Int.self, forKey: .targetSets)
+        self.targetReps = try? container.decodeIfPresent(Int.self, forKey: .targetReps)
+        self.targetWeight = try? container.decodeIfPresent(Double.self, forKey: .targetWeight)
+        self.weightUnit = try? container.decodeIfPresent(WeightUnit.self, forKey: .weightUnit)
+        self.restSeconds = try? container.decodeIfPresent(Int.self, forKey: .restSeconds)
+        self.restDisplay = try? container.decodeIfPresent(String.self, forKey: .restDisplay)
+        self.notes = try? container.decodeIfPresent(String.self, forKey: .notes)
+        self.targetRPE = try? container.decodeIfPresent(String.self, forKey: .targetRPE)
+    }
+}
+
+struct PlannedWorkout: Codable, Identifiable {
+    let id: UUID
+    var title: String
+    var estimatedDuration: String?
+    var warmup: String?
+    var cooldown: String?
+    var exercises: [PlannedExercise]
+    var source: String
+    var createdAt: Date
+
+    private enum CodingKeys: String, CodingKey {
+        case id, title, estimatedDuration, warmup, cooldown, exercises, source, createdAt
+    }
+
+    init(
+        id: UUID = UUID(),
+        title: String,
+        estimatedDuration: String? = nil,
+        warmup: String? = nil,
+        cooldown: String? = nil,
+        exercises: [PlannedExercise] = [],
+        source: String = "trainer",
+        createdAt: Date = Date()
+    ) {
+        self.id = id
+        self.title = title
+        self.estimatedDuration = estimatedDuration
+        self.warmup = warmup
+        self.cooldown = cooldown
+        self.exercises = exercises
+        self.source = source
+        self.createdAt = createdAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = (try? container.decode(UUID.self, forKey: .id)) ?? UUID()
+        self.title = (try? container.decode(String.self, forKey: .title)) ?? "Workout Plan"
+        self.estimatedDuration = try? container.decodeIfPresent(String.self, forKey: .estimatedDuration)
+        self.warmup = try? container.decodeIfPresent(String.self, forKey: .warmup)
+        self.cooldown = try? container.decodeIfPresent(String.self, forKey: .cooldown)
+        self.exercises = (try? container.decode([PlannedExercise].self, forKey: .exercises)) ?? []
+        self.source = (try? container.decode(String.self, forKey: .source)) ?? "trainer"
+        self.createdAt = (try? container.decode(Date.self, forKey: .createdAt)) ?? Date()
+    }
+}
+
+// MARK: - Prescription Parser
+
+enum PrescriptionParser {
+    /// "4×8 @185 lbs", "3x10-12 @ 60", "5x5 @ 100 kg" → best-effort targets.
+    /// All-optional output; the raw prescription string stays authoritative for display.
+    static func parse(_ prescription: String) -> (sets: Int?, reps: Int?, weight: Double?, unit: WeightUnit?) {
+        var sets: Int?
+        var reps: Int?
+        var weight: Double?
+        var unit: WeightUnit?
+
+        if let m = captures(#"(\d+)\s*[x×]\s*(\d+)"#, in: prescription) {
+            sets = Int(m[1])
+            reps = Int(m[2])
+        }
+        if let m = captures(#"@\s*(\d+(?:\.\d+)?)\s*(lbs?|pounds?|kgs?|kilos?|kilograms?)?"#, in: prescription) {
+            weight = Double(m[1])
+            if m.count > 2, !m[2].isEmpty {
+                unit = m[2].lowercased().hasPrefix("k") ? .kg : .lbs
+            }
+        }
+        return (sets, reps, weight, unit)
+    }
+
+    /// "90s", "2 min", "1:30", "2-3 min" (lower bound) → seconds.
+    static func parseRestSeconds(_ rest: String) -> Int? {
+        if let m = captures(#"(\d+):(\d{2})"#, in: rest), let min = Int(m[1]), let sec = Int(m[2]) {
+            return min * 60 + sec
+        }
+        if let m = captures(#"(\d+(?:\.\d+)?)\s*(?:-\s*\d+(?:\.\d+)?\s*)?m(?:in)?"#, in: rest), let min = Double(m[1]) {
+            return Int(min * 60)
+        }
+        if let m = captures(#"(\d+)\s*s(?:ec)?"#, in: rest), let sec = Int(m[1]) {
+            return sec
+        }
+        if let m = captures(#"^\s*(\d+)\s*$"#, in: rest), let sec = Int(m[1]) {
+            return sec
+        }
+        return nil
+    }
+
+    private static func captures(_ pattern: String, in text: String) -> [String]? {
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else { return nil }
+        let range = NSRange(text.startIndex..., in: text)
+        guard let match = regex.firstMatch(in: text, range: range) else { return nil }
+        return (0..<match.numberOfRanges).map { i in
+            guard let r = Range(match.range(at: i), in: text) else { return "" }
+            return String(text[r])
+        }
+    }
+}
+
+// MARK: - Plan Matching & Adherence
+
+enum PlanMatching {
+    static let equipmentWords: Set<String> = ["barbell", "dumbbell", "cable", "machine", "band", "smith", "ez", "kettlebell"]
+
+    static func namesMatch(_ a: String, _ b: String) -> Bool {
+        let la = a.lowercased().trimmingCharacters(in: .whitespaces)
+        let lb = b.lowercased().trimmingCharacters(in: .whitespaces)
+        guard !la.isEmpty, !lb.isEmpty else { return false }
+        if la == lb { return true }
+        return la.contains(lb) || lb.contains(la)
+    }
+
+    /// Cheap heuristic: does a blob of transcript text mention this exercise?
+    /// Matches the full name, the name minus equipment words, or — as a fallback —
+    /// requires EVERY distinctive token to appear as a word (prefix match tolerates
+    /// plurals/-ing), so "bench press" doesn't light up "Incline Dumbbell Press".
+    static func blobMentions(_ exerciseName: String, in blob: String) -> Bool {
+        let name = exerciseName.lowercased().trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty, !blob.isEmpty else { return false }
+        if blob.contains(name) { return true }
+        let tokens = name.split(separator: " ").map(String.init).filter { !equipmentWords.contains($0) }
+        guard !tokens.isEmpty else { return false }
+        let stripped = tokens.joined(separator: " ")
+        if blob.contains(stripped) { return true }
+        let words = blob.split(whereSeparator: { !$0.isLetter && !$0.isNumber }).map(String.init)
+        return tokens.allSatisfy { token in
+            words.contains { $0 == token || (token.count >= 3 && $0.hasPrefix(token)) }
+        }
+    }
+}
+
+enum PlanAdherenceStatus: String, Codable {
+    case completed
+    case partial
+    case skipped
+}
+
+struct PlanAdherenceEntry: Identifiable {
+    let id: UUID
+    var plannedName: String
+    var status: PlanAdherenceStatus
+    var actualSets: Int
+    var targetSets: Int?
+}
+
+enum PlanAdherenceCalculator {
+    static func compute(plan: PlannedWorkout, log: StructuredLog) -> (entries: [PlanAdherenceEntry], extras: [String]) {
+        var entries: [PlanAdherenceEntry] = []
+        var matchedGroupIDs = Set<UUID>()
+
+        for planned in plan.exercises {
+            let match = log.exercises.first { group in
+                !matchedGroupIDs.contains(group.id) && PlanMatching.namesMatch(planned.name, group.exerciseName)
+            }
+            let actualSets = match?.sets.count ?? 0
+            if let match { matchedGroupIDs.insert(match.id) }
+
+            let status: PlanAdherenceStatus
+            if actualSets == 0 {
+                status = .skipped
+            } else if let target = planned.targetSets, actualSets < target {
+                status = .partial
+            } else {
+                status = .completed
+            }
+            entries.append(PlanAdherenceEntry(
+                id: planned.id,
+                plannedName: planned.name,
+                status: status,
+                actualSets: actualSets,
+                targetSets: planned.targetSets
+            ))
+        }
+
+        let extras = log.exercises
+            .filter { !matchedGroupIDs.contains($0.id) }
+            .map(\.exerciseName)
+        return (entries, extras)
+    }
+}
+
+// MARK: - Plan Wire Payload (phone → watch)
+
+struct PlanWireExercise: Codable {
+    var name: String
+    var prescription: String
+    var restSeconds: Int?
+}
+
+struct PlanWirePayload: Codable {
+    var planID: UUID
+    var title: String
+    var exercises: [PlanWireExercise]
+
+    init(_ plan: PlannedWorkout) {
+        self.planID = plan.id
+        self.title = String(plan.title.prefix(60))
+        self.exercises = plan.exercises.prefix(20).map { ex in
+            PlanWireExercise(
+                name: String(ex.name.prefix(60)),
+                prescription: String(ex.prescription.prefix(40)),
+                restSeconds: ex.restSeconds
+            )
+        }
+    }
 }

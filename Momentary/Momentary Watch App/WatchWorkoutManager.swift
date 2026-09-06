@@ -20,6 +20,7 @@ final class WatchWorkoutManager {
     var isRecordingMoment = false
     var lastError: String?
     var didReceiveRemoteStop = false
+    var currentPlan: PlanWirePayload?
     
     // AI Intelligence features
     var restTimerRemaining: TimeInterval = 0
@@ -39,6 +40,9 @@ final class WatchWorkoutManager {
             if count > self.momentCount {
                 self.momentCount = count
             }
+        }
+        connectivity.onPlanReceived = { [weak self] plan in
+            self?.currentPlan = plan
         }
     }
 
@@ -120,6 +124,7 @@ final class WatchWorkoutManager {
         didReceiveRemoteStop = false
         workoutEndReady = false
         isEndingWorkout = false
+        currentPlan = nil
         stopRestTimer()
         postSetFeedback = nil
         showPostSetFeedback = false
@@ -161,6 +166,22 @@ final class WatchWorkoutManager {
     // MARK: - AI Intelligence Features
     
     private func determineRestTime() -> TimeInterval {
+        // Prefer the plan's prescribed rest when we can tell which exercise this was
+        if let plan = currentPlan, !plan.exercises.isEmpty {
+            if let transcript = latestTranscriptSnippet?.lowercased() {
+                for exercise in plan.exercises {
+                    if let rest = exercise.restSeconds, PlanMatching.blobMentions(exercise.name, in: transcript) {
+                        return TimeInterval(rest)
+                    }
+                }
+            }
+            // No transcript match: if the plan prescribes one uniform rest, use it
+            let restTimes = Set(plan.exercises.compactMap(\.restSeconds))
+            if restTimes.count == 1, let uniform = restTimes.first {
+                return TimeInterval(uniform)
+            }
+        }
+
         // Smart rest timer based on exercise detection from transcript
         if let transcript = latestTranscriptSnippet {
             let lowercased = transcript.lowercased()

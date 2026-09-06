@@ -5,6 +5,7 @@ struct ChatBlockView: View {
     let block: ChatBlock
     var onAction: ((ChatAction) -> Void)?
     var onWorkoutTap: ((UUID) -> Void)?
+    var onStartPlan: ((PlannedWorkout) -> Void)?
 
     var body: some View {
         switch block.type {
@@ -25,7 +26,7 @@ struct ChatBlockView: View {
         case .workoutList:
             WorkoutListBlockView(payload: block.payload, onWorkoutTap: onWorkoutTap)
         case .workoutPlan:
-            WorkoutPlanBlockView(payload: block.payload)
+            WorkoutPlanBlockView(payload: block.payload, onStartPlan: onStartPlan)
         case .progressCard:
             ProgressCardBlockView(payload: block.payload)
         case .splitOverview:
@@ -423,6 +424,7 @@ private struct WorkoutListBlockView: View {
 
 private struct WorkoutPlanBlockView: View {
     let payload: ChatBlockPayload
+    var onStartPlan: ((PlannedWorkout) -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -530,6 +532,26 @@ private struct WorkoutPlanBlockView: View {
                         .fontWeight(.medium)
                         .foregroundColor(Theme.accent)
                 }
+            }
+
+            // Start button — only when the payload converts to a real plan
+            if let onStartPlan, let plan = PlannedWorkout(payload: payload) {
+                Button {
+                    onStartPlan(plan)
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "figure.strengthtraining.traditional")
+                            .font(.body.weight(.semibold))
+                        Text("Start This Workout")
+                            .font(.body.weight(.semibold))
+                    }
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(Theme.accent, in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 4)
             }
         }
         .themeCard()

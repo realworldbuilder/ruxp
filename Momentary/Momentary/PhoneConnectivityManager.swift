@@ -43,10 +43,13 @@ final class ConnectivityService: NSObject, ObservableObject {
         }
     }
 
-    func updateWorkoutContext(workoutID: UUID?, isActive: Bool, startedAt: Date?) {
+    func updateWorkoutContext(workoutID: UUID?, isActive: Bool, startedAt: Date?, plan: PlannedWorkout? = nil) {
         var context: [String: Any] = [ConnectivityConstants.contextIsActiveKey: isActive]
         if let workoutID { context[ConnectivityConstants.contextWorkoutIDKey] = workoutID.uuidString }
         if let startedAt { context[ConnectivityConstants.contextStartedAtKey] = startedAt.timeIntervalSince1970 }
+        if let plan, let planData = try? JSONEncoder().encode(PlanWirePayload(plan)) {
+            context[ConnectivityConstants.contextPlanDataKey] = planData
+        }
         try? session.updateApplicationContext(context)
     }
 
