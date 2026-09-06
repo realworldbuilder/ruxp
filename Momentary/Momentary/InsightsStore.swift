@@ -32,12 +32,15 @@ final class InsightsStore {
     /// Track which workout IDs have been ingested to prevent double-counting
     private var ingestedWorkoutIDs: Set<UUID> = []
     
-    func ingest(_ session: WorkoutSession) {
-        guard let log = session.structuredLog else { return }
+    /// Returns the personal records newly set or improved by this workout.
+    @discardableResult
+    func ingest(_ session: WorkoutSession) -> [PRRecord] {
+        guard let log = session.structuredLog else { return [] }
         
         // Dedup: skip if already ingested
-        guard !ingestedWorkoutIDs.contains(session.id) else { return }
+        guard !ingestedWorkoutIDs.contains(session.id) else { return [] }
         ingestedWorkoutIDs.insert(session.id)
+        var newPRs: [PRRecord] = []
 
         // Update lifetime stats
         lifetimeStats.totalWorkouts += 1
@@ -70,13 +73,16 @@ final class InsightsStore {
 
             let existing = personalRecords[exercise.exerciseName]
             if existing == nil || maxWeight > existing!.weight {
-                personalRecords[exercise.exerciseName] = PRRecord(
+                let record = PRRecord(
                     exercise: exercise.exerciseName,
                     weight: maxWeight,
                     reps: exercise.sets.first(where: { $0.weight == maxWeight })?.reps,
                     date: session.startedAt,
                     previousWeight: existing?.weight
                 )
+                personalRecords[exercise.exerciseName] = record
+                // A first-ever entry is a baseline, not a PR; only improvements count.
+                if existing != nil { newPRs.append(record) }
             }
         }
 
@@ -103,7 +109,8 @@ final class InsightsStore {
         }
 
         save()
-        Self.logger.info("Ingested workout: \(log.exercises.count) exercises, \(Int(volume)) volume")
+        Self.logger.info("Ingested workout: \(log.exercises.count) exercises, \(Int(volume)) volume, \(newPRs.count) PRs")
+        return newPRs
     }
 
     // MARK: - Reset all data

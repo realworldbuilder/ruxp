@@ -11,6 +11,8 @@ final class WorkoutManager {
     let transcription: TranscriptionService
     let healthKit: HealthKitService
     let plannedWorkoutStore: PlannedWorkoutStore
+    let progression: ProgressionService
+    let events: LiveEventProviding
 
     var activeSession: WorkoutSession?
     var isProcessingMoment = false
@@ -29,7 +31,9 @@ final class WorkoutManager {
         transcription: TranscriptionService,
         healthKit: HealthKitService,
         processor: WorkoutProcessor,
-        plannedWorkoutStore: PlannedWorkoutStore
+        plannedWorkoutStore: PlannedWorkoutStore,
+        progression: ProgressionService,
+        events: LiveEventProviding
     ) {
         self.workoutStore = workoutStore
         self.connectivity = connectivity
@@ -37,6 +41,14 @@ final class WorkoutManager {
         self.healthKit = healthKit
         self.processor = processor
         self.plannedWorkoutStore = plannedWorkoutStore
+        self.progression = progression
+        self.events = events
+        connectivity.progressionContext = progression.context.toDictionary()
+        progression.onRewardChanged = { [weak self] reward in
+            guard let self else { return }
+            self.connectivity.progressionContext = self.progression.context.toDictionary()
+            self.connectivity.sendWorkoutReward(reward)
+        }
         setupConnectivityCallbacks()
         workoutStore.migrateFromLegacyTranscriptions()
         restoreActiveWorkout()
@@ -125,16 +137,14 @@ final class WorkoutManager {
 
     func endWorkout() {
         guard var session = activeSession else { return }
-        
-        // If no moments were recorded, discard instead of saving an empty workout
-        if session.moments.isEmpty {
-            discardWorkout()
-            return
-        }
-        
+
+        // RUXP: every ended workout counts, voice notes or not. Discard is an explicit choice.
         session.endedAt = Date()
         workoutStore.saveSession(session)
         endingSessionID = session.id
+        rewardCompletion(for: session)
+        // Invariant: completedWorkoutID must be set BEFORE activeSession is cleared so the
+        // single workout cover crossfades to the completion screen instead of dismissing.
         completedWorkoutID = session.id
         activeSession = nil
         isProcessingMoment = false
@@ -181,6 +191,8 @@ final class WorkoutManager {
         if let activeCalories, activeCalories > 0 { session.activeCalories = activeCalories }
         workoutStore.saveSession(session)
         endingSessionID = session.id
+        rewardCompletion(for: session)
+        // See endWorkout(): completedWorkoutID before activeSession = nil.
         completedWorkoutID = session.id
         activeSession = nil
         persistActiveWorkoutID(nil)
@@ -198,6 +210,12 @@ final class WorkoutManager {
             }
             self.finalizeEnd(workoutID: session.id)
         }
+    }
+
+    /// Awards completion XP synchronously (offline, no AI). PR XP arrives later from the processor.
+    private func rewardCompletion(for session: WorkoutSession) {
+        let overlapping = events.events(overlapping: session.startedAt, end: session.endedAt ?? ScheduledEventService.now())
+        progression.rewardWorkoutCompletion(session: session, events: overlapping)
     }
 
     /// The plan slot is one-shot: once its workout ends (or is discarded), clear it.

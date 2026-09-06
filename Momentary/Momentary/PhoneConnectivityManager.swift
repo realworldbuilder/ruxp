@@ -4,13 +4,17 @@ import WatchConnectivity
 
 @MainActor
 final class ConnectivityService: NSObject, ObservableObject {
-    private static let logger = Logger(subsystem: "com.whussey.ruxp", category: "ConnectivityService")
+    nonisolated private static let logger = Logger(subsystem: "com.whussey.ruxp", category: "ConnectivityService")
 
     private let session: WCSession
 
     var onAudioReceived: ((URL, UUID?, UUID?) async -> Void)?
     var onWorkoutCommand: ((WorkoutMessage) async -> Void)?
     var onReceivedWorkoutContext: ((_ workoutID: UUID?, _ isActive: Bool, _ startedAt: Date?) -> Void)?
+
+    /// Level / season XP snapshot merged into every application-context update so the watch
+    /// can show "LVL 12" cold. Set by WorkoutManager whenever progression changes.
+    var progressionContext: [String: Any] = [:]
 
     override init() {
         self.session = WCSession.default
@@ -50,6 +54,27 @@ final class ConnectivityService: NSObject, ObservableObject {
         if let plan, let planData = try? JSONEncoder().encode(PlanWirePayload(plan)) {
             context[ConnectivityConstants.contextPlanDataKey] = planData
         }
+        progressionContext.forEach { context[$0.key] = $0.value }
+        try? session.updateApplicationContext(context)
+    }
+
+    /// Phone → watch: XP earned for a finished workout (falls back to transferUserInfo when unreachable).
+    func sendWorkoutReward(_ reward: WorkoutRewardSummary) {
+        let message = WorkoutMessage(
+            command: .workoutReward,
+            workoutID: reward.workoutID,
+            xpEarned: reward.totalXP,
+            level: reward.levelAfter,
+            levelUp: reward.didLevelUp,
+            prCount: reward.prCount
+        )
+        sendWorkoutMessage(message)
+    }
+
+    /// Push the current progression snapshot without touching workout state.
+    func pushProgressionContext() {
+        var context = session.applicationContext
+        progressionContext.forEach { context[$0.key] = $0.value }
         try? session.updateApplicationContext(context)
     }
 
@@ -65,6 +90,7 @@ final class ConnectivityService: NSObject, ObservableObject {
         context[ConnectivityConstants.contextMomentCountKey] = count
         context[ConnectivityConstants.contextWorkoutIDKey] = workoutID.uuidString
         context[ConnectivityConstants.contextIsActiveKey] = true
+        progressionContext.forEach { context[$0.key] = $0.value }
         try? session.updateApplicationContext(context)
     }
 

@@ -10,6 +10,9 @@ struct RUXPApp: App {
     @State private var insightsStore: InsightsStore
     @State private var workoutStore: WorkoutStore
     @State private var plannedWorkoutStore: PlannedWorkoutStore
+    @State private var progression: ProgressionService
+    @State private var livePresence: SimulatedLivePresence
+    private let eventService = ScheduledEventService()
 
     init() {
         let store = WorkoutStore()
@@ -23,16 +26,22 @@ struct RUXPApp: App {
         let persistentInsights = InsightsStore()
         let convoStore = ConversationStore()
         let chat = ChatEngine(workoutStore: store, insightsEngine: insights, aiService: aiService, conversationStore: convoStore)
+        let progressionService = ProgressionService()
+        let events = ScheduledEventService()
+        let presence = SimulatedLivePresence(tickInterval: 4)
         let manager = WorkoutManager(
             workoutStore: store,
             connectivity: connectivity,
             transcription: transcription,
             healthKit: healthKit,
             processor: processor,
-            plannedWorkoutStore: plannedStore
+            plannedWorkoutStore: plannedStore,
+            progression: progressionService,
+            events: events
         )
         processor.insightsEngine = insights
         processor.insightsStore = persistentInsights
+        processor.progression = progressionService
 
         _workoutManager = State(initialValue: manager)
         _workoutProcessor = State(initialValue: processor)
@@ -42,10 +51,17 @@ struct RUXPApp: App {
         _insightsStore = State(initialValue: persistentInsights)
         _workoutStore = State(initialValue: store)
         _plannedWorkoutStore = State(initialValue: plannedStore)
+        _progression = State(initialValue: progressionService)
+        _livePresence = State(initialValue: presence)
 
         // Rebuild persistent insights if empty (first launch / migration)
         if persistentInsights.lifetimeStats.totalWorkouts == 0 && !store.index.isEmpty {
             persistentInsights.rebuild(from: store)
+        }
+        // Seed progression from existing history so an upgrade starts with a real level
+        if progressionService.progress.workoutCount == 0 && !store.index.isEmpty {
+            let sessions = store.index.compactMap { store.loadSession(id: $0.id) }
+            progressionService.rebuild(from: sessions, events: events)
         }
     }
 
@@ -62,8 +78,12 @@ struct RUXPApp: App {
                 .environment(insightsStore)
                 .environment(workoutStore)
                 .environment(plannedWorkoutStore)
+                .environment(progression)
+                .environment(livePresence)
+                .environment(\.liveEvents, eventService)
                 .preferredColorScheme(.dark)
                 .task {
+                    livePresence.start()
                     await workoutProcessor.processPendingQueue()
                     await insightsEngine.generateInsights()
                 }
@@ -71,6 +91,9 @@ struct RUXPApp: App {
                     if scenePhase == .active {
                         // Restore active workout if app was backgrounded/killed
                         workoutManager.refreshActiveSession()
+                        livePresence.start()
+                    } else if scenePhase == .background {
+                        livePresence.stop()
                     }
                 }
         }

@@ -31,6 +31,7 @@ final class WorkoutProcessor {
     var state: WorkoutProcessingState = .idle
     var insightsEngine: InsightsEngine?
     var insightsStore: InsightsStore?
+    var progression: ProgressionService?
 
     private let aiService: AIService
     private let workoutStore: WorkoutStore
@@ -100,13 +101,17 @@ final class WorkoutProcessor {
 
                 var updatedSession = session
                 updatedSession.structuredLog = output.structuredLog
-                updatedSession.contentPack = output.contentPack
+                // RUXP: AI-generated social content (captions/posts) is not persisted.
+                updatedSession.contentPack = nil
                 updatedSession.stories = output.stories
                 workoutStore.saveSession(updatedSession)
 
                 state = .completed
                 Self.logger.info("Processing completed for workout \(session.id)")
-                insightsStore?.ingest(updatedSession)
+                let newPRs = insightsStore?.ingest(updatedSession) ?? []
+                if !newPRs.isEmpty {
+                    progression?.rewardPersonalRecords(workoutID: updatedSession.id, count: newPRs.count)
+                }
                 await insightsEngine?.generateInsights()
                 return nil
 
