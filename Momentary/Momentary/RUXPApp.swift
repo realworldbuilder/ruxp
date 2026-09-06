@@ -67,6 +67,28 @@ struct RUXPApp: App {
 
     @Environment(\.scenePhase) private var scenePhase
 
+    /// DEBUG-only knobs for exercising the reward flow quickly:
+    ///   -RUXPSkipMinimum   no 10-minute minimum for completion XP
+    ///   -RUXPEventClock friday|sunday|tuesday   pretend it is that day
+    private func applyDebugLaunchArguments() {
+        #if DEBUG
+        let args = ProcessInfo.processInfo.arguments
+        if args.contains("-RUXPSkipMinimum") { ProgressionRules.minimumWorkoutDuration = 0 }
+        if let idx = args.firstIndex(of: "-RUXPEventClock"), idx + 1 < args.count {
+            let cal = Calendar.current
+            var comps = DateComponents()
+            comps.minute = 0
+            switch args[idx + 1] {
+            case "friday": comps.weekday = 6; comps.hour = 19
+            case "sunday": comps.weekday = 1; comps.hour = 12
+            case "tuesday": comps.weekday = 3; comps.hour = 10
+            default: return
+            }
+            ScheduledEventService.clockOverride = cal.nextDate(after: Date(), matching: comps, matchingPolicy: .nextTime)
+        }
+        #endif
+    }
+
     var body: some Scene {
         WindowGroup {
             MainTabView()
@@ -83,6 +105,7 @@ struct RUXPApp: App {
                 .environment(\.liveEvents, eventService)
                 .preferredColorScheme(.dark)
                 .task {
+                    applyDebugLaunchArguments()
                     livePresence.start()
                     await workoutProcessor.processPendingQueue()
                     await insightsEngine.generateInsights()

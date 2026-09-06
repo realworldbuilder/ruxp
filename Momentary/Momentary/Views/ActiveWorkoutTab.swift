@@ -69,9 +69,7 @@ struct ActiveWorkoutTab: View {
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text(hasNothingLogged
-                     ? "Nothing logged yet. Sessions of \(Int(ProgressionRules.minimumWorkoutDuration / 60))+ minutes still earn XP."
-                     : "This locks in your XP and starts parsing your notes.")
+                Text(hasNothingLogged ? emptyEndMessage : "This locks in your XP and starts parsing your notes.")
             }
             .alert("Discard Workout?", isPresented: $showDiscardConfirmation) {
                 Button("Discard", role: .destructive) { workoutManager.discardWorkout() }
@@ -172,6 +170,13 @@ struct ActiveWorkoutTab: View {
         }
         .padding()
         .background(Theme.background)
+    }
+
+    private var emptyEndMessage: String {
+        let minutes = Int(ProgressionRules.minimumWorkoutDuration / 60)
+        return minutes > 0
+            ? "Nothing logged yet. Sessions of \(minutes)+ minutes still earn XP."
+            : "Nothing logged yet. Save it anyway?"
     }
 
     private var hasNothingLogged: Bool {
