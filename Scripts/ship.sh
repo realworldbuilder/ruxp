@@ -18,6 +18,16 @@ SCHEME="RUXP"
 ARCHIVE_PATH="/tmp/ruxp.xcarchive"
 EXPORT_PATH="/tmp/ruxp-export"
 EXPORT_PLIST="$REPO_ROOT/ExportOptions.plist"
+SECRETS="$REPO_ROOT/Config/Secrets.xcconfig"
+
+# Preflight: the bundled OpenAI key must exist locally and must not be tracked.
+[ -f "$SECRETS" ] || { echo "❌ $SECRETS missing. Copy Config/Secrets.example.xcconfig and add the key."; exit 1; }
+KEY_VALUE="$(grep -E '^[[:space:]]*RUXP_OPENAI_KEY[[:space:]]*=' "$SECRETS" | tail -1 | sed -E 's/^[^=]*=[[:space:]]*//; s/[[:space:]]*$//')"
+[ -n "$KEY_VALUE" ] || { echo "❌ RUXP_OPENAI_KEY is empty in Config/Secrets.xcconfig."; exit 1; }
+if git -C "$REPO_ROOT" ls-files --error-unmatch Config/Secrets.xcconfig >/dev/null 2>&1; then
+  echo "❌ Config/Secrets.xcconfig is tracked by git. Untrack it before shipping."; exit 1
+fi
+echo "🔑 Bundled OpenAI key: Config/Secrets.xcconfig (…${KEY_VALUE: -4})"
 
 rm -rf "$EXPORT_PATH"
 
@@ -28,6 +38,12 @@ cd "$PROJECT_DIR"
   -archivePath "$ARCHIVE_PATH" \
   archive -allowProvisioningUpdates \
   2>&1 | grep -E "ARCHIVE (SUCCEEDED|FAILED)|error:"
+
+BUILT_KEY="$(/usr/libexec/PlistBuddy -c 'Print :RUXPOpenAIKey' "$ARCHIVE_PATH/Products/Applications/RUXP.app/Info.plist" 2>/dev/null || true)"
+if [ -z "$BUILT_KEY" ] || [ "$BUILT_KEY" = '$(RUXP_OPENAI_KEY)' ]; then
+  echo "❌ Archive has no bundled key (RUXPOpenAIKey empty). Check Config/RUXP.xcconfig is the base configuration."; exit 1
+fi
+echo "🔑 Archive carries the bundled key (…${BUILT_KEY: -4})"
 
 echo "🚀 Step 2: Exporting + uploading to TestFlight..."
 /usr/bin/xcodebuild -exportArchive \

@@ -1,0 +1,11 @@
+#!/bin/sh
+# Enable once per clone: git config core.hooksPath .githooks
+# Refuses commits that would leak the bundled OpenAI key.
+if git diff --cached -U0 --diff-filter=AM | grep -E '^\+' | grep -Ev '^\+\+\+' | grep -Eq 'sk-[A-Za-z0-9_-]{20,}'; then
+  echo "pre-commit: staged changes contain an OpenAI-style key (sk-...). Refusing to commit." >&2
+  exit 1
+fi
+if git diff --cached --name-only | grep -qx 'Config/Secrets.xcconfig'; then
+  echo "pre-commit: Config/Secrets.xcconfig must never be committed." >&2
+  exit 1
+fi

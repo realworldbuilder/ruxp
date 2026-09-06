@@ -245,6 +245,16 @@ final class ProgressionService {
 
     private func rolloverSeasonIfNeeded() {
         guard progress.seasonID != season.id else { return }
+        if progress.seasonID == SeasonCatalog.legacyLaunchID, season.id == SeasonCatalog.earlyAdopters.id {
+            // Builds 1–3 called the launch window S01. Same window, new code:
+            // rename in place, keep XP, remap equipped reward IDs.
+            progress.seasonID = season.id
+            progress.equippedCosmetics = progress.equippedCosmetics?.mapValues { id in
+                id.hasPrefix("S01-") ? "S00-" + id.dropFirst(4) : id
+            }
+            save()
+            return
+        }
         progress.seasonID = season.id
         progress.seasonXP = 0
         progress.seasonWorkoutCount = 0

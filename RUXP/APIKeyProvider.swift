@@ -5,19 +5,42 @@ enum APIKeyProvider {
     private static let keychainService = "com.whussey.ruxp.openai"
     private static let keychainAccount = "custom_api_key"
 
-    /// The user's OpenAI key from the Keychain, or "" when none is set.
+    enum KeySource { case custom, bundled, none }
+
+    /// Key baked in at build time from Config/Secrets.xcconfig via Info.plist.
+    /// Nil when the file was absent (BYOK mode) or the variable never expanded.
+    static var bundledKey: String? {
+        guard let raw = Bundle.main.infoDictionary?["RUXPOpenAIKey"] as? String else { return nil }
+        let key = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !key.isEmpty, !key.contains("$(") else { return nil }
+        return key
+    }
+
+    /// The user's own key from the Keychain. Overrides the bundled one.
+    static var customKey: String? {
+        loadKeychainKey().flatMap { $0.isEmpty ? nil : $0 }
+    }
+
+    static var keySource: KeySource {
+        if customKey != nil { return .custom }
+        if bundledKey != nil { return .bundled }
+        return .none
+    }
+
+    static var hasBundledKey: Bool { bundledKey != nil }
+
+    /// Custom key, else bundled key, else "".
     static var resolvedKey: String {
-        loadKeychainKey() ?? ""
+        customKey ?? bundledKey ?? ""
     }
 
     static var hasKey: Bool {
         !resolvedKey.isEmpty
     }
 
-    /// e.g. "sk-…abcd" for display in Settings.
+    /// e.g. "sk-…abcd" for display in Settings. Custom key only; the bundled key is never shown.
     static var maskedKey: String? {
-        let key = resolvedKey
-        guard key.count >= 8 else { return nil }
+        guard let key = customKey, key.count >= 8 else { return nil }
         return "\(key.prefix(3))…\(key.suffix(4))"
     }
 

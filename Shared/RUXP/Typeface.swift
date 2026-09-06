@@ -2,7 +2,7 @@ import CoreText
 import Foundation
 import SwiftUI
 
-/// Season 01 typefaces, bundled in `Shared/Fonts` and registered at launch on both
+/// Launch typefaces, bundled in `Shared/Fonts` and registered at launch on both
 /// iPhone and Apple Watch (no Info.plist `UIAppFonts` needed with runtime registration).
 ///
 /// - Orbitron: wide geometric techno. Wordmark, event titles, HUD numbers.

@@ -6,7 +6,7 @@ import Foundation
 /// App Store Connect configuration (all leaderboards Integer, High-to-Low, Best Score):
 ///
 /// Set "Rankings" (Classic):
-///   lifetime_xp, season_xp_s01 (one per season), week_streak
+///   lifetime_xp, season_xp_s00, season_xp_s01, … (one per season), week_streak
 ///
 /// Set "Live" (Recurring; the score is always 1, only the occurrence's player count matters).
 /// Windows are in US Eastern and padded so every US time zone's local event falls inside:

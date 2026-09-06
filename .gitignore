@@ -23,3 +23,7 @@ build/
 
 # Private keys directory (if ever created locally)
 private_keys/
+
+# Bundled OpenAI key (see Config/Secrets.example.xcconfig)
+Config/Secrets.xcconfig
+*.xcconfig.local

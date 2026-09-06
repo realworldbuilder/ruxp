@@ -127,6 +127,18 @@ struct SettingsView: View {
                         Text("Key configured (\(mask))")
                             .font(Theme.Fonts.ui(.subheadline))
                     }
+                } else if APIKeyProvider.hasBundledKey {
+                    HStack {
+                        Image(systemName: "gift.fill")
+                            .foregroundStyle(Theme.accent)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("AI on the house")
+                                .font(Theme.Fonts.ui(.subheadline))
+                            Text("\(progression.season.code) · \(progression.season.name)")
+                                .font(Theme.Fonts.ui(.caption))
+                                .foregroundStyle(Theme.textSecondary)
+                        }
+                    }
                 } else {
                     HStack {
                         Image(systemName: "key.slash")
@@ -137,7 +149,7 @@ struct SettingsView: View {
                     }
                 }
 
-                SecureField("sk-...", text: $apiKeyInput)
+                SecureField(APIKeyProvider.hasBundledKey ? "Use your own key instead (sk-...)" : "sk-...", text: $apiKeyInput)
                     .textContentType(.password)
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)
@@ -150,7 +162,7 @@ struct SettingsView: View {
                 Button("Test Key") {
                     testKey()
                 }
-                .disabled(keyTestResult == .testing || (trimmedKeyInput.isEmpty && storedKeyMask == nil))
+                .disabled(keyTestResult == .testing || (trimmedKeyInput.isEmpty && !APIKeyProvider.hasKey))
 
                 switch keyTestResult {
                 case .idle:
@@ -171,7 +183,7 @@ struct SettingsView: View {
                 }
 
                 if storedKeyMask != nil {
-                    Button("Remove Key", role: .destructive) {
+                    Button(APIKeyProvider.hasBundledKey ? "Remove My Key" : "Remove Key", role: .destructive) {
                         APIKeyProvider.delete()
                         storedKeyMask = nil
                         keyTestResult = .idle
@@ -180,13 +192,15 @@ struct SettingsView: View {
             } header: {
                 Text("OpenAI API Key")
             } footer: {
-                Text("Transcription and AI coaching use your own OpenAI API key. It's stored in the iOS Keychain and sent only to api.openai.com. Get one at platform.openai.com/api-keys.")
+                Text(apiKeyFooter)
             }
 
             // MARK: - About
             Section("About") {
                 LabeledContent("Workout parsing", value: "OpenAI GPT-4o")
+                LabeledContent("Insights & coach", value: "OpenAI GPT-4o mini")
                 LabeledContent("Transcription", value: "OpenAI Whisper (cloud)")
+                LabeledContent("AI key", value: keySourceLabel)
                 LabeledContent("Live counts", value: "Game Center players")
 
                 HStack {
@@ -298,6 +312,26 @@ struct SettingsView: View {
     }
 
     // MARK: - API Key Helpers
+
+    private var keySourceLabel: String {
+        switch APIKeyProvider.keySource {
+        case .custom: return "Your key"
+        case .bundled: return "On the house"
+        case .none: return "None"
+        }
+    }
+
+    private var apiKeyFooter: String {
+        let season = progression.season
+        switch APIKeyProvider.keySource {
+        case .bundled:
+            return "Voice notes (audio) and your workout text are sent to OpenAI for transcription, parsing, and insights. During \(season.code) · \(season.name) the key is on us. Paste your own key to use it instead; it's stored in the iOS Keychain and sent only to api.openai.com."
+        case .custom:
+            return "Transcription and AI coaching use your own OpenAI API key. It's stored in the iOS Keychain. Audio and workout notes go only to api.openai.com."
+        case .none:
+            return "AI features are off. Add an OpenAI API key to enable transcription and parsing. Audio and workout notes are sent only to api.openai.com. Get a key at platform.openai.com/api-keys."
+        }
+    }
 
     private func saveKey() {
         guard APIKeyProvider.save(apiKeyInput) else { return }

@@ -88,7 +88,7 @@ struct HomeView: View {
                 if isLive {
                     LiveDot(label: "LIVE NOW")
                 } else if featured.isSeasonWide {
-                    Text("SEASON \(String(format: "%02d", season.number))").eyebrow().foregroundStyle(Theme.secondary)
+                    Text("SEASON \(season.numberLabel)").eyebrow().foregroundStyle(Theme.secondary)
                 } else {
                     Text("STARTS \(featured.startLabel(now: now))").eyebrow().foregroundStyle(Theme.warning)
                 }

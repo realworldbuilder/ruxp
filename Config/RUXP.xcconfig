@@ -1,0 +1,5 @@
+// Base build configuration for the RUXP iOS target.
+// The real key lives in Config/Secrets.xcconfig, which is gitignored.
+// Without that file the app builds with AI features disabled (bring-your-own-key mode).
+RUXP_OPENAI_KEY =
+#include? "Secrets.xcconfig"

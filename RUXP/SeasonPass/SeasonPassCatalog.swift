@@ -44,9 +44,14 @@ struct SeasonPassLoadout: Equatable {
 enum SeasonPassCatalog {
     static let tierCount = 20
 
+    /// Season 0 ladder. Tiers 1–2 are the early-adopter mark and are never re-issued.
+    /// Follow-up before the Dec 1 rollover: `reward(id:)` must resolve any season's
+    /// ladder (`ladder(for: seasonID)`) and `PlayerProgress` needs an Optional
+    /// `seasonsPlayed: [String: Int]?` (season ID → high-water level) so S0 cosmetics
+    /// survive into Season 1.
     private static let ladder: [(SeasonPassRewardKind, String, String)] = [
-        (.title, "ROOKIE", "ROOKIE"),
-        (.title, "PRESSED START", "PRESSED START"),
+        (.title, "EARLY ADOPTER", "EARLY ADOPTER"),
+        (.badge, "EARLY ADOPTER BADGE", "sunrise.fill"),
         (.title, "REGULAR", "REGULAR"),
         (.nameColor, "MAGENTA NAME", "magenta"),
         (.title, "GRINDER", "GRINDER"),
@@ -59,7 +64,7 @@ enum SeasonPassCatalog {
         (.title, "FRIDAY NIGHT VET", "FRIDAY NIGHT VET"),
         (.badge, "TROPHY BADGE", "trophy.fill"),
         (.nameColor, "VIOLET NAME", "violet"),
-        (.title, "SEASON ONE", "SEASON ONE"),
+        (.title, "SEASON ZERO", "SEASON ZERO"),
         (.badge, "CROWN BADGE", "crown.fill"),
         (.title, "HEAVY", "HEAVY"),
         (.nameColor, "GOLD NAME", "gold"),
@@ -74,8 +79,8 @@ enum SeasonPassCatalog {
         }
     }
 
-    /// Resolves a stored reward ID. Only the current season's ladder exists today, so
-    /// legacy IDs from a past season resolve as long as the code matches.
+    /// Resolves a stored reward ID against the current season's ladder. IDs from a
+    /// past season do not resolve yet (see the note above `ladder`).
     static func reward(id: String) -> SeasonPassReward? {
         rewards(for: SeasonCatalog.current).first { $0.id == id }
     }

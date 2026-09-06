@@ -263,7 +263,9 @@ final class InsightsEngine {
             do {
                 let response = try await aiService.complete(
                     systemPrompt: "You are a concise fitness insights writer. Write 2-3 sentences of personalized training insight. Be specific, not generic. No emojis. Respond with plain text only.",
-                    userPrompt: prompt
+                    userPrompt: prompt,
+                    jsonMode: false,
+                    model: AIService.lightModel
                 )
 
                 let cleaned = response.trimmingCharacters(in: .whitespacesAndNewlines)

@@ -97,7 +97,7 @@ final class ChatEngine {
                 ["role": "user", "content": contextPrompt]
             ]
             
-            let responseJSON = try await aiService.complete(messages: conversationMessages)
+            let responseJSON = try await aiService.complete(messages: conversationMessages, model: AIService.lightModel)
             let blocks = parseResponse(responseJSON)
 
             let assistantMessage = ChatMessage(role: .assistant, blocks: blocks)
@@ -173,7 +173,7 @@ final class ChatEngine {
             )
 
             let conversationMessages = buildConversationMessages(systemPrompt: systemPrompt)
-            let responseJSON = try await aiService.complete(messages: conversationMessages)
+            let responseJSON = try await aiService.complete(messages: conversationMessages, model: AIService.lightModel)
             let blocks = parseResponse(responseJSON)
 
             let assistantMessage = ChatMessage(role: .assistant, blocks: blocks)

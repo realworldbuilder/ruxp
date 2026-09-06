@@ -15,11 +15,13 @@ RUXP makes the gym feel like something is happening right now. Open it and see w
 - XP for finishing workouts, showing up weekly, hitting PRs, and joining events
 - Seasons with a simple goal: 32 workouts, finish the season
 - Apple Watch app for training: timer, voice notes, End, XP
-- Voice notes become structured logs with your own OpenAI key
+- Voice notes become structured logs. AI transcription is on the house for Season 0
 - Workouts save to Apple Health
 
 No feed. No followers. Just the place you open when you're about to lift.
 
 **Keywords:** lifting, weightlifting, strength, workout, gym, XP, season, apple watch, voice
+
+**What's New (1.0):** Season 0: Early Adopters. AI voice logging on the house, exclusive EARLY ADOPTER title and badge.
 
 **Note:** Live counts are real Game Center players. Expect small numbers until the community grows.

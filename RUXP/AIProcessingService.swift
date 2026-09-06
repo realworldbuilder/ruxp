@@ -10,19 +10,21 @@ final class AIService {
 
     private let chatEndpoint = URL(string: "https://api.openai.com/v1/chat/completions")!
     private let whisperEndpoint = URL(string: "https://api.openai.com/v1/audio/transcriptions")!
-    // TODO: Cost audit — consider gpt-4o-mini for insights/analysis, keep gpt-4o for Trainer chat
-    private let model = "gpt-4o"
+    /// Voice note → structured log. Accuracy drives PR XP, so keep the big model.
+    static let parsingModel = "gpt-4o"
+    /// Insight blurbs and coach chat. Cheap is plenty.
+    static let lightModel = "gpt-4o-mini"
 
     // MARK: - Chat Completion
 
-    func complete(systemPrompt: String, userPrompt: String) async throws -> String {
+    func complete(systemPrompt: String, userPrompt: String, jsonMode: Bool = true, model: String = AIService.parsingModel) async throws -> String {
         try await complete(messages: [
             ["role": "system", "content": systemPrompt],
             ["role": "user", "content": userPrompt]
-        ])
+        ], jsonMode: jsonMode, model: model)
     }
 
-    func complete(messages: [[String: String]], jsonMode: Bool = true) async throws -> String {
+    func complete(messages: [[String: String]], jsonMode: Bool = true, model: String = AIService.parsingModel) async throws -> String {
         let apiKey = APIKeyProvider.resolvedKey
         guard !apiKey.isEmpty else { throw AIError.noAPIKey }
 
