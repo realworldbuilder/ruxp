@@ -6,61 +6,79 @@ extension Notification.Name {
     static let switchToTab = Notification.Name("switchToTab")
 }
 
+enum AppTab: Hashable {
+    case home, train, profile
+}
+
+/// Three tabs. One full-screen cover hosts the entire workout flow
+/// (active workout → completion) so the transition never crosses presentation hosts.
 struct MainTabView: View {
     @Environment(WorkoutManager.self) private var workoutManager
-    @State private var selectedTab = 0
+    @State private var selectedTab: AppTab = .home
 
     init() {
         let appearance = UITabBarAppearance()
         appearance.configureWithOpaqueBackground()
-        appearance.backgroundColor = .black
+        appearance.backgroundColor = UIColor(Theme.background)
+        appearance.shadowColor = UIColor.white.withAlphaComponent(0.08)
         UITabBar.appearance().standardAppearance = appearance
         UITabBar.appearance().scrollEdgeAppearance = appearance
+    }
+
+    private var workoutFlowPresented: Binding<Bool> {
+        Binding(
+            get: { workoutManager.activeSession != nil || workoutManager.completedWorkoutID != nil },
+            set: { if !$0 { workoutManager.completedWorkoutID = nil } }
+        )
     }
 
     var body: some View {
         TabView(selection: $selectedTab) {
             HomeView()
-                .tabItem { Label("Home", systemImage: "house.fill") }
-                .tag(0)
+                .tabItem { Label("Home", systemImage: "bolt.fill") }
+                .tag(AppTab.home)
 
-            InsightsTab()
-                .tabItem { Label("Insights", systemImage: "lightbulb.fill") }
-                .tag(1)
+            TrainView()
+                .tabItem { Label("Train", systemImage: "list.bullet.rectangle.fill") }
+                .tag(AppTab.train)
 
-            ChatView()
-                .tabItem { Label("Trainer", systemImage: "bubble.left.and.text.bubble.right.fill") }
-                .tag(2)
-
-            SettingsView()
-                .tabItem { Label("Settings", systemImage: "gearshape.fill") }
-                .tag(3)
+            ProfileView()
+                .tabItem { Label("Profile", systemImage: "person.fill") }
+                .tag(AppTab.profile)
         }
         .tint(Theme.accent)
-        .onReceive(NotificationCenter.default.publisher(for: .switchToWorkoutTab)) { _ in
-            selectedTab = 0 // Home tab now hosts the workout
+        .fullScreenCover(isPresented: workoutFlowPresented) {
+            WorkoutFlowCover()
+        }
+        .onChange(of: workoutManager.completedWorkoutID) { old, new in
+            // CONTINUE on the completion screen returns to Home.
+            if old != nil && new == nil { selectedTab = .home }
         }
         .onReceive(NotificationCenter.default.publisher(for: .switchToTab)) { notification in
             if let idx = notification.userInfo?["tabIndex"] as? Int {
-                selectedTab = idx
+                selectedTab = idx == 1 ? .train : idx == 2 ? .profile : .home
             }
-        }
-        .onChange(of: workoutManager.activeSession?.id) { oldVal, newVal in
-            if newVal != nil && oldVal == nil {
-                selectedTab = 0 // Stay on home
-            }
-        }
-        .fullScreenCover(item: Binding<WorkoutCompletionID?>(
-            get: { workoutManager.completedWorkoutID.map { WorkoutCompletionID(id: $0) } },
-            set: { workoutManager.completedWorkoutID = $0?.id }
-        )) { item in
-            WorkoutCompletionSheet(workoutID: item.id)
-                .environment(workoutManager)
         }
     }
 }
 
-/// Wrapper to make UUID work with fullScreenCover(item:)
-private struct WorkoutCompletionID: Identifiable {
-    let id: UUID
+/// Switches between the live workout and the reward screen inside one cover.
+struct WorkoutFlowCover: View {
+    @Environment(WorkoutManager.self) private var workoutManager
+
+    var body: some View {
+        ZStack {
+            Theme.background.ignoresSafeArea()
+            if workoutManager.activeSession != nil {
+                ActiveWorkoutTab()
+                    .transition(.opacity)
+            } else if let id = workoutManager.completedWorkoutID {
+                WorkoutCompletionSheet(workoutID: id)
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.3), value: workoutManager.activeSession == nil)
+        .interactiveDismissDisabled()
+        .preferredColorScheme(.dark)
+    }
 }

@@ -72,7 +72,6 @@ struct WorkoutDetailView: View {
                     if !log.highlights.isEmpty { highlightsCard(log.highlights) }
                     if !log.ambiguities.isEmpty { ambiguitiesCard(log.ambiguities) }
                 }
-                if let pack = session.contentPack { contentPackCards(pack) }
                 if !session.stories.isEmpty { insightsCards(session.stories) }
                 if !session.moments.isEmpty { transcriptCard(session.moments) }
             }
@@ -332,48 +331,6 @@ struct WorkoutDetailView: View {
             Label("Ambiguities (\(ambiguities.count))", systemImage: "questionmark.circle")
                 .font(.subheadline.bold()).foregroundStyle(.orange)
         }
-        .themeCard()
-    }
-
-    // MARK: - Content Pack
-
-    private func contentPackCards(_ pack: ContentPack) -> some View {
-        VStack(spacing: 12) {
-            if !pack.igCaptions.isEmpty { contentDisclosure("Instagram Captions", icon: "camera", items: pack.igCaptions) }
-            if !pack.tweetThread.isEmpty { contentDisclosure("Tweet Thread", icon: "bubble.left", items: pack.tweetThread) }
-            if !pack.reelScript.isEmpty { contentDisclosure("Reel Script", icon: "film", items: [pack.reelScript]) }
-            if !pack.storyCards.isEmpty { storyCardsDisclosure(pack.storyCards) }
-            if !pack.hooks.isEmpty { contentDisclosure("Hooks", icon: "link", items: pack.hooks) }
-            if !pack.takeaways.isEmpty { contentDisclosure("Takeaways", icon: "lightbulb", items: pack.takeaways) }
-        }
-    }
-
-    private func contentDisclosure(_ title: String, icon: String, items: [String]) -> some View {
-        DisclosureGroup {
-            ForEach(items, id: \.self) { item in
-                Text(item).font(.caption).textSelection(.enabled)
-                    .contextMenu {
-                        Button { UIPasteboard.general.string = item; copyFeedbackTrigger.toggle() } label: {
-                            Label("Copy", systemImage: "doc.on.doc")
-                        }
-                        ShareLink(item: item)
-                    }
-                    .padding(.vertical, 2)
-            }
-        } label: { Label(title, systemImage: icon).font(.subheadline.bold()) }
-        .themeCard()
-    }
-
-    private func storyCardsDisclosure(_ cards: [StoryCard]) -> some View {
-        DisclosureGroup {
-            ForEach(cards) { card in
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(card.title).font(.subheadline.bold())
-                    Text(card.body).font(.caption)
-                }
-                .padding(.vertical, 4)
-            }
-        } label: { Label("Story Cards", systemImage: "rectangle.stack").font(.subheadline.bold()) }
         .themeCard()
     }
 

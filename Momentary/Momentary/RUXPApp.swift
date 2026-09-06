@@ -79,7 +79,7 @@ struct RUXPApp: App {
                 .environment(workoutStore)
                 .environment(plannedWorkoutStore)
                 .environment(progression)
-                .environment(livePresence)
+                .environment(\.livePresence, livePresence)
                 .environment(\.liveEvents, eventService)
                 .preferredColorScheme(.dark)
                 .task {

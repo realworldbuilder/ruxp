@@ -1,11 +1,12 @@
 import SwiftUI
 
-/// Full-screen sheet shown immediately after a workout ends.
-/// Displays AI processing status, then the structured summary with a share button.
+/// The moment that matters: XP earned, level progress, and the reminder that
+/// thousands of other people trained tonight too. Details live below the fold.
 struct WorkoutCompletionSheet: View {
     @Environment(WorkoutManager.self) private var workoutManager
     @Environment(WorkoutProcessor.self) private var processor
-    @Environment(\.dismiss) private var dismiss
+    @Environment(ProgressionService.self) private var progression
+    @Environment(\.livePresence) private var presence
     @AppStorage("weightUnit") private var weightUnit: String = WeightUnit.lbs.rawValue
 
     let workoutID: UUID
@@ -13,51 +14,58 @@ struct WorkoutCompletionSheet: View {
     @State private var showShareSheet = false
     @State private var shareImage: UIImage?
 
-    var body: some View {
-        NavigationStack {
-            ZStack {
-                Theme.background.ignoresSafeArea()
+    // Reveal choreography
+    @State private var revealedAwards = 0
+    @State private var showTotal = false
+    @State private var displayedSeasonXP: Int?
+    @State private var showLevelUp = false
+    @State private var revealTask: Task<Void, Never>?
 
-                if let session {
-                    ScrollView {
-                        VStack(spacing: 20) {
-                            completionHeader(session)
-                            processingStatus
-                            if let log = session.structuredLog {
-                                summarySection(log)
-                                exerciseList(log.exercises)
-                                if let plan = session.plannedWorkout {
-                                    adherenceSection(plan: plan, log: log)
-                                }
-                                if !log.highlights.isEmpty { highlightsSection(log.highlights) }
-                            }
-                            shareButton
-                        }
-                        .padding(.horizontal)
-                        .padding(.bottom, 32)
-                    }
-                } else {
-                    ProgressView("Loading workout...")
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") {
+    private var reward: WorkoutRewardSummary? {
+        guard let last = progression.lastReward, last.workoutID == workoutID else { return nil }
+        return last
+    }
+
+    var body: some View {
+        ZStack {
+            Theme.background.ignoresSafeArea()
+
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 22) {
+                    completionHeader
+                    rewardSection
+                    PrimaryButton(title: "CONTINUE") {
+                        revealTask?.cancel()
                         workoutManager.completedWorkoutID = nil
-                        dismiss()
                     }
-                    .fontWeight(.semibold)
-                    .foregroundStyle(Theme.accent)
+                    .padding(.top, 4)
+
+                    if let session {
+                        detailsDivider
+                        processingStatus
+                        if let log = session.structuredLog {
+                            exerciseList(log.exercises)
+                            if let plan = session.plannedWorkout {
+                                adherenceSection(plan: plan, log: log)
+                            }
+                            if !log.highlights.isEmpty { highlightsSection(log.highlights) }
+                        }
+                        healthRow(session)
+                        shareButton
+                    }
                 }
+                .padding(.horizontal, 20)
+                .padding(.top, 24)
+                .padding(.bottom, 40)
             }
         }
-        .onAppear { loadSession() }
+        .onAppear {
+            loadSession()
+            runReveal()
+        }
+        .onChange(of: reward?.awards.count) { runReveal() }
         .onChange(of: processor.state) {
-            if processor.state == .completed {
-                loadSession()
-            }
+            if processor.state == .completed { loadSession() }
         }
         .sheet(isPresented: $showShareSheet) {
             if let shareImage {
@@ -66,98 +74,234 @@ struct WorkoutCompletionSheet: View {
         }
     }
 
-    // MARK: - Completion Header
+    // MARK: - Header
 
-    private func completionHeader(_ session: WorkoutSession) -> some View {
-        VStack(spacing: 16) {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 56))
-                .foregroundStyle(Theme.accent)
-
-            Text("Workout Complete")
-                .font(.title2.bold())
+    private var completionHeader: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("WORKOUT COMPLETE")
+                .font(Theme.Fonts.display(30))
                 .foregroundStyle(Theme.textPrimary)
-
-            Text(session.startedAt, format: .dateTime.weekday(.wide).month(.wide).day())
-                .font(.subheadline)
-                .foregroundStyle(Theme.textSecondary)
-
-            // Stats row
-            HStack(spacing: 24) {
-                if let duration = session.duration {
-                    statItem(icon: "clock", value: formatDuration(duration), label: "Duration")
+            HStack(spacing: 10) {
+                if let duration = session?.duration {
+                    Text(formatDuration(duration)).font(Theme.Fonts.label).monospacedDigit()
                 }
-                let exercises = session.structuredLog?.exercises ?? []
-                if !exercises.isEmpty {
-                    statItem(icon: "figure.strengthtraining.traditional", value: "\(exercises.count)", label: "Exercises")
-                    statItem(icon: "repeat", value: "\(exercises.reduce(0) { $0 + $1.sets.count })", label: "Sets")
+                if let started = session?.startedAt {
+                    Text(started, format: .dateTime.weekday(.wide).hour().minute()).font(Theme.Fonts.label)
                 }
             }
-
-            let volume = computeVolume(session)
-            if volume > 0 {
-                Text("\(formatVolume(volume)) \(weightUnit) total volume")
-                    .font(.subheadline.bold())
-                    .foregroundStyle(Theme.accent)
-            }
-
-            // Health data
-            if session.averageHeartRate != nil || session.activeCalories != nil {
-                Divider().overlay(Theme.divider)
-                HStack(spacing: 24) {
-                    if let hr = session.averageHeartRate, hr > 0 {
-                        VStack(spacing: 4) {
-                            Image(systemName: "heart.fill").font(.caption).foregroundStyle(.red)
-                            Text("\(Int(hr))").font(.headline.monospacedDigit())
-                            Text("Avg BPM").font(.caption2).foregroundStyle(.secondary)
-                        }
-                    }
-                    if let cal = session.activeCalories, cal > 0 {
-                        VStack(spacing: 4) {
-                            Image(systemName: "flame.fill").font(.caption).foregroundStyle(.orange)
-                            Text("\(Int(cal))").font(.headline.monospacedDigit())
-                            Text("Calories").font(.caption2).foregroundStyle(.secondary)
-                        }
-                    }
-                }
-            }
+            .foregroundStyle(Theme.textSecondary)
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    // MARK: - Reward
+
+    @ViewBuilder
+    private var rewardSection: some View {
+        if let reward {
+            if reward.awards.isEmpty {
+                noXPCard
+            } else {
+                VStack(spacing: 12) {
+                    ForEach(Array(reward.awards.enumerated()), id: \.element.id) { idx, award in
+                        if idx < revealedAwards {
+                            awardRow(award)
+                                .transition(.move(edge: .bottom).combined(with: .opacity))
+                        }
+                    }
+
+                    if showTotal {
+                        totalBlock(reward)
+                            .transition(.scale(scale: 0.9).combined(with: .opacity))
+                    }
+                }
+                if processor.state.isProcessing && reward.prCount == 0 {
+                    HStack(spacing: 8) {
+                        ProgressView().tint(Theme.accent).controlSize(.small)
+                        Text("Checking your notes for PRs…")
+                            .font(.caption)
+                            .foregroundStyle(Theme.textTertiary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+        } else {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("SAVED").eyebrow().foregroundStyle(Theme.textSecondary)
+                Text("This workout is in your history.")
+                    .font(Theme.Fonts.body)
+                    .foregroundStyle(Theme.textSecondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .themeCard(cornerRadius: Theme.radiusLarge)
+        }
+    }
+
+    private var noXPCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("NO XP THIS TIME").eyebrow().foregroundStyle(Theme.warning)
+            Text("Sessions of \(Int(ProgressionRules.minimumWorkoutDuration / 60))+ minutes earn +\(ProgressionRules.workoutCompleteXP) XP, up to \(ProgressionRules.maxRewardedWorkoutsPerDay) a day.")
+                .font(Theme.Fonts.body)
+                .foregroundStyle(Theme.textSecondary)
+            Text("The workout is still saved.")
+                .font(.caption)
+                .foregroundStyle(Theme.textTertiary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .themeCard(cornerRadius: Theme.radiusLarge)
     }
 
-    // MARK: - Processing Status
+    private func awardRow(_ award: XPAward) -> some View {
+        HStack {
+            HStack(spacing: 10) {
+                Image(systemName: icon(for: award.reason))
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(Theme.accent)
+                    .frame(width: 30, height: 30)
+                    .background(Theme.accentSubtle, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+                Text(award.label)
+                    .font(Theme.Fonts.title(16))
+                    .foregroundStyle(Theme.textPrimary)
+            }
+            Spacer()
+            Text("+\(award.amount.grouped) XP")
+                .font(Theme.Fonts.number(18))
+                .foregroundStyle(Theme.accent)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.radiusMedium, style: .continuous))
+    }
+
+    private func icon(for reason: XPReason) -> String {
+        switch reason {
+        case .workoutComplete: return "checkmark"
+        case .eventBonus: return "bolt.fill"
+        case .weeklyBonus: return "calendar"
+        case .personalRecord: return "trophy.fill"
+        }
+    }
+
+    private func totalBlock(_ reward: WorkoutRewardSummary) -> some View {
+        let xp = displayedSeasonXP ?? reward.seasonXPAfter
+        let p = LevelCurve.progress(seasonXP: xp)
+        let live = presence?.snapshot ?? .empty
+        return VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("+\(reward.totalXP.grouped) XP")
+                    .font(Theme.Fonts.number(46))
+                    .foregroundStyle(Theme.accent)
+                    .contentTransition(.numericText(value: Double(reward.totalXP)))
+                Spacer()
+                if reward.didLevelUp && showLevelUp {
+                    Text("LEVEL UP")
+                        .font(.system(size: 12, weight: .black, design: .rounded))
+                        .tracking(1.2)
+                        .foregroundStyle(Theme.onAccent)
+                        .padding(.horizontal, 10).padding(.vertical, 6)
+                        .background(Theme.accent, in: Capsule())
+                        .transition(.scale.combined(with: .opacity))
+                }
+            }
+
+            XPBar(level: p.level, xpIntoLevel: p.xpIntoLevel, xpToNext: p.xpToNext)
+
+            if reward.didLevelUp {
+                HStack(spacing: 8) {
+                    Text("LVL \(reward.levelBefore)").font(Theme.Fonts.title(18)).foregroundStyle(Theme.textSecondary)
+                    Image(systemName: "arrow.right").font(.caption.bold()).foregroundStyle(Theme.textTertiary)
+                    Text("LVL \(reward.levelAfter)")
+                        .font(Theme.Fonts.title(18))
+                        .foregroundStyle(Theme.accent)
+                        .scaleEffect(showLevelUp ? 1 : 0.8)
+                }
+            }
+
+            if live.trainedTonight > 0 {
+                Divider().overlay(Theme.divider)
+                HStack(spacing: 8) {
+                    LiveDot(label: nil, size: 7)
+                    Text("\(live.trainedTonight.grouped) \(live.trainedTonightLabel).")
+                        .font(Theme.Fonts.body)
+                        .foregroundStyle(Theme.textSecondary)
+                }
+            }
+        }
+        .padding(18)
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.radiusLarge, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.radiusLarge, style: .continuous)
+                .stroke(Theme.accent.opacity(0.35), lineWidth: 1)
+        )
+    }
+
+    // MARK: - Reveal choreography
+
+    private func runReveal() {
+        guard let reward, !reward.awards.isEmpty else { return }
+        let target = reward.awards.count
+        guard revealedAwards < target || !showTotal else { return }
+        revealTask?.cancel()
+        revealTask = Task { @MainActor in
+            while revealedAwards < target, !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(revealedAwards == 0 ? 200 : 380))
+                withAnimation(Theme.Motion.reveal) { revealedAwards += 1 }
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            }
+            guard !Task.isCancelled else { return }
+            if !showTotal {
+                try? await Task.sleep(for: .milliseconds(350))
+                withAnimation(Theme.Motion.reveal) {
+                    showTotal = true
+                    displayedSeasonXP = reward.seasonXPBefore
+                }
+                try? await Task.sleep(for: .milliseconds(500))
+            }
+            withAnimation(.easeOut(duration: 0.9)) { displayedSeasonXP = reward.seasonXPAfter }
+            if reward.didLevelUp, !showLevelUp {
+                try? await Task.sleep(for: .milliseconds(700))
+                withAnimation(Theme.Motion.pop) { showLevelUp = true }
+                UINotificationFeedbackGenerator().notificationOccurred(.success)
+            }
+        }
+    }
+
+    // MARK: - Details
+
+    private var detailsDivider: some View {
+        HStack(spacing: 12) {
+            Rectangle().fill(Theme.divider).frame(height: 1)
+            Text("DETAILS").eyebrow().foregroundStyle(Theme.textTertiary)
+            Rectangle().fill(Theme.divider).frame(height: 1)
+        }
+        .padding(.top, 8)
+    }
 
     @ViewBuilder
     private var processingStatus: some View {
         switch processor.state {
         case .processing(let stage):
             HStack(spacing: 12) {
-                ProgressView()
-                    .tint(Theme.accent)
-                Text(stage)
-                    .font(.subheadline)
-                    .foregroundStyle(Theme.textSecondary)
+                ProgressView().tint(Theme.accent)
+                Text(stage).font(.subheadline).foregroundStyle(Theme.textSecondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .themeCard()
 
         case .failed(let message):
             VStack(alignment: .leading, spacing: 8) {
-                Label("Analysis Failed", systemImage: "exclamationmark.triangle.fill")
+                Label("Couldn't parse your notes", systemImage: "exclamationmark.triangle.fill")
                     .font(.subheadline.bold())
-                    .foregroundStyle(.red)
-                Text(message)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.error)
+                Text(message).font(.caption).foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .themeCard()
 
         case .queued:
             HStack(spacing: 10) {
-                Image(systemName: "wifi.slash").foregroundStyle(.orange)
-                Text("Queued — will process when online")
+                Image(systemName: "wifi.slash").foregroundStyle(Theme.warning)
+                Text("Queued — your notes will be parsed when online")
                     .font(.subheadline)
                     .foregroundStyle(Theme.textSecondary)
             }
@@ -165,37 +309,23 @@ struct WorkoutCompletionSheet: View {
             .themeCard()
 
         default:
-            EmptyView()
+            if let session, session.moments.isEmpty {
+                Text("No voice notes this session. Talk through your sets next time and RUXP writes the log.")
+                    .font(.caption)
+                    .foregroundStyle(Theme.textTertiary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
     }
-
-    // MARK: - Summary
-
-    private func summarySection(_ log: StructuredLog) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label("Summary", systemImage: "sparkles")
-                .font(.subheadline.bold())
-                .foregroundStyle(Theme.accent)
-            Text(log.summary)
-                .font(.subheadline)
-                .foregroundStyle(Theme.textPrimary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .themeCard()
-    }
-
-    // MARK: - Exercise List
 
     private func exerciseList(_ exercises: [ExerciseGroup]) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label("Exercises", systemImage: "list.bullet")
-                .font(.subheadline.bold())
-                .foregroundStyle(Theme.accent)
+            Text("EXERCISES").eyebrow().foregroundStyle(Theme.textSecondary)
 
             ForEach(exercises) { exercise in
                 VStack(alignment: .leading, spacing: 6) {
                     Text(exercise.exerciseName)
-                        .font(.subheadline.bold())
+                        .font(Theme.Fonts.title(15))
                         .foregroundStyle(Theme.textPrimary)
 
                     ForEach(Array(exercise.sets.enumerated()), id: \.offset) { idx, set in
@@ -204,19 +334,12 @@ struct WorkoutCompletionSheet: View {
                                 .font(.caption)
                                 .foregroundStyle(Theme.textTertiary)
                                 .frame(width: 44, alignment: .leading)
-
                             if let reps = set.reps {
-                                Text("\(reps) reps")
-                                    .font(.caption.monospacedDigit())
-                                    .foregroundStyle(Theme.textSecondary)
+                                Text("\(reps) reps").font(.caption.monospacedDigit()).foregroundStyle(Theme.textSecondary)
                             }
-
                             if let weight = set.weight, weight > 0 {
-                                Text("@ \(formatWeight(weight)) \(weightUnit)")
-                                    .font(.caption.monospacedDigit())
-                                    .foregroundStyle(Theme.textSecondary)
+                                Text("@ \(formatWeight(weight)) \(weightUnit)").font(.caption.monospacedDigit()).foregroundStyle(Theme.textSecondary)
                             }
-
                             Spacer()
                         }
                     }
@@ -231,32 +354,22 @@ struct WorkoutCompletionSheet: View {
         .themeCard()
     }
 
-    // MARK: - Plan Check
-
     private func adherenceSection(plan: PlannedWorkout, log: StructuredLog) -> some View {
         let result = PlanAdherenceCalculator.compute(plan: plan, log: log)
         return VStack(alignment: .leading, spacing: 8) {
-            Label("Plan Check", systemImage: "list.bullet.clipboard")
-                .font(.subheadline.bold())
-                .foregroundStyle(Theme.accent)
+            Text("PLAN CHECK").eyebrow().foregroundStyle(Theme.textSecondary)
 
             ForEach(result.entries) { entry in
                 HStack(spacing: 8) {
                     Image(systemName: adherenceIcon(entry.status))
                         .font(.caption)
                         .foregroundStyle(adherenceColor(entry.status))
-                    Text(entry.plannedName)
-                        .font(.subheadline)
-                        .foregroundStyle(Theme.textPrimary)
+                    Text(entry.plannedName).font(.subheadline).foregroundStyle(Theme.textPrimary)
                     Spacer()
                     if let target = entry.targetSets {
-                        Text("\(entry.actualSets)/\(target) sets")
-                            .font(.caption.monospacedDigit())
-                            .foregroundStyle(Theme.textSecondary)
+                        Text("\(entry.actualSets)/\(target) sets").font(.caption.monospacedDigit()).foregroundStyle(Theme.textSecondary)
                     } else if entry.actualSets > 0 {
-                        Text("\(entry.actualSets) sets")
-                            .font(.caption.monospacedDigit())
-                            .foregroundStyle(Theme.textSecondary)
+                        Text("\(entry.actualSets) sets").font(.caption.monospacedDigit()).foregroundStyle(Theme.textSecondary)
                     }
                 }
             }
@@ -282,26 +395,19 @@ struct WorkoutCompletionSheet: View {
 
     private func adherenceColor(_ status: PlanAdherenceStatus) -> Color {
         switch status {
-        case .completed: .green
-        case .partial: .orange
+        case .completed: Theme.accent
+        case .partial: Theme.warning
         case .skipped: Theme.textSecondary
         }
     }
 
-    // MARK: - Highlights
-
     private func highlightsSection(_ highlights: [String]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label("Highlights", systemImage: "star.fill")
-                .font(.subheadline.bold())
-                .foregroundStyle(Theme.accent)
-
+            Text("HIGHLIGHTS").eyebrow().foregroundStyle(Theme.textSecondary)
             ForEach(highlights, id: \.self) { highlight in
                 HStack(alignment: .top, spacing: 8) {
                     Text("•").foregroundStyle(Theme.accent)
-                    Text(highlight)
-                        .font(.subheadline)
-                        .foregroundStyle(Theme.textPrimary)
+                    Text(highlight).font(.subheadline).foregroundStyle(Theme.textPrimary)
                 }
             }
         }
@@ -309,40 +415,41 @@ struct WorkoutCompletionSheet: View {
         .themeCard()
     }
 
-    // MARK: - Share
+    @ViewBuilder
+    private func healthRow(_ session: WorkoutSession) -> some View {
+        let hr = session.averageHeartRate ?? 0
+        let cal = session.activeCalories ?? 0
+        let volume = computeVolume(session)
+        if hr > 0 || cal > 0 || volume > 0 {
+            HStack(spacing: 10) {
+                if volume > 0 { StatTile(title: "Volume", value: "\(formatVolume(volume)) \(weightUnit)", accent: true) }
+                if hr > 0 { StatTile(title: "Avg BPM", value: "\(Int(hr))") }
+                if cal > 0 { StatTile(title: "Calories", value: "\(Int(cal))") }
+            }
+        }
+    }
 
     @ViewBuilder
     private var shareButton: some View {
         if session?.structuredLog != nil {
-            Button {
+            SecondaryButton(title: "SHARE WORKOUT", icon: "square.and.arrow.up") {
                 generateShareImage()
                 showShareSheet = true
-            } label: {
-                Label("Share Workout", systemImage: "square.and.arrow.up")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
             }
-            .buttonStyle(.borderedProminent)
-            .tint(Theme.accent)
-            .clipShape(RoundedRectangle(cornerRadius: Theme.radiusMedium))
         }
     }
 
-    // MARK: - Share Image Generation
+    // MARK: - Helpers
 
     private func generateShareImage() {
         guard let session else { return }
-
         let renderer = ImageRenderer(content:
-            ShareableWorkoutCard(session: session, weightUnit: weightUnit)
+            ShareableWorkoutCard(session: session, weightUnit: weightUnit, reward: reward)
                 .frame(width: 390)
         )
         renderer.scale = 3.0
         shareImage = renderer.uiImage
     }
-
-    // MARK: - Helpers
 
     private func loadSession() {
         session = workoutManager.workoutStore.loadSession(id: workoutID)
@@ -367,13 +474,12 @@ struct WorkoutCompletionSheet: View {
     private func formatWeight(_ weight: Double) -> String {
         weight.truncatingRemainder(dividingBy: 1) == 0 ? "\(Int(weight))" : String(format: "%.1f", weight)
     }
+}
 
-    private func statItem(icon: String, value: String, label: String) -> some View {
-        VStack(spacing: 4) {
-            Image(systemName: icon).font(.caption).foregroundStyle(.secondary)
-            Text(value).font(.headline)
-            Text(label).font(.caption2).foregroundStyle(.secondary)
-        }
+extension WorkoutProcessingState {
+    var isProcessing: Bool {
+        if case .processing = self { return true }
+        return false
     }
 }
 
@@ -382,28 +488,27 @@ struct WorkoutCompletionSheet: View {
 private struct ShareableWorkoutCard: View {
     let session: WorkoutSession
     let weightUnit: String
+    let reward: WorkoutRewardSummary?
 
     var body: some View {
-        VStack(spacing: 16) {
-            // Header
+        VStack(alignment: .leading, spacing: 16) {
             HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("RUXP")
-                        .font(.caption.bold())
-                        .foregroundStyle(Color(hex: "10a37f"))
-                    Text(session.startedAt, format: .dateTime.month(.wide).day().year())
-                        .font(.title3.bold())
-                        .foregroundStyle(.white)
-                }
+                RUXPWordmark(size: 22, color: Theme.accent)
                 Spacer()
-                Image(systemName: "figure.strengthtraining.traditional")
-                    .font(.title2)
-                    .foregroundStyle(Color(hex: "10a37f"))
+                Text(session.startedAt, format: .dateTime.month(.wide).day().year())
+                    .font(Theme.Fonts.label)
+                    .foregroundStyle(.white.opacity(0.6))
+            }
+
+            if let reward, reward.totalXP > 0 {
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    Text("+\(reward.totalXP.grouped) XP").font(Theme.Fonts.number(34)).foregroundStyle(Theme.accent)
+                    Text("LVL \(reward.levelAfter)").font(Theme.Fonts.title(16)).foregroundStyle(.white.opacity(0.7))
+                }
             }
 
             Divider().overlay(Color.white.opacity(0.15))
 
-            // Stats
             if let duration = session.duration {
                 HStack(spacing: 20) {
                     shareStatItem(value: formatDuration(duration), label: "Duration")
@@ -414,39 +519,22 @@ private struct ShareableWorkoutCard: View {
                 }
             }
 
-            // Exercise names
             if let exercises = session.structuredLog?.exercises {
                 VStack(alignment: .leading, spacing: 4) {
                     ForEach(exercises) { exercise in
                         HStack {
-                            Text(exercise.exerciseName)
-                                .font(.subheadline)
-                                .foregroundStyle(.white)
+                            Text(exercise.exerciseName).font(.subheadline).foregroundStyle(.white)
                             Spacer()
-                            Text("\(exercise.sets.count) sets")
-                                .font(.caption)
-                                .foregroundStyle(.white.opacity(0.6))
+                            Text("\(exercise.sets.count) sets").font(.caption).foregroundStyle(.white.opacity(0.6))
                         }
                     }
                 }
             }
-
-            // Summary
-            if let summary = session.structuredLog?.summary, !summary.isEmpty {
-                Text(summary)
-                    .font(.caption)
-                    .foregroundStyle(.white.opacity(0.7))
-                    .multilineTextAlignment(.leading)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
         }
         .padding(24)
-        .background(Color(hex: "0d0d0d"))
+        .background(Theme.background)
         .clipShape(RoundedRectangle(cornerRadius: 20))
-        .overlay(
-            RoundedRectangle(cornerRadius: 20)
-                .stroke(Color(hex: "10a37f").opacity(0.3), lineWidth: 1)
-        )
+        .overlay(RoundedRectangle(cornerRadius: 20).stroke(Theme.accent.opacity(0.3), lineWidth: 1))
     }
 
     private func shareStatItem(value: String, label: String) -> some View {
