@@ -2,7 +2,7 @@ import Foundation
 import Security
 
 enum APIKeyProvider {
-    private static let keychainService = "com.williamhussey.mind2muscle.openai"
+    private static let keychainService = "com.whussey.ruxp.openai"
     private static let keychainAccount = "custom_api_key"
 
     /// The user's OpenAI key from the Keychain, or "" when none is set.

@@ -4,7 +4,7 @@ import os
 @Observable
 @MainActor
 final class PlannedWorkoutStore {
-    private static let logger = Logger(subsystem: "com.williamhussey.mind2muscle", category: "PlannedWorkoutStore")
+    private static let logger = Logger(subsystem: "com.whussey.ruxp", category: "PlannedWorkoutStore")
 
     private(set) var currentPlan: PlannedWorkout?
 

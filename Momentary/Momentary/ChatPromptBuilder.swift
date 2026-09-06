@@ -11,7 +11,7 @@ enum ChatPromptBuilder {
         let soul = TrainerSoul.load()
 
         return """
-        You are the AI coach inside Mind2Muscle — a voice-first workout tracking app. You're not just a Q&A bot. You're a real training partner who proactively analyzes, recommends, and coaches.
+        You are the AI coach inside RUXP — a voice-first lifting app. You're not just a Q&A bot. You're a real training partner who proactively analyzes, recommends, and coaches.
 
         \(soul.systemPromptFragment)
 

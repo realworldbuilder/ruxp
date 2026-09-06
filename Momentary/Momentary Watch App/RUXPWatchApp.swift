@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct Mind2MuscleWatchApp: App {
+struct RUXPWatchApp: App {
     @State private var workoutManager = WatchWorkoutManager()
 
     var body: some Scene {

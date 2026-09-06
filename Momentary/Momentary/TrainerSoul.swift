@@ -2,7 +2,7 @@ import Foundation
 
 /// The Trainer's "soul" — user-editable persona and fitness context that shapes
 /// all AI responses (Trainer chat, Insights, workout analysis).
-/// Think of it like SOUL.md for the AI coach living inside Mind2Muscle.
+/// Think of it like SOUL.md for the AI coach living inside RUXP.
 struct TrainerSoul: Codable, Equatable {
     var fitnessGoal: FitnessGoal
     var experienceLevel: ExperienceLevel

@@ -4,7 +4,7 @@ import os
 @Observable
 @MainActor
 final class WorkoutManager {
-    private static let logger = Logger(subsystem: "com.whussey.momentary", category: "WorkoutManager")
+    private static let logger = Logger(subsystem: "com.whussey.ruxp", category: "WorkoutManager")
 
     let workoutStore: WorkoutStore
     let connectivity: ConnectivityService
@@ -21,7 +21,7 @@ final class WorkoutManager {
     var completedWorkoutID: UUID?
     private var endingSessionID: UUID?
 
-    private static let activeWorkoutKey = "com.m2m.activeWorkoutID"
+    private static let activeWorkoutKey = "com.whussey.ruxp.activeWorkoutID"
 
     init(
         workoutStore: WorkoutStore,

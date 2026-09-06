@@ -4,7 +4,7 @@ import os
 @Observable
 @MainActor
 final class ChatEngine {
-    private static let logger = Logger(subsystem: "com.williamhussey.mind2muscle", category: "ChatEngine")
+    private static let logger = Logger(subsystem: "com.whussey.ruxp", category: "ChatEngine")
 
     var messages: [ChatMessage] = []
     var isResponding = false

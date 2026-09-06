@@ -388,7 +388,7 @@ private struct ShareableWorkoutCard: View {
             // Header
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Mind2Muscle")
+                    Text("RUXP")
                         .font(.caption.bold())
                         .foregroundStyle(Color(hex: "10a37f"))
                     Text(session.startedAt, format: .dateTime.month(.wide).day().year())

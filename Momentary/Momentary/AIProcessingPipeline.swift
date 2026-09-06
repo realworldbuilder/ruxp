@@ -26,7 +26,7 @@ enum WorkoutProcessingState: Equatable {
 @Observable
 @MainActor
 final class WorkoutProcessor {
-    private static let logger = Logger(subsystem: "com.whussey.momentary", category: "WorkoutProcessor")
+    private static let logger = Logger(subsystem: "com.whussey.ruxp", category: "WorkoutProcessor")
 
     var state: WorkoutProcessingState = .idle
     var insightsEngine: InsightsEngine?
@@ -263,6 +263,6 @@ final class WorkoutProcessor {
                 }
             }
         }
-        networkMonitor.start(queue: DispatchQueue(label: "com.momentary.networkmonitor"))
+        networkMonitor.start(queue: DispatchQueue(label: "com.whussey.ruxp.networkmonitor"))
     }
 }

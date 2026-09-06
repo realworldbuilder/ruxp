@@ -1,5 +1,5 @@
 #!/bin/bash
-# M2M Ship Script — archives and uploads to TestFlight.
+# RUXP Ship Script — archives and uploads to TestFlight.
 # ExportOptions.plist at the repo root has destination=upload, so the export
 # step uploads straight to App Store Connect — no separate altool step.
 #
@@ -14,9 +14,9 @@ set -eo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PROJECT_DIR="$REPO_ROOT/Momentary"
-SCHEME="Mind2Muscle"
-ARCHIVE_PATH="/tmp/m2m.xcarchive"
-EXPORT_PATH="/tmp/m2m-export"
+SCHEME="RUXP"
+ARCHIVE_PATH="/tmp/ruxp.xcarchive"
+EXPORT_PATH="/tmp/ruxp-export"
 EXPORT_PLIST="$REPO_ROOT/ExportOptions.plist"
 
 rm -rf "$EXPORT_PATH"

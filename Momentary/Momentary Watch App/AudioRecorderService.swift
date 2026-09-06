@@ -4,7 +4,7 @@ import os
 
 @MainActor
 final class AudioRecorderService: NSObject, ObservableObject {
-    private static let logger = Logger(subsystem: "com.whussey.momentary.watchkitapp", category: "AudioRecorderService")
+    private static let logger = Logger(subsystem: "com.whussey.ruxp.watchkitapp", category: "AudioRecorderService")
 
     @Published var isRecording = false
     @Published var recordingDuration: TimeInterval = 0

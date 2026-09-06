@@ -284,7 +284,7 @@ struct SettingsView: View {
 
     private func writeExportFile(_ data: Data) -> URL {
         let tempDir = FileManager.default.temporaryDirectory
-        let fileURL = tempDir.appendingPathComponent("momentary_workouts_export.json")
+        let fileURL = tempDir.appendingPathComponent("ruxp_workouts_export.json")
         try? data.write(to: fileURL)
         return fileURL
     }

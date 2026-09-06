@@ -25,7 +25,7 @@ struct HomeView: View {
                 .toolbarBackground(Theme.background, for: .navigationBar)
                 .toolbar {
                     ToolbarItem(placement: .principal) {
-                        Text("Mind2Muscle")
+                        Text("RUXP")
                             .font(.headline.weight(.semibold))
                             .foregroundStyle(Theme.textPrimary)
                     }

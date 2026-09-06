@@ -395,7 +395,7 @@ private struct ShareSheet: UIViewControllerRepresentable {
     let data: Data
 
     func makeUIViewController(context: Context) -> UIActivityViewController {
-        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("momentary_export.json")
+        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("ruxp_export.json")
         try? data.write(to: tempURL)
         return UIActivityViewController(activityItems: [tempURL], applicationActivities: nil)
     }

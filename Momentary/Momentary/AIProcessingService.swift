@@ -6,7 +6,7 @@ import os
 @Observable
 @MainActor
 final class AIService {
-    private static let logger = Logger(subsystem: "com.whussey.momentary", category: "AIService")
+    private static let logger = Logger(subsystem: "com.whussey.ruxp", category: "AIService")
 
     private let chatEndpoint = URL(string: "https://api.openai.com/v1/chat/completions")!
     private let whisperEndpoint = URL(string: "https://api.openai.com/v1/audio/transcriptions")!

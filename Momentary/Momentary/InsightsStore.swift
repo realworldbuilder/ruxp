@@ -6,7 +6,7 @@ import os
 @Observable
 @MainActor
 final class InsightsStore {
-    private static let logger = Logger(subsystem: "com.williamhussey.mind2muscle", category: "InsightsStore")
+    private static let logger = Logger(subsystem: "com.whussey.ruxp", category: "InsightsStore")
 
     // MARK: - Published State
 

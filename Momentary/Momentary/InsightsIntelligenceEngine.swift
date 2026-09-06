@@ -7,7 +7,7 @@ import os
 @Observable
 @MainActor
 final class InsightsIntelligenceEngine {
-    private static let logger = Logger(subsystem: "com.whussey.momentary", category: "InsightsIntelligenceEngine")
+    private static let logger = Logger(subsystem: "com.whussey.ruxp", category: "InsightsIntelligenceEngine")
     
     // MARK: - Published State
     

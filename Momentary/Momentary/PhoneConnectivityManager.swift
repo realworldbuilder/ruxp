@@ -4,7 +4,7 @@ import WatchConnectivity
 
 @MainActor
 final class ConnectivityService: NSObject, ObservableObject {
-    private static let logger = Logger(subsystem: "com.whussey.momentary", category: "ConnectivityService")
+    private static let logger = Logger(subsystem: "com.whussey.ruxp", category: "ConnectivityService")
 
     private let session: WCSession
 

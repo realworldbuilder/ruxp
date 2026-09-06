@@ -4,7 +4,7 @@ import WatchConnectivity
 
 @MainActor
 final class WatchConnectivityManager: NSObject, ObservableObject {
-    private static let logger = Logger(subsystem: "com.whussey.momentary.watchkitapp", category: "WatchConnectivityManager")
+    private static let logger = Logger(subsystem: "com.whussey.ruxp.watchkitapp", category: "WatchConnectivityManager")
 
     @Published var lastTranscription: String?
     @Published var lastError: String?

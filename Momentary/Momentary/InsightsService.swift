@@ -5,7 +5,7 @@ import os
 @Observable
 @MainActor
 final class InsightsEngine {
-    private static let logger = Logger(subsystem: "com.whussey.momentary", category: "InsightsEngine")
+    private static let logger = Logger(subsystem: "com.whussey.ruxp", category: "InsightsEngine")
 
     var stories: [InsightStory] = []
     var dashboardMetrics: [DashboardMetric] = []

@@ -28,7 +28,7 @@ struct PersistedBlock: Codable {
 @Observable
 @MainActor
 final class ConversationStore {
-    private static let logger = Logger(subsystem: "com.williamhussey.mind2muscle", category: "ConversationStore")
+    private static let logger = Logger(subsystem: "com.whussey.ruxp", category: "ConversationStore")
     private static let maxConversations = 10
 
     var conversations: [PersistedConversation] = []

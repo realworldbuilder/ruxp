@@ -5,7 +5,7 @@ import WatchKit
 @Observable
 @MainActor
 final class WatchWorkoutManager {
-    private static let logger = Logger(subsystem: "com.whussey.momentary.watchkitapp", category: "WatchWorkoutManager")
+    private static let logger = Logger(subsystem: "com.whussey.ruxp.watchkitapp", category: "WatchWorkoutManager")
 
     let recorder = AudioRecorderService()
     let connectivity = WatchConnectivityManager()

@@ -4,7 +4,7 @@ import os
 @Observable
 @MainActor
 final class WorkoutStore {
-    private static let logger = Logger(subsystem: "com.whussey.momentary", category: "WorkoutStore")
+    private static let logger = Logger(subsystem: "com.whussey.ruxp", category: "WorkoutStore")
 
     private(set) var index: [WorkoutSessionIndex] = []
 

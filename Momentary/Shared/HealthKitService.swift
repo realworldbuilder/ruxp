@@ -5,7 +5,7 @@ import os
 @Observable
 @MainActor
 final class HealthKitService: NSObject {
-    private static let logger = Logger(subsystem: "com.whussey.momentary", category: "HealthKitService")
+    private static let logger = Logger(subsystem: "com.whussey.ruxp", category: "HealthKitService")
 
     private let healthStore = HKHealthStore()
     #if os(watchOS)

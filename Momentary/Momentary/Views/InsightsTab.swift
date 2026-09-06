@@ -956,7 +956,7 @@ struct ShareableInsightCard: View {
             HStack {
                 Image(systemName: "dumbbell.fill")
                     .foregroundColor(Color(hex: "10a37f"))
-                Text("Mind2Muscle")
+                Text("RUXP")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(.white.opacity(0.7))
                 Spacer()
