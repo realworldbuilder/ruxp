@@ -14,6 +14,7 @@ final class WatchConnectivityManager: NSObject, ObservableObject {
     var onReceivedWorkoutContext: ((_ workoutID: UUID?, _ isActive: Bool, _ startedAt: Date?) -> Void)?
     var onMomentCountUpdated: ((_ count: Int) -> Void)?
     var onPlanReceived: ((PlanWirePayload?) -> Void)?
+    var onProgressionReceived: ((ProgressionContext) -> Void)?
 
     private let session: WCSession
     private var sendingTimeout: DispatchWorkItem?
@@ -83,6 +84,11 @@ final class WatchConnectivityManager: NSObject, ObservableObject {
         // Sync moment count if present
         if let count = context[ConnectivityConstants.contextMomentCountKey] as? Int {
             onMomentCountUpdated?(count)
+        }
+
+        // Level / season XP snapshot (phone pushes it with every context update)
+        if let progression = ProgressionContext.from(context) {
+            onProgressionReceived?(progression)
         }
 
         // Sync planned workout if present (absent = no plan for this workout)

@@ -1,77 +1,89 @@
 import SwiftUI
 
+/// Watch home: who's lifting, what's live, your level, Start Workout. Training, not browsing.
 struct WatchHomeView: View {
     @Environment(WatchWorkoutManager.self) private var workoutManager
 
+    private var live: LiveSnapshot { workoutManager.livePresence.snapshot }
+    private var activeEvent: LiveEvent? { workoutManager.events.activeEvent(at: ScheduledEventService.now()) }
+
     var body: some View {
-        VStack(spacing: 12) {
-            Spacer()
-            
-            Image("Logo")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 72, height: 72)
-                .clipShape(RoundedRectangle(cornerRadius: 16))
-            
-            // Days since last workout
-            if let daysSince = daysSinceLastWorkout, daysSince > 0 {
-                Text("\(daysSince) day\(daysSince == 1 ? "" : "s") rest")
-                    .font(.system(.caption, design: .rounded))
-                    .foregroundStyle(WatchTheme.textSecondary)
-            }
-            
-            // Quick workout suggestion
-            if let suggestion = workoutSuggestion {
-                Text(suggestion)
-                    .font(.system(.caption2, design: .rounded))
-                    .foregroundStyle(WatchTheme.accent)
-                    .padding(.top, -8)
-            }
-            
-            Spacer()
-            
-            Button {
-                workoutManager.startWorkout()
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "figure.strengthtraining.traditional")
-                        .font(.system(size: 16, weight: .semibold))
-                    Text("Start Workout")
-                        .font(.system(.headline, design: .rounded))
+        ScrollView {
+            VStack(spacing: 10) {
+                HStack {
+                    Text("RUXP")
+                        .font(.system(size: 18, weight: .black, design: .rounded))
+                        .foregroundStyle(WatchTheme.textPrimary)
+                    Spacer()
+                    if let level = workoutManager.progression?.level {
+                        Text("LVL \(level)")
+                            .font(.system(size: 11, weight: .black, design: .rounded))
+                            .foregroundStyle(WatchTheme.onAccent)
+                            .padding(.horizontal, 7).padding(.vertical, 3)
+                            .background(WatchTheme.accent, in: Capsule())
+                    }
                 }
-                .foregroundStyle(.white)
+
+                VStack(spacing: 2) {
+                    HStack(alignment: .firstTextBaseline, spacing: 5) {
+                        Text(live.liftingNow.grouped)
+                            .font(.system(size: 30, weight: .heavy, design: .rounded).monospacedDigit())
+                            .foregroundStyle(WatchTheme.textPrimary)
+                            .contentTransition(.numericText())
+                            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: live.liftingNow)
+                        WatchLiveDot(size: 5).offset(y: -8)
+                    }
+                    Text("LIFTING NOW")
+                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .tracking(1.4)
+                        .foregroundStyle(WatchTheme.textSecondary)
+                }
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .background(WatchTheme.accent, in: RoundedRectangle(cornerRadius: 14))
+
+                if let event = activeEvent {
+                    HStack(spacing: 5) {
+                        WatchLiveDot(size: 4)
+                        Text(event.title)
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .foregroundStyle(WatchTheme.accent)
+                        Spacer(minLength: 0)
+                        Text("+\(event.xpReward) XP")
+                            .font(.system(size: 11, weight: .bold, design: .rounded).monospacedDigit())
+                            .foregroundStyle(WatchTheme.textSecondary)
+                    }
+                    .padding(.horizontal, 10).padding(.vertical, 6)
+                    .background(WatchTheme.accent.opacity(0.14), in: RoundedRectangle(cornerRadius: 10))
+                }
+
+                Button {
+                    workoutManager.startWorkout()
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "figure.strengthtraining.traditional")
+                            .font(.system(size: 15, weight: .bold))
+                        Text("Start Workout")
+                            .font(.system(size: 15, weight: .black, design: .rounded))
+                    }
+                    .foregroundStyle(WatchTheme.onAccent)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(WatchTheme.accent, in: RoundedRectangle(cornerRadius: 14))
+                }
+                .buttonStyle(.plain)
+
+                if let daysSince = daysSinceLastWorkout, daysSince > 0 {
+                    Text("\(daysSince) day\(daysSince == 1 ? "" : "s") since your last lift")
+                        .font(.system(.caption2, design: .rounded))
+                        .foregroundStyle(WatchTheme.textTertiary)
+                }
             }
-            .buttonStyle(.plain)
-            
-            Spacer()
+            .padding(.horizontal, 6)
         }
-        .padding(.horizontal, 8)
+        .containerBackground(WatchTheme.background.gradient, for: .navigation)
     }
-    
-    // MARK: - AI Intelligence Features
-    
+
     private var daysSinceLastWorkout: Int? {
-        // Simple UserDefaults check - in a real app you'd sync with HealthKit
-        if let lastWorkout = UserDefaults.standard.object(forKey: "lastWorkoutDate") as? Date {
-            let days = Calendar.current.dateComponents([.day], from: lastWorkout, to: Date()).day ?? 0
-            return days
-        }
-        return nil
-    }
-    
-    private var workoutSuggestion: String? {
-        guard let days = daysSinceLastWorkout else { return nil }
-        
-        switch days {
-        case 0: return nil // Same day, no suggestion
-        case 1: return "Active recovery?"
-        case 2: return "Push day?"
-        case 3: return "Pull day?"
-        case 4...: return "Time to lift?"
-        default: return nil
-        }
+        guard let last = UserDefaults.standard.object(forKey: "lastWorkoutDate") as? Date else { return nil }
+        return Calendar.current.dateComponents([.day], from: last, to: Date()).day
     }
 }

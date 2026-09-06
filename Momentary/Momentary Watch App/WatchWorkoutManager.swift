@@ -21,6 +21,23 @@ final class WatchWorkoutManager {
     var lastError: String?
     var didReceiveRemoteStop = false
     var currentPlan: PlanWirePayload?
+
+    // RUXP progression (phone is the source of truth; the watch mirrors it)
+    struct RewardSnapshot: Equatable {
+        let workoutID: UUID
+        let xp: Int
+        let level: Int
+        let levelUp: Bool
+        let prCount: Int
+    }
+    enum RewardSyncStatus: Equatable { case idle, waiting, received, phoneUnreachable, timedOut }
+
+    var lastReward: RewardSnapshot?
+    var rewardStatus: RewardSyncStatus = .idle
+    var progression: ProgressionContext? = WatchWorkoutManager.cachedProgression()
+    private var rewardTimeout: Task<Void, Never>?
+    let livePresence = SimulatedLivePresence(tickInterval: 15)
+    let events = ScheduledEventService()
     
     // AI Intelligence features
     var restTimerRemaining: TimeInterval = 0
@@ -43,6 +60,42 @@ final class WatchWorkoutManager {
         }
         connectivity.onPlanReceived = { [weak self] plan in
             self?.currentPlan = plan
+        }
+        connectivity.onProgressionReceived = { [weak self] context in
+            self?.progression = context
+            Self.cache(context)
+        }
+        livePresence.start()
+    }
+
+    // MARK: - Progression cache (so LVL shows before the session activates)
+
+    private static func cachedProgression() -> ProgressionContext? {
+        let d = UserDefaults.standard
+        guard d.object(forKey: "cachedLevel") != nil else { return nil }
+        return ProgressionContext(
+            level: d.integer(forKey: "cachedLevel"),
+            seasonXP: d.integer(forKey: "cachedSeasonXP"),
+            xpIntoLevel: d.integer(forKey: "cachedXPIntoLevel"),
+            xpToNext: d.integer(forKey: "cachedXPToNext")
+        )
+    }
+
+    private static func cache(_ c: ProgressionContext) {
+        let d = UserDefaults.standard
+        d.set(c.level, forKey: "cachedLevel")
+        d.set(c.seasonXP, forKey: "cachedSeasonXP")
+        d.set(c.xpIntoLevel, forKey: "cachedXPIntoLevel")
+        d.set(c.xpToNext, forKey: "cachedXPToNext")
+    }
+
+    private func awaitReward() {
+        rewardStatus = connectivity.isPhoneReachable ? .waiting : .phoneUnreachable
+        rewardTimeout?.cancel()
+        rewardTimeout = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(10))
+            guard let self, !Task.isCancelled, self.rewardStatus == .waiting else { return }
+            self.rewardStatus = .timedOut
         }
     }
 
@@ -99,6 +152,7 @@ final class WatchWorkoutManager {
             )
             connectivity.sendWorkoutCommand(message)
             connectivity.updateWorkoutContext(workoutID: workoutID, isActive: false, startedAt: nil)
+            awaitReward()
 
             extendedSession.endSession()
             isEndingWorkout = false
@@ -128,6 +182,9 @@ final class WatchWorkoutManager {
         stopRestTimer()
         postSetFeedback = nil
         showPostSetFeedback = false
+        rewardTimeout?.cancel()
+        lastReward = nil
+        rewardStatus = .idle
     }
 
     // MARK: - Moment Recording
@@ -299,6 +356,28 @@ final class WatchWorkoutManager {
                     Task { await self.healthKitService.endWorkout() }
                     self.didReceiveRemoteStop = true
                     self.connectivity.updateWorkoutContext(workoutID: message.workoutID, isActive: false, startedAt: nil)
+                    self.awaitReward()
+                }
+            case .workoutReward:
+                // Phone computed XP for this workout. A second message (PR update) replaces the snapshot.
+                guard message.workoutID == self.currentWorkoutID || self.currentWorkoutID == nil else { return }
+                let snapshot = RewardSnapshot(
+                    workoutID: message.workoutID,
+                    xp: message.xpEarned ?? 0,
+                    level: message.level ?? self.progression?.level ?? 1,
+                    levelUp: message.levelUp ?? false,
+                    prCount: message.prCount ?? 0
+                )
+                let isUpdate = self.lastReward?.workoutID == message.workoutID
+                self.lastReward = snapshot
+                self.rewardStatus = .received
+                self.rewardTimeout?.cancel()
+                if let level = message.level {
+                    let progress = LevelCurve.progress(seasonXP: self.progression?.seasonXP ?? LevelCurve.xpToReach(level: level))
+                    self.progression = ProgressionContext(level: level, seasonXP: self.progression?.seasonXP ?? 0, xpIntoLevel: progress.xpIntoLevel, xpToNext: progress.xpToNext)
+                }
+                if !isUpdate {
+                    WKInterfaceDevice.current().play(snapshot.levelUp ? .success : .click)
                 }
             case .momentTranscribed:
                 if let transcript = message.transcript {
@@ -310,7 +389,7 @@ final class WatchWorkoutManager {
                     self.lastError = error
                     self.connectivity.isSending = false
                 }
-            case .momentRecorded, .workoutReward:
+            case .momentRecorded:
                 break
             }
         }

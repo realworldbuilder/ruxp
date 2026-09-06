@@ -18,7 +18,9 @@ struct ActiveWorkoutView: View {
                     duration: workoutManager.elapsedTime,
                     momentCount: workoutManager.momentCount,
                     averageHeartRate: workoutManager.healthKitService.averageHeartRate,
-                    totalCalories: workoutManager.healthKitService.totalActiveCalories
+                    totalCalories: workoutManager.healthKitService.totalActiveCalories,
+                    reward: workoutManager.lastReward,
+                    rewardStatus: workoutManager.rewardStatus
                 ) {
                     showSummary = false
                     workoutManager.completeWorkoutDismissal()
@@ -123,10 +125,19 @@ struct ActiveWorkoutView: View {
             // Timer — uses TimelineView so watchOS keeps it ticking
             TimelineView(.periodic(from: .now, by: 1.0)) { _ in
                 Text(formattedElapsed)
-                    .font(.system(.title2, design: .monospaced))
+                    .font(.system(.title2, design: .rounded, weight: .heavy).monospacedDigit())
                     .foregroundStyle(WatchTheme.textPrimary)
             }
             .padding(.top, 4)
+
+            // Other people are doing this with you.
+            HStack(spacing: 4) {
+                WatchLiveDot(size: 4)
+                Text("\(workoutManager.livePresence.snapshot.liftingNow.grouped) still lifting")
+                    .font(.system(size: 11, weight: .semibold, design: .rounded).monospacedDigit())
+                    .foregroundStyle(WatchTheme.textSecondary)
+                    .contentTransition(.numericText())
+            }
 
             Spacer(minLength: 4)
 
@@ -175,6 +186,18 @@ struct ActiveWorkoutView: View {
                 .font(.system(.caption2, weight: .semibold))
                 .foregroundStyle(WatchTheme.textTertiary)
                 .tracking(1.5)
+
+            if let event = workoutManager.events.activeEvent(at: ScheduledEventService.now()) {
+                HStack(spacing: 5) {
+                    WatchLiveDot(size: 4)
+                    Text(event.title)
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .foregroundStyle(WatchTheme.accent)
+                    Text("+\(event.xpReward) XP")
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .foregroundStyle(WatchTheme.textSecondary)
+                }
+            }
 
             Spacer()
 
@@ -274,7 +297,7 @@ struct ActiveWorkoutView: View {
 
                 Image(systemName: workoutManager.isRecordingMoment ? "stop.fill" : "mic.fill")
                     .font(.system(size: 22, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(workoutManager.isRecordingMoment ? Color.white : WatchTheme.onAccent)
             }
             .scaleEffect(isPulsing ? 1.05 : 1.0)
         }
