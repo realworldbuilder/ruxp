@@ -18,7 +18,7 @@
 html { color-scheme: dark; scroll-behavior: smooth; }
 body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.55 var(--ui); -webkit-font-smoothing: antialiased; }
 a { color: inherit; text-decoration: none; }
-img { max-width: 100%; display: block; }
+img { max-width: 100%; height: auto; display: block; }
 .wrap { width: min(1080px, 100% - 40px); margin-inline: auto; }
 
 /* Nav */
@@ -142,3 +142,19 @@ code { font-family: var(--mono); font-size: .92em; background: var(--surface-2);
   .grid-3, .grid-2, .timeline { grid-template-columns: 1fr; }
   .nav-links { gap: 14px; font-size: 13px; }
 }
+
+/* Teaser (index) */
+.teaser-body { min-height: 100svh; display: flex; flex-direction: column; background: radial-gradient(60% 50% at 50% 35%, rgba(255,45,170,.10), transparent 70%), var(--bg); }
+.teaser { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 32px 20px 16px; gap: 14px; }
+.teaser-art { width: min(300px, 64vw, 38svh); position: relative; }
+.teaser-art img { border-radius: var(--r-l); border: 1px solid var(--border); box-shadow: 0 0 80px rgba(255,45,170,.18), 0 0 160px rgba(125,211,252,.08); animation: breathe 6s ease-in-out infinite; }
+@keyframes breathe { 0%,100% { box-shadow: 0 0 80px rgba(255,45,170,.18), 0 0 160px rgba(125,211,252,.08); } 50% { box-shadow: 0 0 110px rgba(255,45,170,.30), 0 0 200px rgba(125,211,252,.14); } }
+.teaser-tag { margin-top: 8px; }
+.teaser-clock { display: inline-flex; align-items: center; font-family: var(--mono); font-size: clamp(22px, 5vw, 34px); letter-spacing: .12em; color: var(--text); }
+.teaser-clock .clock { font-variant-numeric: tabular-nums; }
+.teaser-line { margin: 0; font-size: clamp(17px, 2.6vw, 22px); color: var(--text-2); letter-spacing: -.01em; }
+.teaser-actions { justify-content: center; margin-top: 6px; }
+.teaser-foot { margin: 6px 0 0; font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--text-3); }
+.teaser-footer { display: flex; justify-content: center; gap: 22px; padding: 18px 0 26px; font-size: 12px; color: var(--text-3); }
+.teaser-footer a { color: var(--text-3); }
+.teaser-footer a:hover { color: var(--text-2); }

@@ -4,26 +4,34 @@ window.RUXP = {
   APP_STORE_URL: "",                        // paste the App Store link after approval
   CONTACT_EMAIL: "admin@ruxp.app",
   GITHUB_URL: "https://github.com/realworldbuilder/ruxp",
-  SEASON: { code: "S00", name: "EARLY ADOPTERS", start: "2026-09-01", end: "2026-11-30", goal: 32 }
+  SEASON: { code: "S00", name: "EARLY ADOPTERS", start: "2026-09-01", end: "2026-11-30" }
 };
 
 document.addEventListener("DOMContentLoaded", function () {
   var c = window.RUXP;
-  var subject = encodeURIComponent("RUXP Season 0");
   document.querySelectorAll("[data-mailto]").forEach(function (a) {
+    var subject = encodeURIComponent(a.getAttribute("data-mailto") || "RUXP");
     a.href = "mailto:" + c.CONTACT_EMAIL + "?subject=" + subject;
     if (a.hasAttribute("data-mailto-text")) a.textContent = c.CONTACT_EMAIL;
   });
   document.querySelectorAll("[data-github]").forEach(function (a) { a.href = c.GITHUB_URL; });
   document.querySelectorAll("[data-issues]").forEach(function (a) { a.href = c.GITHUB_URL + "/issues"; });
-  document.querySelectorAll("[data-testflight]").forEach(function (a) {
-    if (c.TESTFLIGHT_URL) { a.href = c.TESTFLIGHT_URL; a.classList.remove("is-pending"); }
-    else { a.removeAttribute("href"); a.classList.add("is-pending"); a.textContent = "TestFlight link coming soon"; }
+  // Access button: TestFlight when the link exists, otherwise a request-access email.
+  document.querySelectorAll("[data-access]").forEach(function (a) {
+    if (c.TESTFLIGHT_URL) { a.href = c.TESTFLIGHT_URL; a.textContent = "Enter"; }
+    else { a.href = "mailto:" + c.CONTACT_EMAIL + "?subject=" + encodeURIComponent("RUXP access"); a.textContent = "Request access"; }
   });
   document.querySelectorAll("[data-appstore]").forEach(function (a) {
     if (c.APP_STORE_URL) { a.href = c.APP_STORE_URL; a.hidden = false; } else { a.hidden = true; }
   });
+  // Countdown to the end of the season window.
   var end = new Date(c.SEASON.end + "T23:59:59");
-  var days = Math.max(0, Math.ceil((end - new Date()) / 86400000));
-  document.querySelectorAll("[data-days-left]").forEach(function (el) { el.textContent = days; });
+  function pad(n) { return (n < 10 ? "0" : "") + n; }
+  function tick() {
+    var ms = Math.max(0, end - new Date());
+    var d = Math.floor(ms / 86400000), h = Math.floor(ms / 3600000) % 24, m = Math.floor(ms / 60000) % 60, s = Math.floor(ms / 1000) % 60;
+    document.querySelectorAll("[data-countdown]").forEach(function (el) { el.textContent = d + ":" + pad(h) + ":" + pad(m) + ":" + pad(s); });
+    document.querySelectorAll("[data-days-left]").forEach(function (el) { el.textContent = d; });
+  }
+  tick(); setInterval(tick, 1000);
 });

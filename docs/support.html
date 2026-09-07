@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Support — RUXP</title>
-  <meta name="description" content="RUXP support: answers about live counts, XP, PRs, voice logging, Game Center, and deleting your data.">
+  <meta name="description" content="RUXP support.">
   <meta name="theme-color" content="#0F0F10">
   <link rel="icon" href="assets/favicon.png" type="image/png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -18,7 +18,7 @@
 <nav class="nav">
   <div class="wrap">
     <a class="brand" href="index.html"><img src="assets/logo-96.png" alt="" width="30" height="30"><span class="wordmark" data-text="RUXP">RUXP</span></a>
-    <div class="nav-links"><a href="support.html" class="active">Support</a><a href="privacy.html">Privacy</a><a data-github href="https://github.com/realworldbuilder/ruxp">GitHub</a></div>
+    <div class="nav-links"><a href="support.html" class="active">Support</a><a href="privacy.html">Privacy</a></div>
   </div>
 </nav>
 
@@ -26,63 +26,39 @@
   <div class="wrap">
     <span class="eyebrow">RUXP for iPhone and Apple Watch</span>
     <h1>Support</h1>
-    <div class="date">Season 0 · Early Adopters</div>
+    <div class="date">Season 0</div>
 
-    <p>RUXP is made by one developer. Email <a data-mailto data-mailto-text href="#">admin@ruxp.app</a> and you'll get a reply from the person who wrote the code. Bugs and ideas are also welcome as <a data-issues href="https://github.com/realworldbuilder/ruxp/issues" rel="noopener">GitHub issues</a>.</p>
+    <p>RUXP is made by one developer. Email <a data-mailto="RUXP support" data-mailto-text href="#">admin@ruxp.app</a> and you'll get a reply from the person who wrote the code.</p>
 
-    <h2>Frequently asked</h2>
+    <h2>Common questions</h2>
     <div class="faq">
-      <details open>
-        <summary>Why is the "lifting now" number so small?</summary>
-        <p>Because it's real. The count is the number of RUXP players signed into Game Center who pinged an active workout in the last 30 minutes. There is no server and no simulated presence. In Season 0 that number is small and shown exactly as it is. It grows when you bring a friend.</p>
-      </details>
       <details>
-        <summary>It says "Game Center is off" or shows a dash instead of a number.</summary>
-        <p>Live counts and leaderboards need Game Center. Sign in at iPhone Settings › Game Center, then make sure "Sync to Game Center" is on in RUXP under Profile › Settings. Counts appear after the first successful poll, usually within a minute of opening the app.</p>
-      </details>
-      <details>
-        <summary>I finished a workout and got no XP.</summary>
-        <p>Workout XP needs at least 10 minutes of session time, and only two workouts per day are rewarded. Event and weekly bonuses stack on top of a rewarded workout. If a workout under 10 minutes is a real one, tell us; the minimum is there to keep XP honest, not to punish short sessions.</p>
-      </details>
-      <details>
-        <summary>Where is my PR XP?</summary>
-        <p>PRs come from your voice notes. When the workout ends, the transcript is parsed into exercises, sets, reps, and weight, and any lift that beats your previous best is a PR worth +250 XP (up to two per workout). This needs an internet connection and takes a few seconds; the completion screen animates the PR row in when it lands. If you were offline, the notes are queued and processed the next time the app opens with a connection. Say the exercise, the weight, and the reps out loud and the parser will find it.</p>
-      </details>
-      <details>
-        <summary>Do I need my own OpenAI key?</summary>
-        <p>Not in Season 0. The app ships with a developer-provided key so transcription and parsing work out of the box, on the house. If you'd rather use your own, paste it under Profile › Settings › OpenAI API Key; it's stored in the iOS Keychain and sent only to api.openai.com. Remove it to go back to the built-in key. Workout XP, events, streaks, and the Season Pass never depend on AI.</p>
-      </details>
-      <details>
-        <summary>What is the Season Pass?</summary>
-        <p>A free cosmetic ladder. Tier N unlocks at level N, no claiming, no purchases. Tap a reward on the Season Pass screen to equip a title, name color, or badge on your player card. Season 0's tier 1 title and tier 2 badge are the EARLY ADOPTER set and won't be offered again.</p>
-      </details>
-      <details>
-        <summary>What happens on December 1?</summary>
-        <p>Season 1, PRESS START, begins. Season XP and level reset so everyone starts the ladder together; lifetime XP, workouts, PRs, and streaks carry on. Season 0 cosmetics stay yours.</p>
-      </details>
-      <details>
-        <summary>The Apple Watch app won't start a workout.</summary>
-        <p>The watch needs Health permission for workouts. On the watch, open Settings › Health › Apps › RUXP and allow workouts, or accept the prompt the first time you tap Start. Also make sure the iPhone app has been opened at least once so the two can pair over Watch Connectivity.</p>
+        <summary>How do I get access?</summary>
+        <p>Season 0 is invite-only while we ramp up. Use the Request access button on the home page and tell us a little about how you train.</p>
       </details>
       <details>
         <summary>How do I turn off Game Center?</summary>
-        <p>Profile › Settings › Sync to Game Center. When it's off, nothing is submitted and the live counts show a dash. Turning it back on resubmits your totals.</p>
+        <p>Profile › Settings › Sync to Game Center. When it's off, nothing is submitted to Game Center.</p>
       </details>
       <details>
         <summary>How do I export or delete my data?</summary>
-        <p>Profile › Settings › Export All Workouts produces a JSON file you can save anywhere. Delete All Data removes every workout, transcript, and progress record from the device. Deleting the app does the same. See the <a href="privacy.html">privacy policy</a> for what leaves the device and when.</p>
+        <p>Profile › Settings › Export All Workouts produces a JSON file you can save anywhere. Delete All Data removes everything from the device. Deleting the app does the same. See the <a href="privacy.html">privacy policy</a> for what leaves the device and when.</p>
+      </details>
+      <details>
+        <summary>The Apple Watch app won't start a workout.</summary>
+        <p>The watch needs Health permission for workouts. Accept the prompt the first time you tap Start, or allow it under the watch's Settings › Health › Apps. Open the iPhone app once first so the two can pair.</p>
       </details>
     </div>
 
     <h2>Report a bug</h2>
-    <p>Include your iPhone and watchOS versions, what you tapped, and what you expected. Screenshots help. TestFlight users can also shake the phone to send feedback with a screenshot attached.</p>
-    <p><a class="btn btn-primary" data-mailto href="#">Email support</a></p>
+    <p>Include your iPhone and watchOS versions, what you tapped, and what you expected. Screenshots help. TestFlight users can shake the phone to send feedback with a screenshot attached.</p>
+    <p><a class="btn btn-primary" data-mailto="RUXP bug" href="#">Email support</a></p>
   </div>
 </main>
 
 <footer>
   <div class="wrap">
-    <div><a href="index.html">Home</a><a href="privacy.html">Privacy</a><a data-github href="https://github.com/realworldbuilder/ruxp">GitHub</a></div>
+    <div><a href="index.html">Home</a><a href="privacy.html">Privacy</a></div>
     <div>© 2026 RUXP</div>
   </div>
 </footer>
