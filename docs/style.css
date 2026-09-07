@@ -143,14 +143,18 @@ code { font-family: var(--mono); font-size: .92em; background: var(--surface-2);
   .nav-links { gap: 14px; font-size: 13px; }
 }
 
-/* Dark launch page (index): wordmark and a clock, nothing else. */
-.dark-body { background: #000; min-height: 100svh; display: flex; }
-.dark { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; padding: 24px; }
-.dark-mark { font-family: var(--display); font-weight: 800; font-size: clamp(44px, 10vw, 96px); letter-spacing: .08em; color: #E6E6E6; position: relative; line-height: 1; }
-.dark-mark span { position: relative; display: inline-block; animation: settle 2.4s ease-out both; }
-.dark-mark span::before, .dark-mark span::after { content: attr(data-text); position: absolute; top: 0; left: 0; opacity: .5; pointer-events: none; }
-.dark-mark span::before { color: var(--accent); transform: translateX(-2px); animation: jitter 7s steps(1) infinite; }
-.dark-mark span::after { color: var(--cyan); transform: translateX(2px); animation: jitter 7s steps(1) infinite reverse; }
+/* Dark launch page (index): art, season code, clock, one line, one quiet link. */
+.dark-body { background: #000; min-height: 100svh; display: flex; flex-direction: column; }
+.dark { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 18px; padding: 32px 20px 16px; }
+.dark-art { width: min(260px, 60vw, 34svh); animation: settle 2.4s ease-out both; }
+.dark-art img { border-radius: 18px; box-shadow: 0 0 70px rgba(255,45,170,.16), 0 0 140px rgba(125,211,252,.07); animation: breathe 7s ease-in-out infinite; }
 @keyframes settle { from { opacity: 0; filter: blur(6px); } to { opacity: 1; filter: blur(0); } }
-@keyframes jitter { 0%, 96%, 100% { opacity: .5; } 97% { opacity: .9; transform: translateX(-4px); } 98% { opacity: .3; transform: translateX(3px); } 99% { opacity: .7; transform: translateX(-1px); } }
-.dark-clock { font-family: var(--mono); font-weight: 400; font-size: clamp(13px, 2.2vw, 16px); letter-spacing: .28em; color: #4A4A50; font-variant-numeric: tabular-nums; }
+@keyframes breathe { 0%,100% { box-shadow: 0 0 70px rgba(255,45,170,.16), 0 0 140px rgba(125,211,252,.07); } 50% { box-shadow: 0 0 100px rgba(255,45,170,.26), 0 0 180px rgba(125,211,252,.12); } }
+.dark-season { font-family: var(--mono); font-size: 12px; letter-spacing: .28em; color: var(--accent); opacity: .85; margin-top: 8px; }
+.dark-clock { font-family: var(--mono); font-weight: 400; font-size: clamp(20px, 4vw, 28px); letter-spacing: .18em; color: #E6E6E6; font-variant-numeric: tabular-nums; }
+.dark-line { margin: 0; font-size: 16px; color: #8A8A90; }
+.dark-access { font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: #6E6E75; border-bottom: 1px solid #2A2A2E; padding-bottom: 2px; margin-top: 6px; transition: color .15s, border-color .15s; }
+.dark-access:hover { color: #E6E6E6; border-color: #6E6E75; }
+.dark-footer { display: flex; justify-content: center; gap: 22px; padding: 14px 0 22px; font-size: 11px; }
+.dark-footer a { color: #3A3A40; }
+.dark-footer a:hover { color: #8A8A90; }
