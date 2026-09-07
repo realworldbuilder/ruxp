@@ -2,31 +2,126 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>RUXP</title>
-  <meta name="description" content="Season 0.">
-  <meta property="og:title" content="RUXP">
-  <meta property="og:description" content="You're not lifting alone.">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>S00</title>
+  <meta name="description" content="11.30.26">
+  <meta property="og:title" content="S00">
+  <meta property="og:description" content="11.30.26">
   <meta property="og:image" content="assets/logo.jpg">
   <meta name="theme-color" content="#000000">
+  <meta name="robots" content="noindex">
   <link rel="icon" href="assets/favicon.png" type="image/png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@800&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <script src="config.js" defer></script>
+  <!--
+      the dot is talking.
+      -.  ---  -    .-  .-..  ---  -.  .
+  -->
 </head>
-<body class="dark-body">
+<body class="sig-body">
 
-<main class="dark">
-  <div class="dark-art"><img src="assets/logo.jpg" alt="RUXP" width="640" height="640"></div>
-  <div class="dark-season">S00 · EARLY ADOPTERS</div>
-  <div class="dark-clock" data-countdown>--:--:--:--</div>
-  <p class="dark-line">You're not lifting alone.</p>
-  <a class="dark-access" data-access href="#">Request access</a>
+<main class="sig" id="sig">
+  <div class="sig-feed" id="feed" aria-hidden="true">
+    <img class="sig-full" src="assets/logo.jpg" alt="" width="640" height="640">
+    <div class="sig-slices" id="slices"></div>
+    <div class="sig-noise"></div>
+  </div>
+
+  <div class="sig-dot" id="dot" aria-label="signal"></div>
+
+  <div class="sig-term" id="term">
+    <span class="sig-code">S00</span><span class="sig-sep">//</span><span>WINDOW CLOSES 11.30.26</span><span class="sig-sep">//</span><span class="sig-clock" data-countdown>--:--:--:--</span>
+    <span class="sig-friday" id="friday" hidden><span class="sig-sep">//</span><span class="sig-live">FRIDAY NIGHT // LIVE</span></span>
+  </div>
+
+  <div class="sig-reveal" id="reveal" hidden>
+    <div class="sig-season">S00 · EARLY ADOPTERS</div>
+    <p class="sig-line">You're not lifting alone.</p>
+    <a class="sig-access" data-access href="#">Request access</a>
+    <div class="sig-foot"><a href="privacy.html">Privacy</a><a href="support.html">Support</a></div>
+  </div>
+
+  <form class="sig-prompt" id="prompt" autocomplete="off">
+    <span class="sig-gt">&gt;</span><input id="in" type="text" autocapitalize="none" autocorrect="off" spellcheck="false" aria-label="input" maxlength="40"><span class="sig-cursor"></span><span class="sig-status" id="status"></span>
+  </form>
 </main>
 
-<footer class="dark-footer"><a href="privacy.html">Privacy</a><a href="support.html">Support</a></footer>
+<script>
+(function () {
+  var KEY = "ruxp.s00.unlocked";
+  var ANSWERS = ["not alone", "notalone", "you're not alone", "youre not alone", "press start", "pressstart", "start", "ruxp", "s00", "early adopters", "early adopter", "not lifting alone", "you're not lifting alone", "youre not lifting alone"];
+  var feed = document.getElementById("feed"), slices = document.getElementById("slices"), dot = document.getElementById("dot");
+  var reveal = document.getElementById("reveal"), prompt = document.getElementById("prompt"), input = document.getElementById("in"), status = document.getElementById("status");
+  var friday = document.getElementById("friday"), sig = document.getElementById("sig");
 
+  // --- feed: thin slices of the artwork, more of them as the window closes
+  var SEASON_START = new Date("2026-09-01T00:00:00"), SEASON_END = new Date("2026-11-30T23:59:59");
+  function progress() { return Math.min(1, Math.max(0, (Date.now() - SEASON_START) / (SEASON_END - SEASON_START))); }
+  function buildSlices() {
+    slices.innerHTML = "";
+    var n = 3 + Math.floor(progress() * 40);
+    for (var i = 0; i < n; i++) {
+      var el = document.createElement("img");
+      el.src = "assets/logo.jpg"; el.alt = ""; el.className = "sig-slice";
+      var top = Math.random() * 96, h = 0.6 + Math.random() * 2.2;
+      el.style.clipPath = "inset(" + top + "% 0 " + Math.max(0, 100 - top - h) + "% 0)";
+      el.style.setProperty("--dx", (Math.random() * 10 - 5).toFixed(1) + "px");
+      el.style.animationDelay = (-Math.random() * 9).toFixed(2) + "s";
+      el.style.animationDuration = (6 + Math.random() * 8).toFixed(2) + "s";
+      slices.appendChild(el);
+    }
+  }
+  buildSlices();
+  setInterval(function () { if (!feed.classList.contains("is-open")) buildSlices(); }, 14000);
+
+  // --- dot: morse, NOT ALONE
+  var MORSE = { N: "-.", O: "---", T: "-", A: ".-", L: ".-..", E: "." };
+  var UNIT = 190, seq = [];
+  "NOT ALONE".split("").forEach(function (ch) {
+    if (ch === " ") { seq.push([false, UNIT * 7]); return; }
+    MORSE[ch].split("").forEach(function (s) { seq.push([true, s === "." ? UNIT : UNIT * 3]); seq.push([false, UNIT]); });
+    seq.push([false, UNIT * 3]);
+  });
+  seq.push([false, UNIT * 14]);
+  var idx = 0;
+  function step() { var s = seq[idx]; dot.classList.toggle("on", s[0]); idx = (idx + 1) % seq.length; setTimeout(step, s[1]); }
+  step();
+
+  // --- friday night: Fri 17:00–24:00 local
+  function checkFriday() { var d = new Date(); friday.hidden = !(d.getDay() === 5 && d.getHours() >= 17); }
+  checkFriday(); setInterval(checkFriday, 60000);
+
+  // --- prompt
+  function unlock(remember) {
+    feed.classList.add("is-open"); reveal.hidden = false; prompt.hidden = true; sig.classList.add("is-open");
+    if (remember) { try { localStorage.setItem(KEY, "1"); } catch (e) {} }
+  }
+  function deny() {
+    status.textContent = "// DENIED"; prompt.classList.add("deny");
+    setTimeout(function () { status.textContent = ""; prompt.classList.remove("deny"); }, 900);
+    input.value = "";
+  }
+  prompt.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var v = input.value.trim().toLowerCase().replace(/[.!]/g, "");
+    if (!v) return;
+    ANSWERS.indexOf(v) >= 0 ? unlock(true) : deny();
+  });
+  // any tap/click focuses the prompt (mobile keyboards)
+  document.addEventListener("click", function (e) { if (!prompt.hidden && !e.target.closest("a")) input.focus(); });
+  document.addEventListener("keydown", function (e) { if (!prompt.hidden && document.activeElement !== input && e.key.length === 1) input.focus(); });
+
+  // --- konami
+  var K = ["ArrowUp","ArrowUp","ArrowDown","ArrowDown","ArrowLeft","ArrowRight","ArrowLeft","ArrowRight","b","a"], kp = 0;
+  document.addEventListener("keydown", function (e) { kp = (e.key === K[kp]) ? kp + 1 : (e.key === K[0] ? 1 : 0); if (kp === K.length) { kp = 0; unlock(true); } });
+
+  try { if (localStorage.getItem(KEY) === "1") unlock(false); } catch (e) {}
+  // a nudge for anyone who hasn't noticed the dot
+  setTimeout(function () { if (!prompt.hidden && !input.value) input.placeholder = "listen"; }, 10000);
+})();
+</script>
 </body>
 </html>
