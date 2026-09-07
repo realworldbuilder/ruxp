@@ -33,7 +33,7 @@ Site: https://realworldbuilder.github.io/ruxp/ · Privacy: `/privacy.html` · Su
 | Secondary category | Sports |
 | Privacy Policy URL | https://realworldbuilder.github.io/ruxp/privacy.html |
 | Support URL | https://realworldbuilder.github.io/ruxp/support.html |
-| Marketing URL | https://realworldbuilder.github.io/ruxp/ |
+| Marketing URL | leave blank (the home page is a dark teaser until launch) |
 | Content rights | Does not contain third-party content |
 | License agreement | Apple standard EULA |
 | Age rating | Answer "None" to everything; result 4+. "Medical/Treatment Information": None. "Unrestricted Web Access": No. |

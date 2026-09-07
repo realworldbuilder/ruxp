@@ -18,8 +18,8 @@ document.addEventListener("DOMContentLoaded", function () {
   document.querySelectorAll("[data-issues]").forEach(function (a) { a.href = c.GITHUB_URL + "/issues"; });
   // Access button: TestFlight when the link exists, otherwise a request-access email.
   document.querySelectorAll("[data-access]").forEach(function (a) {
-    if (c.TESTFLIGHT_URL) { a.href = c.TESTFLIGHT_URL; a.textContent = "Enter"; }
-    else { a.href = "mailto:" + c.CONTACT_EMAIL + "?subject=" + encodeURIComponent("RUXP access"); a.textContent = "Request access"; }
+    if (c.TESTFLIGHT_URL) { a.href = c.TESTFLIGHT_URL; }
+    else { a.href = "mailto:" + c.CONTACT_EMAIL + "?subject=" + encodeURIComponent("RUXP"); }
   });
   document.querySelectorAll("[data-appstore]").forEach(function (a) {
     if (c.APP_STORE_URL) { a.href = c.APP_STORE_URL; a.hidden = false; } else { a.hidden = true; }

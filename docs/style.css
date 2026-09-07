@@ -143,18 +143,14 @@ code { font-family: var(--mono); font-size: .92em; background: var(--surface-2);
   .nav-links { gap: 14px; font-size: 13px; }
 }
 
-/* Teaser (index) */
-.teaser-body { min-height: 100svh; display: flex; flex-direction: column; background: radial-gradient(60% 50% at 50% 35%, rgba(255,45,170,.10), transparent 70%), var(--bg); }
-.teaser { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 32px 20px 16px; gap: 14px; }
-.teaser-art { width: min(300px, 64vw, 38svh); position: relative; }
-.teaser-art img { border-radius: var(--r-l); border: 1px solid var(--border); box-shadow: 0 0 80px rgba(255,45,170,.18), 0 0 160px rgba(125,211,252,.08); animation: breathe 6s ease-in-out infinite; }
-@keyframes breathe { 0%,100% { box-shadow: 0 0 80px rgba(255,45,170,.18), 0 0 160px rgba(125,211,252,.08); } 50% { box-shadow: 0 0 110px rgba(255,45,170,.30), 0 0 200px rgba(125,211,252,.14); } }
-.teaser-tag { margin-top: 8px; }
-.teaser-clock { display: inline-flex; align-items: center; font-family: var(--mono); font-size: clamp(22px, 5vw, 34px); letter-spacing: .12em; color: var(--text); }
-.teaser-clock .clock { font-variant-numeric: tabular-nums; }
-.teaser-line { margin: 0; font-size: clamp(17px, 2.6vw, 22px); color: var(--text-2); letter-spacing: -.01em; }
-.teaser-actions { justify-content: center; margin-top: 6px; }
-.teaser-foot { margin: 6px 0 0; font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--text-3); }
-.teaser-footer { display: flex; justify-content: center; gap: 22px; padding: 18px 0 26px; font-size: 12px; color: var(--text-3); }
-.teaser-footer a { color: var(--text-3); }
-.teaser-footer a:hover { color: var(--text-2); }
+/* Dark launch page (index): wordmark and a clock, nothing else. */
+.dark-body { background: #000; min-height: 100svh; display: flex; }
+.dark { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; padding: 24px; }
+.dark-mark { font-family: var(--display); font-weight: 800; font-size: clamp(44px, 10vw, 96px); letter-spacing: .08em; color: #E6E6E6; position: relative; line-height: 1; }
+.dark-mark span { position: relative; display: inline-block; animation: settle 2.4s ease-out both; }
+.dark-mark span::before, .dark-mark span::after { content: attr(data-text); position: absolute; top: 0; left: 0; opacity: .5; pointer-events: none; }
+.dark-mark span::before { color: var(--accent); transform: translateX(-2px); animation: jitter 7s steps(1) infinite; }
+.dark-mark span::after { color: var(--cyan); transform: translateX(2px); animation: jitter 7s steps(1) infinite reverse; }
+@keyframes settle { from { opacity: 0; filter: blur(6px); } to { opacity: 1; filter: blur(0); } }
+@keyframes jitter { 0%, 96%, 100% { opacity: .5; } 97% { opacity: .9; transform: translateX(-4px); } 98% { opacity: .3; transform: translateX(3px); } 99% { opacity: .7; transform: translateX(-1px); } }
+.dark-clock { font-family: var(--mono); font-weight: 400; font-size: clamp(13px, 2.2vw, 16px); letter-spacing: .28em; color: #4A4A50; font-variant-numeric: tabular-nums; }
