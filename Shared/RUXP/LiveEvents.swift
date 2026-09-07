@@ -112,11 +112,16 @@ extension LiveEventProviding {
         LiveOpsCatalog.current.modifiers(overlapping: start, end: end)
     }
 
-    /// The rule worth showing on Home: active now, else one starting within `horizon`.
+    /// The rule worth showing on Home. The shortest window wins: a weekend rule beats a
+    /// season-long one, and a weekend starting within `horizon` beats a season-long rule that
+    /// is already on. Otherwise: active now, else one starting within `horizon`.
     func featuredModifier(at date: Date, horizon: TimeInterval = 48 * 3600) -> LiveModifier? {
-        if let live = activeModifiers(at: date).first { return live }
-        if let next = nextModifier(at: date), next.start.timeIntervalSince(date) <= horizon { return next }
-        return nil
+        let live = activeModifiers(at: date).min { $0.end.timeIntervalSince($0.start) < $1.end.timeIntervalSince($1.start) }
+        if let next = nextModifier(at: date), next.start.timeIntervalSince(date) <= horizon {
+            guard let live else { return next }
+            return next.end.timeIntervalSince(next.start) < live.end.timeIntervalSince(live.start) ? next : live
+        }
+        return live
     }
 }
 

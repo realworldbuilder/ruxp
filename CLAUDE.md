@@ -10,7 +10,7 @@ OPEN → SEE WHAT'S HAPPENING → START WORKOUT → EARN XP → SEE OTHER PEOPLE
 
 Read next: `README.md` (product + XP rules), `docs/ARCHITECTURE.md` (services, what a backend replaces), `docs/PHILOSOPHY.md` (the full design philosophy this file condenses).
 
-Season 00 EARLY ADOPTERS is live (Sep 1 – Nov 30, 2026, TestFlight). Season 01 PRESS START starts Dec 1, 2026. Existing players have `player_progress.json` files on their phones: every change must decode them.
+Season 00 EARLY ADOPTERS is live (Sep 1 – Sep 30, 2026, TestFlight; goal 12). Season 01 NIGHTMARE MODE (Oct 1 – Nov 30, 2026; goal 20) is the App Store launch season. Season 02 PRESS START starts Dec 1, 2026. Existing players have `player_progress.json` files on their phones: every change must decode them.
 
 ---
 
@@ -66,7 +66,7 @@ RUXP is designed as a **world, not a tool**. A tool waits for the user. A world 
 
 **How to respond to a product idea.** First check the core utility is good. Then analyze through: CORE LOOP · RIGHT NOW · WHILE YOU WERE GONE · RITUALS · SEASONS · LIVE MECHANICS · IDENTITY · PROGRESSION · COMMUNITY · "YOU HAD TO BE THERE" · WORLD BUILDING · CUT THE BULLSHIT. End with a prioritized recommendation: the 1–3 mechanics that transform the product, smallest version first. Never propose 30 features.
 
-**Where RUXP stands (Sep 2026).** Right now: real lifting-now count, a crew member lifting right now, featured ritual card, LIVE dot, the Home clock line. While you were gone: `WorldSnapshotService` return ledger, including who in your crew showed up. Rituals: FRIDAY NIGHT (Fri 5 PM–midnight, +500), SUNDAY RESET (all Sunday, +500; the ISO week starts Monday, so Sunday is last call for the weekly bonus and for CREW WEEK). Seasons: S00 → S01 with a recap ceremony, frozen `SeasonRecord`s, permanent cosmetics. Live mechanics: `LiveOps` rules (PR WEEKEND, EARLY SHIFT, S00 FINALE) editable in `docs/live.json`. Community: CREW (Game Center friends who lift) with a shared weekly stake. Identity: Game Center alias, Season Pass title/color/badge, "SINCE SEP 2026", season history. Open opportunities: named crews with sides (S01 candidate), gym-hosted events, letting players create events.
+**Where RUXP stands (Sep 2026).** Right now: real lifting-now count, a crew member lifting right now, featured ritual card, LIVE dot, the Home clock line. While you were gone: `WorldSnapshotService` return ledger, including who in your crew showed up. Rituals: FRIDAY NIGHT (Fri 5 PM–midnight, +500), SUNDAY RESET (all Sunday, +500; the ISO week starts Monday, so Sunday is last call for the weekly bonus and for CREW WEEK). Seasons: S00 → S01 with a recap ceremony, frozen `SeasonRecord`s, permanent cosmetics. Live mechanics: `LiveOps` rules editable in `docs/live.json`: PR WEEKEND and CONTINUE? close S00; NIGHT SHIFT (+250 after 8 PM, all season) and FINAL BOSS (Halloween weekend, ×2 PR) define S01; CONTINUE? is every season's last call. Generic arcade vocabulary only, no game named. Community: CREW (Game Center friends who lift) with a shared weekly stake. Identity: Game Center alias, Season Pass title/color/badge, "SINCE SEP 2026", season history. Open opportunities: named crews with sides (S01 candidate), gym-hosted events, letting players create events.
 
 
 ---
@@ -150,7 +150,7 @@ Xcode 16 synchronized folders: a new `.swift` file under `Shared/`, `RUXP/`, or 
 | `-RUXPEventClock friday\|sunday\|tuesday` | freeze the event clock at that day (frozen instant; countdowns don't tick) |
 | `-RUXPTab train\|profile` | open on that tab (tab-bar taps are unreliable when driving the simulator) |
 | `-RUXPLiveScene lobby\|active\|complete` | open the Live lobby, a joined workout, or the reward screen |
-| `-RUXPSeason S00\|S01` | pretend that season is current (rollover + recap + ladders + boards) |
+| `-RUXPSeason S00\|S01\|S02` | pretend that season is current (rollover + recap + ladders + boards) |
 | `-RUXPLastSeen 3d\|18h\|45m` | pretend the last visit was that long ago (return ledger) |
 | `-RUXPWorldDemo` | with Game Center off, seed friends/rank so every ledger line renders |
 | `-RUXPLiveOps off\|<path.json>` | no rules, or a local calendar instead of the remote one |
@@ -185,9 +185,9 @@ Typical: `-RUXPSkipGameCenter -RUXPSkipHealthKit -RUXPLoadSamples -RUXPSkipMinim
 
 ## Live Ops runbook
 
-1. Edit `docs/live.json`. Dates are local wall-clock `yyyy-MM-dd'T'HH:mm` (a rule starts at each player's own midnight, like FRIDAY NIGHT). Rules: `{"type":"multiplier","reason":"personalRecord","factor":2}`, `{"type":"flatBonus","amount":250}`, `{"type":"startedBefore","hour":8,"amount":250}`.
+1. Edit `docs/live.json`. Dates are local wall-clock `yyyy-MM-dd'T'HH:mm` (a rule starts at each player's own midnight, like FRIDAY NIGHT). Rules: `{"type":"multiplier","reason":"personalRecord","factor":2}`, `{"type":"flatBonus","amount":250}`, `{"type":"startedBefore","hour":8,"amount":250}`, `{"type":"startedAfter","hour":20,"amount":250}`. A build that predates a rule type rejects the whole file and keeps its cached calendar.
 2. Bump `version` (must be ≥ the bundled version in `LiveOpsCatalog.bundled`).
-3. Keep within caps or the file is rejected wholesale: ≤ 32 rules, window ≤ 14 days, factor 1…3, bonus 0…1000, unique ids.
+3. Keep within caps or the file is rejected wholesale: ≤ 32 rules, window ≤ 14 days (time-of-day rules `startedBefore`/`startedAfter` may run a season, ≤ 92 days), factor 1…3, bonus 0…1000, unique ids.
 4. Push. Pages serves it; the app fetches at most once an hour on foreground. Settings › Developer shows the source and "Bundled round trip" checks the wire format.
 5. Mirror durable entries into `LiveOpsCatalog.bundled` at the next build so offline players see them too.
 6. A rule that needs a participant count needs a Game Center recurring board (see `GameCenterCatalog` header). Rules are client-side XP only; achievements and season goals are unaffected.

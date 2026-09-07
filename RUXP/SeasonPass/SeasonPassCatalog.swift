@@ -53,7 +53,8 @@ enum SeasonPassCatalog {
     /// by the level recorded in that season's `SeasonRecord`, never by the current level.
     private static let ladders: [String: [Entry]] = [
         SeasonCatalog.earlyAdopters.id: s00Ladder,
-        SeasonCatalog.pressStart.id: s01Ladder,
+        SeasonCatalog.nightmareMode.id: s01Ladder,
+        SeasonCatalog.pressStart.id: s02Ladder,
     ]
 
     /// Season 00. Tiers 1–2 are the early-adopter mark; SEASON ZERO and FOUNDER are never re-issued.
@@ -80,8 +81,33 @@ enum SeasonPassCatalog {
         (.title, "FOUNDER", "FOUNDER"),
     ]
 
-    /// Season 01 — PRESS START. Same rhythm, its own marks. Nothing from S00 returns.
+    /// Season 01 — NIGHTMARE MODE. Same rhythm, its own marks: the spooky set is generic gaming
+    /// vocabulary (difficulty tiers, bosses, the night shift). Nothing from S00 returns.
     private static let s01Ladder: [Entry] = [
+        (.title, "NIGHTMARE MODE", "NIGHTMARE MODE"),
+        (.badge, "MOON BADGE", "moon.fill"),
+        (.title, "NIGHT SHIFT", "NIGHT SHIFT"),
+        (.nameColor, "MAGENTA NAME", "magenta"),
+        (.title, "SURVIVOR", "SURVIVOR"),
+        (.badge, "BOLT BADGE", "bolt.fill"),
+        (.title, "HARD MODE", "HARD MODE"),
+        (.nameColor, "TERMINAL GREEN", "green"),
+        (.badge, "FLAME BADGE", "flame.fill"),
+        (.title, "TWO PLATE ENERGY", "TWO PLATE ENERGY"),
+        (.nameColor, "CYAN NAME", "cyan"),
+        (.title, "FRIDAY NIGHT VET", "FRIDAY NIGHT VET"),
+        (.badge, "EYE BADGE", "eye.fill"),
+        (.nameColor, "VIOLET NAME", "violet"),
+        (.title, "SEASON ONE", "SEASON ONE"),
+        (.badge, "CROWN BADGE", "crown.fill"),
+        (.title, "FINAL BOSS", "FINAL BOSS"),
+        (.nameColor, "GOLD NAME", "gold"),
+        (.badge, "NIGHT SKY BADGE", "moon.stars.fill"),
+        (.title, "NIGHTMARE CLEARED", "NIGHTMARE CLEARED"),
+    ]
+
+    /// Season 02 — PRESS START. Its own marks; nothing from S00 or S01 returns.
+    private static let s02Ladder: [Entry] = [
         (.title, "PRESS START", "PRESS START"),
         (.badge, "PLAYER ONE BADGE", "gamecontroller.fill"),
         (.title, "LOADED IN", "LOADED IN"),
@@ -96,7 +122,7 @@ enum SeasonPassCatalog {
         (.title, "FRIDAY NIGHT VET", "FRIDAY NIGHT VET"),
         (.badge, "TROPHY BADGE", "trophy.fill"),
         (.nameColor, "VIOLET NAME", "violet"),
-        (.title, "SEASON ONE", "SEASON ONE"),
+        (.title, "SEASON TWO", "SEASON TWO"),
         (.badge, "CROWN BADGE", "crown.fill"),
         (.title, "HEAVY", "HEAVY"),
         (.nameColor, "GOLD NAME", "gold"),

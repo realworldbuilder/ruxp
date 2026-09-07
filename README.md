@@ -75,12 +75,12 @@ Users earn XP for healthy, useful behavior. Grinding is not rewarded.
 |---|---|---|
 | Complete a workout | +500 | 10+ minutes, max 2 rewarded per day |
 | Join a live event | +500 | Workout overlaps the event window (FRIDAY NIGHT, SUNDAY RESET) |
-| Live Ops rule | varies | A dated rule in effect. S00 calendar: PR WEEKEND ×2 PR XP, CHECKPOINT +250 (midseason), EARLY SHIFT +250 before 8 AM, HIGH SCORE ×2 PR XP, CONTINUE? +250 (finale). See `docs/live.json` |
+| Live Ops rule | varies | A dated rule in effect. S00: PR WEEKEND ×2 PR XP, CONTINUE? +250 (finale). S01: NIGHT SHIFT +250 after 8 PM all season, FINAL BOSS ×2 PR XP on Halloween weekend, CONTINUE? +250. See `docs/live.json` |
 | Crew Week | +250 | Every active crew member trained this ISO week; once per week, to each member who did |
 | Weekly consistency | +500 | 4th workout of the ISO week |
 | Personal record | +250 | Max 2 per workout, only after AI parses your notes |
 
-Level 1–100 is derived from **season XP**; **lifetime XP** is a career total. Season 00 is EARLY ADOPTERS (Sep 1 – Nov 30, 2026): 32 workouts, finish the season. Season 01, PRESS START, starts Dec 1. `SeasonCatalog.current` picks the season active today. Everything lives in `ProgressionService`.
+Level 1–100 is derived from **season XP**; **lifetime XP** is a career total. Season 00 is EARLY ADOPTERS (Sep 1 – Sep 30, 2026): 12 workouts, finish the season. Season 01, NIGHTMARE MODE (Oct 1 – Nov 30), is the App Store launch season: 20 workouts. Season 02, PRESS START, starts Dec 1. `SeasonCatalog.current` picks the season active today. Everything lives in `ProgressionService`.
 
 When a season closes, the first launch inside the next one shows a recap (final level, workouts, live sessions, Friday Nights, PRs, pass tier, the cosmetics you keep) and freezes it as a `SeasonRecord` on the profile. Season Pass cosmetics unlocked in a finished season stay equippable forever; Profile lists every season played.
 
@@ -124,7 +124,7 @@ RUXP/
 │       ├── LevelCurve.swift       Levels 1–100
 │       ├── ProgressionModels.swift PlayerProgress, XPAward, WorkoutRewardSummary
 │       ├── ProgressionService.swift Centralized XP / level / streak (player_progress.json)
-│       ├── Season.swift           S00 EARLY ADOPTERS, S01 PRESS START
+│       ├── Season.swift           S00 EARLY ADOPTERS, S01 NIGHTMARE MODE, S02 PRESS START
 │       ├── LiveEvents.swift       LiveEvent, LiveEventProviding, ScheduledEventService
 │       ├── LivePresence.swift     LiveSnapshot, LivePresenceProviding
 │       ├── MirroredLivePresence.swift  Watch copy of the phone's counts

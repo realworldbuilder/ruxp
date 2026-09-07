@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>S00</title>
-  <meta name="description" content="11.30.26">
+  <meta name="description" content="10.01.26">
   <meta property="og:title" content="S00">
-  <meta property="og:description" content="11.30.26">
+  <meta property="og:description" content="10.01.26">
   <meta property="og:image" content="assets/logo.jpg">
   <meta name="theme-color" content="#000000">
   <meta name="robots" content="noindex">
@@ -33,7 +33,7 @@
   <div class="sig-dot" id="dot" aria-label="signal"></div>
 
   <div class="sig-term" id="term">
-    <span class="sig-code">S00</span><span class="sig-sep">//</span><span>WINDOW CLOSES 11.30.26</span><span class="sig-sep">//</span><span class="sig-clock" data-countdown>--:--:--:--</span>
+    <span class="sig-code">S00</span><span class="sig-sep">//</span><span>WINDOW CLOSES 09.30.26</span><span class="sig-sep">//</span><span class="sig-clock" data-countdown>--:--:--:--</span>
     <span class="sig-friday" id="friday" hidden><span class="sig-sep">//</span><span class="sig-live">FRIDAY NIGHT // LIVE</span></span>
   </div>
 
@@ -52,13 +52,13 @@
 <script>
 (function () {
   var KEY = "ruxp.s00.unlocked";
-  var ANSWERS = ["not alone", "notalone", "you're not alone", "youre not alone", "press start", "pressstart", "start", "ruxp", "s00", "early adopters", "early adopter", "not lifting alone", "you're not lifting alone", "youre not lifting alone"];
+  var ANSWERS = ["not alone", "notalone", "you're not alone", "youre not alone", "press start", "pressstart", "start", "ruxp", "s00", "s01", "early adopters", "early adopter", "nightmare mode", "nightmare", "lights off", "not lifting alone", "you're not lifting alone", "youre not lifting alone"];
   var feed = document.getElementById("feed"), slices = document.getElementById("slices"), dot = document.getElementById("dot");
   var reveal = document.getElementById("reveal"), prompt = document.getElementById("prompt"), input = document.getElementById("in"), status = document.getElementById("status");
   var friday = document.getElementById("friday"), sig = document.getElementById("sig");
 
   // --- feed: thin slices of the artwork, more of them as the window closes
-  var SEASON_START = new Date("2026-09-01T00:00:00"), SEASON_END = new Date("2026-11-30T23:59:59");
+  var SEASON_START = new Date("2026-09-01T00:00:00"), SEASON_END = new Date("2026-09-30T23:59:59");
   function progress() { return Math.min(1, Math.max(0, (Date.now() - SEASON_START) / (SEASON_END - SEASON_START))); }
   function buildSlices() {
     slices.innerHTML = "";

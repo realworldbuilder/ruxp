@@ -60,8 +60,9 @@ sequenceDiagram
 <h2 id="seasons">Seasons and the pass</h2>
 <div class="table-wrap"><table>
   <tr><th>Season</th><th>Window</th><th>Goal</th><th>Tagline</th></tr>
-  <tr><td>S00 EARLY ADOPTERS</td><td>Sep 1 – Nov 30, 2026</td><td>32 workouts</td><td>First in. Set the bar.</td></tr>
-  <tr><td>S01 PRESS START</td><td>Dec 1, 2026 – Feb 28, 2027</td><td>32 workouts</td><td>Load in. Level up. Own the season.</td></tr>
+  <tr><td>S00 EARLY ADOPTERS</td><td>Sep 1 – Sep 30, 2026</td><td>12 workouts</td><td>First in. Set the bar.</td></tr>
+  <tr><td>S01 NIGHTMARE MODE</td><td>Oct 1 – Nov 30, 2026</td><td>20 workouts</td><td>Lights off. Same weights.</td></tr>
+  <tr><td>S02 PRESS START</td><td>Dec 1, 2026 – Feb 28, 2027</td><td>32 workouts</td><td>Load in. Level up. Own the season.</td></tr>
 </table></div>
 <p>On the first launch inside a new season, <code>ProgressionService</code> closes the old one: it freezes a <strong>SeasonRecord</strong> (final level and XP, workouts, live sessions, Friday Nights, Sunday Resets, PRs, weekly-bonus weeks), marks a recap as pending, and resets season XP and season workouts. Lifetime totals, streaks, and equipped cosmetics survive. The recap shows once.</p>
 <pre class="mermaid">

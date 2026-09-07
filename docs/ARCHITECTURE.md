@@ -67,7 +67,7 @@ The watch never computes XP. It shows "Syncing XP" → "+1,000 XP · LVL 13", or
 
 ## Design system
 
-`Theme.swift` (iOS) and `WatchTheme.swift` (watch) hold every token. The look is ChatGPT with hints of gaming: neutral near-black ground, flat surfaces with hairline borders, white pill buttons, system type for everything you read. The game shows up in small doses: Orbitron on the wordmark (with a one-pixel chromatic offset) and one hero number per screen, JetBrains Mono in terminal green for XP values, a magenta progress bar and tab tint, a red LIVE dot, and a one-line mono clock under the Home header. Season 00 is "EARLY ADOPTERS"; Season 01, "PRESS START", follows on Dec 1.
+`Theme.swift` (iOS) and `WatchTheme.swift` (watch) hold every token. The look is ChatGPT with hints of gaming: neutral near-black ground, flat surfaces with hairline borders, white pill buttons, system type for everything you read. The game shows up in small doses: Orbitron on the wordmark (with a one-pixel chromatic offset) and one hero number per screen, JetBrains Mono in terminal green for XP values, a magenta progress bar and tab tint, a red LIVE dot, and a one-line mono clock under the Home header. Season 00 is "EARLY ADOPTERS" (September); Season 01, "NIGHTMARE MODE", runs Oct 1 – Nov 30 with the App Store launch; Season 02, "PRESS START", follows on Dec 1.
 
 ## Seasons close, records stay
 

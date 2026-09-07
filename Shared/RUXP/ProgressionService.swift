@@ -360,7 +360,7 @@ final class ProgressionService {
         if progress.seasonID == SeasonCatalog.legacyLaunchID, progress.schemaVersion == nil {
             // Builds 1–3 called the launch window S01. Same window, new code: rename in place,
             // keep XP, remap equipped reward IDs. Only a file without a schema version can be
-            // legacy; after Dec 1 a real S01 file carries one and must not be renamed.
+            // legacy; from Oct 1 a real S01 (NIGHTMARE MODE) file carries one and must not be renamed.
             progress.seasonID = SeasonCatalog.earlyAdopters.id
             progress.equippedCosmetics = progress.equippedCosmetics?.mapValues { id in
                 id.hasPrefix("S01-") ? "S00-" + id.dropFirst(4) : id

@@ -11,13 +11,25 @@ enum LiveRule: Equatable {
     case flatBonus(amount: Int)
     /// Workouts started before `hour` (local, 0–23) pay this much extra (EARLY SHIFT).
     case startedBefore(hour: Int, amount: Int)
+    /// Workouts started at or after `hour` (local, 0–23) pay this much extra (NIGHT SHIFT).
+    case startedAfter(hour: Int, amount: Int)
 
-    /// "×2 PR XP", "+250 XP", "+250 XP BEFORE 8 AM"
+    /// Time-of-day rules describe a season, not a weekend: Friday is not Tuesday, and night
+    /// is not morning. They may run season-long; multipliers and flat bonuses stay short.
+    var isTimeOfDay: Bool {
+        switch self {
+        case .startedBefore, .startedAfter: return true
+        case .multiplier, .flatBonus: return false
+        }
+    }
+
+    /// "×2 PR XP", "+250 XP", "+250 XP BEFORE 8 AM", "+250 XP AFTER 8 PM"
     var summaryLabel: String {
         switch self {
         case .multiplier(let reason, let factor): return "×\(factor) \(reason.shortLabel)"
         case .flatBonus(let amount): return "+\(amount.grouped) XP"
         case .startedBefore(let hour, let amount): return "+\(amount.grouped) XP BEFORE \(LiveRule.hourLabel(hour))"
+        case .startedAfter(let hour, let amount): return "+\(amount.grouped) XP AFTER \(LiveRule.hourLabel(hour))"
         }
     }
 
@@ -82,6 +94,8 @@ struct LiveModifier: Identifiable, Equatable {
             return amount
         case .startedBefore(let hour, let amount):
             return calendar.component(.hour, from: workoutStart) < hour ? amount : 0
+        case .startedAfter(let hour, let amount):
+            return calendar.component(.hour, from: workoutStart) >= hour ? amount : 0
         }
     }
 
@@ -95,6 +109,11 @@ struct LiveModifier: Identifiable, Equatable {
             return "ENDS IN \(max(1, minutes))M"
         }
         let day = DateFormatter()
+        // A season-long rule is announced by its first day, not a weekday span.
+        if end.timeIntervalSince(start) > 7 * 24 * 3600 {
+            day.dateFormat = "MMM d"
+            return day.string(from: start).uppercased()
+        }
         day.dateFormat = "EEE"
         let last = calendar.date(byAdding: .minute, value: -1, to: end) ?? end
         let first = day.string(from: start).uppercased()
@@ -141,13 +160,14 @@ struct LiveOpsCalendar: Equatable {
             if m.id.isEmpty || !ids.insert(m.id).inserted { errors.append("duplicate or empty id \(m.id)") }
             if m.title.isEmpty { errors.append("\(m.id): empty title") }
             if m.end <= m.start { errors.append("\(m.id): end before start") }
-            if m.end.timeIntervalSince(m.start) > 14 * 24 * 3600 { errors.append("\(m.id): window longer than 14 days") }
+            let maxDays = m.rule.isTimeOfDay ? 92 : 14
+            if m.end.timeIntervalSince(m.start) > Double(maxDays) * 24 * 3600 { errors.append("\(m.id): window longer than \(maxDays) days") }
             switch m.rule {
             case .multiplier(_, let factor):
                 if !(1...3).contains(factor) { errors.append("\(m.id): factor must be 1…3") }
             case .flatBonus(let amount):
                 if !(0...1000).contains(amount) { errors.append("\(m.id): bonus must be 0…1000") }
-            case .startedBefore(let hour, let amount):
+            case .startedBefore(let hour, let amount), .startedAfter(let hour, let amount):
                 if !(0...23).contains(hour) { errors.append("\(m.id): hour must be 0…23") }
                 if !(0...1000).contains(amount) { errors.append("\(m.id): bonus must be 0…1000") }
             }
@@ -170,10 +190,11 @@ enum LiveOpsCatalog {
         return cal.date(from: DateComponents(year: year, month: month, day: day, hour: hour))!
     }
 
-    /// Season 00 rules. Two experiments to establish that the rules can change, then the tribute
-    /// calendar: CHECKPOINT at the midpoint, HIGH SCORE before the close, CONTINUE? as the finale.
-    /// Generic arcade vocabulary only; nothing here names a game. Mirrors docs/live.json v2.
-    static let bundled = LiveOpsCalendar(version: 2, modifiers: [
+    /// S00 closes with PR WEEKEND and CONTINUE?. S01 NIGHTMARE MODE is defined by one season-long
+    /// rule (NIGHT SHIFT), one weekend (FINAL BOSS on Halloween), and CONTINUE? again: the continue
+    /// screen is every season's last call. Generic arcade vocabulary only; nothing names a game.
+    /// Mirrors docs/live.json v3.
+    static let bundled = LiveOpsCalendar(version: 3, modifiers: [
         LiveModifier(
             id: "s00-pr-weekend",
             title: "PR WEEKEND",
@@ -184,37 +205,37 @@ enum LiveOpsCatalog {
             rule: .multiplier(reason: .personalRecord, factor: 2)
         ),
         LiveModifier(
-            id: "s00-checkpoint",
-            title: "CHECKPOINT",
-            eyebrow: "THIS WEEKEND ONLY",
-            description: "Halfway through Season 00. Save your progress. Any workout this weekend pays +250.",
-            start: local(2026, 10, 17),
-            end: local(2026, 10, 19),
-            rule: .flatBonus(amount: 250)
-        ),
-        LiveModifier(
-            id: "s00-early-shift",
-            title: "EARLY SHIFT",
-            eyebrow: "THIS WEEKEND ONLY",
-            description: "Start before 8 AM. +250 XP. The gym is empty and it's yours.",
-            start: local(2026, 10, 24),
-            end: local(2026, 10, 26),
-            rule: .startedBefore(hour: 8, amount: 250)
-        ),
-        LiveModifier(
-            id: "s00-high-score",
-            title: "HIGH SCORE",
-            eyebrow: "THIS WEEKEND ONLY",
-            description: "Your best number is the high score. Beat it this weekend and the PR pays double.",
-            start: local(2026, 11, 14),
-            end: local(2026, 11, 16),
-            rule: .multiplier(reason: .personalRecord, factor: 2)
-        ),
-        LiveModifier(
             id: "s00-finale",
             title: "CONTINUE?",
             eyebrow: "LAST CALL",
-            description: "Season 00 closes Nov 30. Everything you earn now is Early Adopter forever. Season 01 starts Dec 1. Everyone continues at LVL 1 and keeps what they earned.",
+            description: "Season 00 closes Sep 30. Everything you earn now is Early Adopter forever. Season 01 starts Oct 1. Everyone continues at LVL 1 and keeps what they earned.",
+            start: local(2026, 9, 28),
+            end: local(2026, 10, 1),
+            rule: .flatBonus(amount: 250)
+        ),
+        LiveModifier(
+            id: "s01-night-shift",
+            title: "NIGHT SHIFT",
+            eyebrow: "ALL SEASON",
+            description: "Start after 8 PM. +250 XP. Lights off, same weights.",
+            start: local(2026, 10, 1),
+            end: local(2026, 12, 1),
+            rule: .startedAfter(hour: 20, amount: 250)
+        ),
+        LiveModifier(
+            id: "s01-final-boss",
+            title: "FINAL BOSS",
+            eyebrow: "HALLOWEEN WEEKEND",
+            description: "The boss is your best number. Beat it this weekend and the PR pays double.",
+            start: local(2026, 10, 30),
+            end: local(2026, 11, 2),
+            rule: .multiplier(reason: .personalRecord, factor: 2)
+        ),
+        LiveModifier(
+            id: "s01-finale",
+            title: "CONTINUE?",
+            eyebrow: "LAST CALL",
+            description: "Season 01 closes Nov 30. Everything you earn now is Season 01 forever. Season 02 starts Dec 1. Everyone continues at LVL 1 and keeps what they earned.",
             start: local(2026, 11, 27),
             end: local(2026, 12, 1),
             rule: .flatBonus(amount: 250)
@@ -229,6 +250,7 @@ enum LiveOpsCatalog {
 /// {"type":"multiplier","reason":"personalRecord","factor":2}
 /// {"type":"flatBonus","amount":250}
 /// {"type":"startedBefore","hour":8,"amount":250}
+/// {"type":"startedAfter","hour":20,"amount":250}
 extension LiveOpsCalendar: Codable {
     private enum CodingKeys: String, CodingKey { case version, modifiers }
 
@@ -301,6 +323,8 @@ extension LiveRule: Codable {
             self = .flatBonus(amount: try c.decode(Int.self, forKey: .amount))
         case "startedBefore":
             self = .startedBefore(hour: try c.decode(Int.self, forKey: .hour), amount: try c.decode(Int.self, forKey: .amount))
+        case "startedAfter":
+            self = .startedAfter(hour: try c.decode(Int.self, forKey: .hour), amount: try c.decode(Int.self, forKey: .amount))
         case let other:
             throw DecodingError.dataCorruptedError(forKey: .type, in: c, debugDescription: "unknown rule type \(other)")
         }
@@ -318,6 +342,10 @@ extension LiveRule: Codable {
             try c.encode(amount, forKey: .amount)
         case .startedBefore(let hour, let amount):
             try c.encode("startedBefore", forKey: .type)
+            try c.encode(hour, forKey: .hour)
+            try c.encode(amount, forKey: .amount)
+        case .startedAfter(let hour, let amount):
+            try c.encode("startedAfter", forKey: .type)
             try c.encode(hour, forKey: .hour)
             try c.encode(amount, forKey: .amount)
         }

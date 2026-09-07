@@ -12,9 +12,9 @@ import datetime as dt, json, sys
 from asc import call
 
 BUNDLE_ID = "com.whussey.ruxp"
-SEASONS = ["s00", "s01"]          # add the next season here before Dec 1
-SEASON_NAMES = {"s00": "Season 0", "s01": "Season 1"}
-SEASON_GOALS = {"s00": 32, "s01": 32}
+SEASONS = ["s00", "s01", "s02"]   # add the next season here before it starts
+SEASON_NAMES = {"s00": "Season 0", "s01": "Season 1", "s02": "Season 2"}
+SEASON_GOALS = {"s00": 12, "s01": 20, "s02": 32}
 ET = dt.timezone(dt.timedelta(hours=-4))
 
 def app_id():

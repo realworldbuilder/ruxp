@@ -164,7 +164,7 @@ struct RUXPApp: App {
     ///   -RUXPSkipHealthKit   bypass HealthKit (see HealthKitService.isDisabledForTesting)
     ///   -RUXPSkipGameCenter  no Game Center sign-in, scores, or live counts (see GameCenterService.isDisabledForTesting)
     ///   -RUXPLiveScene lobby|active|complete   open the Live Session lobby, a joined workout, or its reward screen
-    ///   -RUXPSeason S00|S01   pretend that season is current (exercise the rollover and recap)
+    ///   -RUXPSeason S00|S01|S02   pretend that season is current (exercise the rollover and recap)
     ///   -RUXPLastSeen 3d|18h|45m   pretend the last visit was that long ago (WHILE YOU WERE GONE)
     ///   -RUXPWorldDemo   with Game Center off, seed friends/rank so every ledger line renders
     ///   -RUXPLiveOps off|<path.json>   no Live Ops rules, or a local calendar instead of the remote one

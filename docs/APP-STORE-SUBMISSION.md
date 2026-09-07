@@ -82,7 +82,7 @@ Reference: IDs and window settings are documented in `Shared/RUXP/GameCenterCata
 | `level_25` | Level 25 | 10 |
 | `level_50` | Level 50 | 15 |
 
-Recurring boards can only start in the future, so the API placed each first occurrence on the next grid boundary (active windows within the hour, `trained_today` at the next midnight Eastern, events on the coming Friday/Sunday). Before Dec 1, run `python3 Scripts/gamecenter_setup.py --all-seasons` to add `season_xp_s01` and `season_goal_s01`.
+Recurring boards can only start in the future, so the API placed each first occurrence on the next grid boundary (active windows within the hour, `trained_today` at the next midnight Eastern, events on the coming Friday/Sunday). `season_xp_s01`, `season_goal_s01`, `season_xp_s02`, `season_goal_s02` were added on 2026-09-07 with `python3 Scripts/gamecenter_setup.py --all-seasons`; the S00 goal text was patched to 12 workouts. Re-run the script after adding a season to `SEASONS`.
 
 ## D. App Privacy (nutrition label)
 

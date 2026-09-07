@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "modifiers": [
     {
       "id": "s00-pr-weekend",
@@ -8,43 +8,61 @@
       "description": "Every PR pays double. Bring the voice notes.",
       "start": "2026-09-26T00:00",
       "end": "2026-09-28T00:00",
-      "rule": { "type": "multiplier", "reason": "personalRecord", "factor": 2 }
-    },
-    {
-      "id": "s00-checkpoint",
-      "title": "CHECKPOINT",
-      "eyebrow": "THIS WEEKEND ONLY",
-      "description": "Halfway through Season 00. Save your progress. Any workout this weekend pays +250.",
-      "start": "2026-10-17T00:00",
-      "end": "2026-10-19T00:00",
-      "rule": { "type": "flatBonus", "amount": 250 }
-    },
-    {
-      "id": "s00-early-shift",
-      "title": "EARLY SHIFT",
-      "eyebrow": "THIS WEEKEND ONLY",
-      "description": "Start before 8 AM. +250 XP. The gym is empty and it's yours.",
-      "start": "2026-10-24T00:00",
-      "end": "2026-10-26T00:00",
-      "rule": { "type": "startedBefore", "hour": 8, "amount": 250 }
-    },
-    {
-      "id": "s00-high-score",
-      "title": "HIGH SCORE",
-      "eyebrow": "THIS WEEKEND ONLY",
-      "description": "Your best number is the high score. Beat it this weekend and the PR pays double.",
-      "start": "2026-11-14T00:00",
-      "end": "2026-11-16T00:00",
-      "rule": { "type": "multiplier", "reason": "personalRecord", "factor": 2 }
+      "rule": {
+        "type": "multiplier",
+        "reason": "personalRecord",
+        "factor": 2
+      }
     },
     {
       "id": "s00-finale",
       "title": "CONTINUE?",
       "eyebrow": "LAST CALL",
-      "description": "Season 00 closes Nov 30. Everything you earn now is Early Adopter forever. Season 01 starts Dec 1. Everyone continues at LVL 1 and keeps what they earned.",
+      "description": "Season 00 closes Sep 30. Everything you earn now is Early Adopter forever. Season 01 starts Oct 1. Everyone continues at LVL 1 and keeps what they earned.",
+      "start": "2026-09-28T00:00",
+      "end": "2026-10-01T00:00",
+      "rule": {
+        "type": "flatBonus",
+        "amount": 250
+      }
+    },
+    {
+      "id": "s01-night-shift",
+      "title": "NIGHT SHIFT",
+      "eyebrow": "ALL SEASON",
+      "description": "Start after 8 PM. +250 XP. Lights off, same weights.",
+      "start": "2026-10-01T00:00",
+      "end": "2026-12-01T00:00",
+      "rule": {
+        "type": "startedAfter",
+        "hour": 20,
+        "amount": 250
+      }
+    },
+    {
+      "id": "s01-final-boss",
+      "title": "FINAL BOSS",
+      "eyebrow": "HALLOWEEN WEEKEND",
+      "description": "The boss is your best number. Beat it this weekend and the PR pays double.",
+      "start": "2026-10-30T00:00",
+      "end": "2026-11-02T00:00",
+      "rule": {
+        "type": "multiplier",
+        "reason": "personalRecord",
+        "factor": 2
+      }
+    },
+    {
+      "id": "s01-finale",
+      "title": "CONTINUE?",
+      "eyebrow": "LAST CALL",
+      "description": "Season 01 closes Nov 30. Everything you earn now is Season 01 forever. Season 02 starts Dec 1. Everyone continues at LVL 1 and keeps what they earned.",
       "start": "2026-11-27T00:00",
       "end": "2026-12-01T00:00",
-      "rule": { "type": "flatBonus", "amount": 250 }
+      "rule": {
+        "type": "flatBonus",
+        "amount": 250
+      }
     }
   ]
 }

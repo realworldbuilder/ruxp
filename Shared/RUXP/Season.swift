@@ -32,21 +32,35 @@ enum SeasonCatalog {
         return cal.date(from: DateComponents(year: year, month: month, day: day))!
     }
 
-    /// SEASON 00 — EARLY ADOPTERS. The launch window. AI is on the house.
+    /// SEASON 00 — EARLY ADOPTERS. The TestFlight month. AI is on the house.
+    /// Shortened from Nov 30 to Sep 30 when the App Store launch moved to Oct 1; the goal
+    /// shrank with it so the frozen S00 record is honest for a 30-day season.
     static let earlyAdopters = Season(
         id: "S00",
         number: 0,
         name: "EARLY ADOPTERS",
         tagline: "First in. Set the bar.",
         start: day(2026, 9, 1),
-        end: day(2026, 12, 1),
-        goalWorkouts: 32
+        end: day(2026, 10, 1),
+        goalWorkouts: 12
     )
 
-    /// SEASON 01 — PRESS START. The first full season is all about the game.
-    static let pressStart = Season(
+    /// SEASON 01 — NIGHTMARE MODE. The App Store launch season. Spooky in gaming vocabulary
+    /// only (difficulty tiers, bosses, night shifts); nothing here names a game.
+    static let nightmareMode = Season(
         id: "S01",
         number: 1,
+        name: "NIGHTMARE MODE",
+        tagline: "Lights off. Same weights.",
+        start: day(2026, 10, 1),
+        end: day(2026, 12, 1),
+        goalWorkouts: 20
+    )
+
+    /// SEASON 02 — PRESS START. The first full-length season is all about the game.
+    static let pressStart = Season(
+        id: "S02",
+        number: 2,
         name: "PRESS START",
         tagline: "Load in. Level up. Own the season.",
         start: day(2026, 12, 1),
@@ -54,10 +68,11 @@ enum SeasonCatalog {
         goalWorkouts: 32
     )
 
-    static let all: [Season] = [earlyAdopters, pressStart]
+    static let all: [Season] = [earlyAdopters, nightmareMode, pressStart]
 
-    /// TestFlight builds 1–3 shipped the launch window under this ID.
-    /// `ProgressionService.rolloverSeasonIfNeeded` renames it to `earlyAdopters` in place.
+    /// TestFlight builds 1–3 shipped the launch window under this ID. `ProgressionService.rolloverSeasonIfNeeded`
+    /// renames it to `earlyAdopters` in place, but only for a file with no schema version: from Oct 1 a real
+    /// S01 (NIGHTMARE MODE) file carries one and must not be touched.
     static let legacyLaunchID = "S01"
 
     #if DEBUG

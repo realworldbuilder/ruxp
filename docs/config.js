@@ -4,7 +4,7 @@ window.RUXP = {
   APP_STORE_URL: "",                        // paste the App Store link after approval
   CONTACT_EMAIL: "admin@ruxp.app",
   GITHUB_URL: "https://github.com/realworldbuilder/ruxp",
-  SEASON: { code: "S00", name: "EARLY ADOPTERS", start: "2026-09-01", end: "2026-11-30" }
+  SEASON: { code: "S00", name: "EARLY ADOPTERS", start: "2026-09-01", end: "2026-09-30" }
 };
 
 document.addEventListener("DOMContentLoaded", function () {
