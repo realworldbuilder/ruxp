@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "modifiers": [
     {
       "id": "s00-pr-weekend",
@@ -11,6 +11,15 @@
       "rule": { "type": "multiplier", "reason": "personalRecord", "factor": 2 }
     },
     {
+      "id": "s00-checkpoint",
+      "title": "CHECKPOINT",
+      "eyebrow": "THIS WEEKEND ONLY",
+      "description": "Halfway through Season 00. Save your progress. Any workout this weekend pays +250.",
+      "start": "2026-10-17T00:00",
+      "end": "2026-10-19T00:00",
+      "rule": { "type": "flatBonus", "amount": 250 }
+    },
+    {
       "id": "s00-early-shift",
       "title": "EARLY SHIFT",
       "eyebrow": "THIS WEEKEND ONLY",
@@ -20,10 +29,19 @@
       "rule": { "type": "startedBefore", "hour": 8, "amount": 250 }
     },
     {
+      "id": "s00-high-score",
+      "title": "HIGH SCORE",
+      "eyebrow": "THIS WEEKEND ONLY",
+      "description": "Your best number is the high score. Beat it this weekend and the PR pays double.",
+      "start": "2026-11-14T00:00",
+      "end": "2026-11-16T00:00",
+      "rule": { "type": "multiplier", "reason": "personalRecord", "factor": 2 }
+    },
+    {
       "id": "s00-finale",
-      "title": "S00 FINALE",
+      "title": "CONTINUE?",
       "eyebrow": "LAST CALL",
-      "description": "Season 00 closes. Everything you earn now is Early Adopter forever.",
+      "description": "Season 00 closes Nov 30. Everything you earn now is Early Adopter forever. Season 01 starts Dec 1. Everyone continues at LVL 1 and keeps what they earned.",
       "start": "2026-11-27T00:00",
       "end": "2026-12-01T00:00",
       "rule": { "type": "flatBonus", "amount": 250 }

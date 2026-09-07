@@ -170,8 +170,10 @@ enum LiveOpsCatalog {
         return cal.date(from: DateComponents(year: year, month: month, day: day, hour: hour))!
     }
 
-    /// Season 00 rules. Two experiments to establish that the rules can change, then the finale.
-    static let bundled = LiveOpsCalendar(version: 1, modifiers: [
+    /// Season 00 rules. Two experiments to establish that the rules can change, then the tribute
+    /// calendar: CHECKPOINT at the midpoint, HIGH SCORE before the close, CONTINUE? as the finale.
+    /// Generic arcade vocabulary only; nothing here names a game. Mirrors docs/live.json v2.
+    static let bundled = LiveOpsCalendar(version: 2, modifiers: [
         LiveModifier(
             id: "s00-pr-weekend",
             title: "PR WEEKEND",
@@ -180,6 +182,15 @@ enum LiveOpsCatalog {
             start: local(2026, 9, 26),
             end: local(2026, 9, 28),
             rule: .multiplier(reason: .personalRecord, factor: 2)
+        ),
+        LiveModifier(
+            id: "s00-checkpoint",
+            title: "CHECKPOINT",
+            eyebrow: "THIS WEEKEND ONLY",
+            description: "Halfway through Season 00. Save your progress. Any workout this weekend pays +250.",
+            start: local(2026, 10, 17),
+            end: local(2026, 10, 19),
+            rule: .flatBonus(amount: 250)
         ),
         LiveModifier(
             id: "s00-early-shift",
@@ -191,10 +202,19 @@ enum LiveOpsCatalog {
             rule: .startedBefore(hour: 8, amount: 250)
         ),
         LiveModifier(
+            id: "s00-high-score",
+            title: "HIGH SCORE",
+            eyebrow: "THIS WEEKEND ONLY",
+            description: "Your best number is the high score. Beat it this weekend and the PR pays double.",
+            start: local(2026, 11, 14),
+            end: local(2026, 11, 16),
+            rule: .multiplier(reason: .personalRecord, factor: 2)
+        ),
+        LiveModifier(
             id: "s00-finale",
-            title: "S00 FINALE",
+            title: "CONTINUE?",
             eyebrow: "LAST CALL",
-            description: "Season 00 closes. Everything you earn now is Early Adopter forever.",
+            description: "Season 00 closes Nov 30. Everything you earn now is Early Adopter forever. Season 01 starts Dec 1. Everyone continues at LVL 1 and keeps what they earned.",
             start: local(2026, 11, 27),
             end: local(2026, 12, 1),
             rule: .flatBonus(amount: 250)

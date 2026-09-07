@@ -75,7 +75,7 @@ Users earn XP for healthy, useful behavior. Grinding is not rewarded.
 |---|---|---|
 | Complete a workout | +500 | 10+ minutes, max 2 rewarded per day |
 | Join a live event | +500 | Workout overlaps the event window (FRIDAY NIGHT, SUNDAY RESET) |
-| Live Ops rule | varies | A dated rule in effect (PR WEEKEND ×2 PR XP, EARLY SHIFT +250 before 8 AM, S00 FINALE +250). See `docs/live.json` |
+| Live Ops rule | varies | A dated rule in effect. S00 calendar: PR WEEKEND ×2 PR XP, CHECKPOINT +250 (midseason), EARLY SHIFT +250 before 8 AM, HIGH SCORE ×2 PR XP, CONTINUE? +250 (finale). See `docs/live.json` |
 | Crew Week | +250 | Every active crew member trained this ISO week; once per week, to each member who did |
 | Weekly consistency | +500 | 4th workout of the ISO week |
 | Personal record | +250 | Max 2 per workout, only after AI parses your notes |
