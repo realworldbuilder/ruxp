@@ -42,7 +42,9 @@ Site: https://realworldbuilder.github.io/ruxp/ · Privacy: `/privacy.html` · Su
 
 ## C. Game Center (blocking: live counts and leaderboards are dead without it)
 
-Features › Game Center. Create these exactly; IDs and window settings are documented in `Shared/RUXP/GameCenterCatalog.swift`.
+**Done on 2026-09-07 via the App Store Connect API** (`Scripts/gamecenter_setup.py`, idempotent; re-run it after adding a season to `SEASONS`). Game Center is enabled on the app record and every ID below exists with an en-US name. Still **you**: achievements need a 512×512 image each before App Store release (not needed for TestFlight), and on the 1.0 version page › Game Center, attach the leaderboards and achievements to the version before submitting.
+
+Reference: IDs and window settings are documented in `Shared/RUXP/GameCenterCatalog.swift`.
 
 **Classic leaderboards** (score format: integer, sort high-to-low, submit best score)
 
@@ -51,6 +53,7 @@ Features › Game Center. Create these exactly; IDs and window settings are docu
 | `lifetime_xp` | Lifetime XP |
 | `season_xp_s00` | Season 0 XP |
 | `week_streak` | Longest Week Streak |
+| `live_sessions` | Live Sessions |
 
 **Recurring leaderboards** (these are the presence counters; the score is a timestamp, sort high-to-low)
 
@@ -71,13 +74,15 @@ Features › Game Center. Create these exactly; IDs and window settings are docu
 | `four_workout_week` | Four in a week | 10 |
 | `four_week_streak` | Four-week streak | 15 |
 | `friday_night` | Friday Night | 10 |
+| `live_first_session` | Sunday Reset (first Live Session) | 10 |
+| `live_five_sessions` | Showed Up (5 Live Sessions) | 15 |
 | `season_goal_s00` | Season 0 complete | 20 |
 | `level_5` | Level 5 | 5 |
 | `level_10` | Level 10 | 5 |
 | `level_25` | Level 25 | 10 |
 | `level_50` | Level 50 | 15 |
 
-Then open the 1.0 version page › Game Center and **attach** every leaderboard and achievement to the version. Unattached boards report "not configured" and the Home count shows a dash. Before Dec 1, create `season_xp_s01` and `season_goal_s01` the same way.
+Recurring boards can only start in the future, so the API placed each first occurrence on the next grid boundary (active windows within the hour, `trained_today` at the next midnight Eastern, events on the coming Friday/Sunday). Before Dec 1, run `python3 Scripts/gamecenter_setup.py --all-seasons` to add `season_xp_s01` and `season_goal_s01`.
 
 ## D. App Privacy (nutrition label)
 
