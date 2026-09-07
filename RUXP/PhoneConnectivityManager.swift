@@ -11,12 +11,20 @@ final class ConnectivityService: NSObject, ObservableObject {
     var onAudioReceived: ((URL, UUID?, UUID?) async -> Void)?
     var onWorkoutCommand: ((WorkoutMessage) async -> Void)?
     var onReceivedWorkoutContext: ((_ workoutID: UUID?, _ isActive: Bool, _ startedAt: Date?) -> Void)?
+    /// Watch → phone: whether the watch holds a live HealthKit session for that workout.
+    var onWatchHealthSession: ((_ workoutID: UUID, _ hasSession: Bool) -> Void)?
 
     /// Level / season XP snapshot merged into every application-context update so the watch
     /// can show "LVL 12" cold. Set by WorkoutManager whenever progression changes.
     var progressionContext: [String: Any] = [:]
     /// Live counts and the Game Center sync flag, merged the same way so the watch mirrors them.
     var presenceContext: [String: Any] = [:]
+    /// The active workout (id, active flag, start, plan, moment count). Owned here, not re-read
+    /// from WCSession's last-sent dictionary: that is empty before activation and after a
+    /// relaunch, and any push built on it dropped `ctx_startedAt`, so the watch's clock reset.
+    private var workoutContext: [String: Any] = [ConnectivityConstants.contextIsActiveKey: false]
+    /// Pushes attempted before the session activated; replayed in `activationDidCompleteWith`.
+    private var hasPendingContext = false
     private var lastPresencePush: Date = .distantPast
     private static let presencePushInterval: TimeInterval = 60
 
@@ -58,9 +66,23 @@ final class ConnectivityService: NSObject, ObservableObject {
         if let plan, let planData = try? JSONEncoder().encode(PlanWirePayload(plan)) {
             context[ConnectivityConstants.contextPlanDataKey] = planData
         }
+        workoutContext = context
+        sendContext()
+    }
+
+    /// Every context push carries the full picture: workout state, progression, presence.
+    private func sendContext() {
+        var context = workoutContext
         progressionContext.forEach { context[$0.key] = $0.value }
         presenceContext.forEach { context[$0.key] = $0.value }
-        try? session.updateApplicationContext(context)
+        do {
+            try session.updateApplicationContext(context)
+            hasPendingContext = false
+        } catch {
+            // Not activated yet (app init) or transiently unavailable; replayed on activation.
+            hasPendingContext = true
+            Self.logger.debug("Application context deferred: \(error.localizedDescription)")
+        }
     }
 
     /// Phone → watch: XP earned for a finished workout (falls back to transferUserInfo when unreachable).
@@ -78,10 +100,7 @@ final class ConnectivityService: NSObject, ObservableObject {
 
     /// Push the current progression snapshot without touching workout state.
     func pushProgressionContext() {
-        var context = session.applicationContext
-        progressionContext.forEach { context[$0.key] = $0.value }
-        presenceContext.forEach { context[$0.key] = $0.value }
-        try? session.updateApplicationContext(context)
+        sendContext()
     }
 
     /// Phone → watch: the latest live counts. Throttled; the next workout context carries them anyway.
@@ -89,19 +108,13 @@ final class ConnectivityService: NSObject, ObservableObject {
         snapshot.toDictionary().forEach { presenceContext[$0.key] = $0.value }
         guard force || Date().timeIntervalSince(lastPresencePush) >= Self.presencePushInterval else { return }
         lastPresencePush = Date()
-        var context = session.applicationContext
-        progressionContext.forEach { context[$0.key] = $0.value }
-        presenceContext.forEach { context[$0.key] = $0.value }
-        try? session.updateApplicationContext(context)
+        sendContext()
     }
 
     /// Phone → watch: whether the watch may ping presence boards on its own.
     func pushGameCenterSync(_ enabled: Bool) {
         presenceContext[ConnectivityConstants.contextGameCenterSyncKey] = enabled
-        var context = session.applicationContext
-        progressionContext.forEach { context[$0.key] = $0.value }
-        presenceContext.forEach { context[$0.key] = $0.value }
-        try? session.updateApplicationContext(context)
+        sendContext()
     }
 
     private func parseWorkoutContext(_ context: [String: Any]) -> (UUID?, Bool, Date?) {
@@ -111,14 +124,22 @@ final class ConnectivityService: NSObject, ObservableObject {
         return (workoutID, isActive, startedAt)
     }
 
+    private func applyReceivedContext(_ context: [String: Any]) {
+        let (workoutID, isActive, startedAt) = parseWorkoutContext(context)
+        onReceivedWorkoutContext?(workoutID, isActive, startedAt)
+        if let workoutID, let hasSession = context[ConnectivityConstants.contextWatchHealthSessionKey] as? Bool {
+            onWatchHealthSession?(workoutID, hasSession)
+        }
+    }
+
+    /// Moment count for the active workout. A transcript that lands after the workout ended
+    /// must not resurrect it on the watch, so the count only rides on a matching active context.
     func updateMomentCount(_ count: Int, workoutID: UUID) {
-        var context = session.applicationContext
-        context[ConnectivityConstants.contextMomentCountKey] = count
-        context[ConnectivityConstants.contextWorkoutIDKey] = workoutID.uuidString
-        context[ConnectivityConstants.contextIsActiveKey] = true
-        progressionContext.forEach { context[$0.key] = $0.value }
-        presenceContext.forEach { context[$0.key] = $0.value }
-        try? session.updateApplicationContext(context)
+        guard workoutContext[ConnectivityConstants.contextIsActiveKey] as? Bool == true,
+              workoutContext[ConnectivityConstants.contextWorkoutIDKey] as? String == workoutID.uuidString
+        else { return }
+        workoutContext[ConnectivityConstants.contextMomentCountKey] = count
+        sendContext()
     }
 
     func sendTranscriptionToWatch(_ transcript: String, momentID: UUID, workoutID: UUID) {
@@ -136,10 +157,10 @@ extension ConnectivityService: WCSessionDelegate {
     nonisolated func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
         guard activationState == .activated else { return }
         let ctx = session.receivedApplicationContext
-        guard !ctx.isEmpty else { return }
         Task { @MainActor in
-            let (workoutID, isActive, startedAt) = self.parseWorkoutContext(ctx)
-            self.onReceivedWorkoutContext?(workoutID, isActive, startedAt)
+            if self.hasPendingContext { self.sendContext() }
+            guard !ctx.isEmpty else { return }
+            self.applyReceivedContext(ctx)
         }
     }
 
@@ -168,8 +189,7 @@ extension ConnectivityService: WCSessionDelegate {
 
     nonisolated func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
         Task { @MainActor in
-            let (workoutID, isActive, startedAt) = self.parseWorkoutContext(applicationContext)
-            self.onReceivedWorkoutContext?(workoutID, isActive, startedAt)
+            self.applyReceivedContext(applicationContext)
         }
     }
 

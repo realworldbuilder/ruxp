@@ -79,3 +79,9 @@ The Momentary-era AI trainer chat, insights tab, story carousel, and social cont
 ## Later (not built)
 
 Friends and squads (Game Center friends scope is one flag away), gym profiles, gym-hosted events, brand rewards, a rank line on Home, per-lift and total-volume leaderboards (they depend on the OpenAI parse), remote gym experiences, push notifications. Each plugs into one of the protocols above or into `PlayerProgress`. None of them are speculatively wired.
+
+### Richer strength sets in Apple Health (watching, not wired)
+
+The iOS 27 / watchOS 27 betas (beta 1, then beta 3) added a private per-set model to the health database: a strength `HKWorkoutActivity` per exercise (exercise type, muscle groups) holding sets, each with rep count, weight, equipment, body side, duration, and repetition type. As of beta 8 (Sep 2026) it is stubbed: no public header, no third-party write, nothing readable. RUXP still writes one `traditionalStrengthTraining` workout per session from `HealthKitService`.
+
+`ExerciseSet` already carries the fields that only exist at recording time: `side`, `equipment`, and `momentIndex` (the voice moment a set was spoken in, which gives it a timestamp). The mapping when the door opens is one `ExerciseGroup` → one strength activity, one `ExerciseSet` → one set. Two triggers to revisit: a public strength initializer on `HKWorkoutActivity` in a shipping SDK (write RUXP's sets to Health), or Apple's Workout app logging sets natively (read them and award PR XP for lifts logged without voice).

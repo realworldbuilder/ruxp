@@ -21,6 +21,9 @@ enum AIPromptBuilder {
         - If a rep count or weight is ambiguous, provide your best guess and list it as an ambiguity
         - Group consecutive mentions of the same exercise together
         - Number sets sequentially within each exercise
+        - side: "left", "right", or "both" only when the user said which side ("left leg", "right arm"). Otherwise null. Never guess.
+        - equipment: one lowercase word only when the user named it ("dumbbell", "barbell", "kettlebell", "cable", "machine", "band", "bodyweight"). Otherwise null. Never infer it from the exercise name.
+        - momentIndex: the Moment number (1-based, from the transcript list) in which the set was spoken. One set spans one moment; if a moment describes several sets, they all share its number.
 
         RULES FOR INSIGHTS:
         - progressNote: Observations about progress, PRs, volume changes
@@ -104,7 +107,10 @@ enum AIPromptBuilder {
                     "weight": 135.0,
                     "weightUnit": "lbs",
                     "duration": null,
-                    "notes": null
+                    "notes": null,
+                    "side": null,
+                    "equipment": null,
+                    "momentIndex": 1
                   }
                 ],
                 "notes": null

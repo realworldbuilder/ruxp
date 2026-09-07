@@ -32,6 +32,13 @@ final class WorkoutManager {
     /// The workout ID currently being finalized (AI processing). Publicly readable so the UI can present a completion sheet.
     var completedWorkoutID: UUID?
     private var endingSessionID: UUID?
+    /// Workouts the watch reported a live HealthKit session for. The watch owns the Health
+    /// workout then: the phone skips its manual save and waits for the watch's summary.
+    private var watchHealthWorkoutIDs: Set<UUID> = []
+    /// Bumped whenever heart rate / calories are attached to a stored session after it ended,
+    /// so an open completion sheet reloads.
+    var healthDataVersion = 0
+    private static let watchHealthWait: Duration = .seconds(10)
 
     private static let activeWorkoutKey = "com.whussey.ruxp.activeWorkoutID"
 
@@ -79,6 +86,9 @@ final class WorkoutManager {
 
         activeSession = session
         Self.logger.info("Restored active workout \(id) with \(session.moments.count) moments")
+        // The in-memory context died with the old process; the watch still needs the real start.
+        connectivity.updateWorkoutContext(workoutID: id, isActive: true, startedAt: session.startedAt, plan: session.plannedWorkout)
+        Task { await healthKit.startWorkout(at: session.startedAt) }
         startPresenceHeartbeat()
     }
 
@@ -126,7 +136,7 @@ final class WorkoutManager {
         connectivity.updateWorkoutContext(workoutID: session.id, isActive: true, startedAt: session.startedAt, plan: plan)
 
         // Start HealthKit tracking (on phone, just records start time for manual save)
-        Task { await healthKit.startWorkout() }
+        Task { await healthKit.startWorkout(at: session.startedAt) }
         startPresenceHeartbeat()
         liveSessions?.noteWorkoutStarted()
 
@@ -174,27 +184,61 @@ final class WorkoutManager {
 
         Self.logger.info("Ended workout \(session.id)")
 
-        // Save workout to Apple Health + fetch health data
+        // Apple Health: one workout per session. If the watch joined, it closes its live
+        // session and reports back; otherwise the phone writes a manual workout itself.
         let sessionID = session.id
         let startDate = session.startedAt
         let endDate = session.endedAt ?? Date()
+        let watchOwnsHealth = watchHealthWorkoutIDs.contains(sessionID)
         Task {
-            // Save manual workout to HealthKit (phone-side, covers no-watch case)
-            await healthKit.endWorkout()
-            try? await Task.sleep(for: .seconds(3))
+            if watchOwnsHealth {
+                await self.waitForWatchHealth(workoutID: sessionID)
+            } else {
+                await healthKit.endWorkout(start: startDate, end: endDate)
+                try? await Task.sleep(for: .seconds(3))
+            }
             await self.attachHealthData(workoutID: sessionID, start: startDate, end: endDate)
             self.finalizeEnd(workoutID: sessionID)
         }
     }
 
+    /// Waits (bounded) for the watch's `.workoutHealth` message after a phone-ended stop.
+    private func waitForWatchHealth(workoutID: UUID) async {
+        let deadline = ContinuousClock.now + Self.watchHealthWait
+        while ContinuousClock.now < deadline {
+            if let stored = workoutStore.loadSession(id: workoutID), stored.healthWorkoutUUID != nil { return }
+            try? await Task.sleep(for: .milliseconds(500))
+        }
+        Self.logger.warning("Watch health summary for \(workoutID) did not arrive in time; querying HealthKit")
+    }
+
+    /// The watch closed its HealthKit workout for a phone-ended session.
+    private func attachWatchHealth(workoutID: UUID, healthWorkoutUUID: UUID?, avgHeartRate: Double?, activeCalories: Double?) {
+        guard var session = workoutStore.loadSession(id: workoutID) else { return }
+        if let healthWorkoutUUID { session.healthWorkoutUUID = healthWorkoutUUID }
+        if let avgHeartRate, avgHeartRate > 0 { session.averageHeartRate = avgHeartRate }
+        if let activeCalories, activeCalories > 0 { session.activeCalories = activeCalories }
+        workoutStore.saveSession(session)
+        if activeSession?.id == workoutID { activeSession = session }
+        watchHealthWorkoutIDs.remove(workoutID)
+        healthDataVersion += 1
+        Self.logger.info("Watch health attached to \(workoutID): HR=\(avgHeartRate ?? 0), Cal=\(activeCalories ?? 0)")
+    }
+
+    /// Fills heart rate / calories from the Health store. Never overwrites values the watch
+    /// reported directly, which are the live session's own statistics.
     private func attachHealthData(workoutID: UUID, start: Date, end: Date) async {
+        guard let before = workoutStore.loadSession(id: workoutID),
+              before.averageHeartRate == nil || before.activeCalories == nil else { return }
         let (avgHR, calories) = await healthKit.fetchWorkoutHealthData(start: start, end: end)
         guard avgHR != nil || calories != nil else { return }
 
+        // Re-read: the watch summary may have landed while the query ran.
         guard var session = workoutStore.loadSession(id: workoutID) else { return }
-        session.averageHeartRate = avgHR
-        session.activeCalories = calories
+        if session.averageHeartRate == nil, let avgHR { session.averageHeartRate = avgHR }
+        if session.activeCalories == nil, let calories { session.activeCalories = calories }
         workoutStore.saveSession(session)
+        healthDataVersion += 1
         Self.logger.info("Attached health data: HR=\(avgHR ?? 0), Cal=\(calories ?? 0)")
     }
 
@@ -207,6 +251,7 @@ final class WorkoutManager {
         if let avgHeartRate, avgHeartRate > 0 { session.averageHeartRate = avgHeartRate }
         if let activeCalories, activeCalories > 0 { session.activeCalories = activeCalories }
         workoutStore.saveSession(session)
+        watchHealthWorkoutIDs.remove(session.id)
         endingSessionID = session.id
         rewardCompletion(for: session)
         // See endWorkout(): completedWorkoutID before activeSession = nil.
@@ -528,9 +573,17 @@ final class WorkoutManager {
                 if self.activeSession?.id == message.workoutID {
                     self.handleRemoteStop(workoutID: message.workoutID, healthWorkoutUUID: message.healthWorkoutUUID, avgHeartRate: message.avgHeartRate, activeCalories: message.activeCalories)
                 }
+            case .workoutHealth:
+                self.attachWatchHealth(workoutID: message.workoutID, healthWorkoutUUID: message.healthWorkoutUUID,
+                                       avgHeartRate: message.avgHeartRate, activeCalories: message.activeCalories)
             case .momentRecorded, .momentTranscribed, .workoutReward:
                 break
             }
+        }
+
+        connectivity.onWatchHealthSession = { [weak self] workoutID, hasSession in
+            guard let self else { return }
+            if hasSession { self.watchHealthWorkoutIDs.insert(workoutID) } else { self.watchHealthWorkoutIDs.remove(workoutID) }
         }
 
         connectivity.onReceivedWorkoutContext = { [weak self] workoutID, isActive, startedAt in

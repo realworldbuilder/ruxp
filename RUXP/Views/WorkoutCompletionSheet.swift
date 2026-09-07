@@ -69,6 +69,7 @@ struct WorkoutCompletionSheet: View {
         .onChange(of: processor.state) {
             if processor.state == .completed { loadSession() }
         }
+        .onChange(of: workoutManager.healthDataVersion) { loadSession() }
         .sheet(isPresented: $showShareSheet) {
             if let shareImage {
                 WorkoutShareSheet(items: [shareImage])

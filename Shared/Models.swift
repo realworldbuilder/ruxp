@@ -169,9 +169,21 @@ struct ExerciseSet: Codable, Identifiable {
     var weightUnit: WeightUnit
     var duration: TimeInterval?
     var notes: String?
+    /// Which side of the body the set was done on, when the lifter said so
+    /// ("left leg", "right arm"). Nil when unspoken or bilateral by default.
+    var side: BodySide?
+    /// Equipment the lifter named ("dumbbell", "barbell", "cable", "machine",
+    /// "kettlebell", "band", "bodyweight"). Free text: Apple's equipment enum
+    /// is not public yet.
+    var equipment: String?
+    /// 1-based index into the usable-transcript moments the parser was shown.
+    /// Links the set back to the `Moment` it was spoken in, which is the only
+    /// way to recover a set's timestamp after the fact.
+    var momentIndex: Int?
 
     private enum CodingKeys: String, CodingKey {
         case id, setNumber, reps, weight, weightUnit, duration, notes
+        case side, equipment, momentIndex
     }
 
     init(
@@ -181,7 +193,10 @@ struct ExerciseSet: Codable, Identifiable {
         weight: Double? = nil,
         weightUnit: WeightUnit = .lbs,
         duration: TimeInterval? = nil,
-        notes: String? = nil
+        notes: String? = nil,
+        side: BodySide? = nil,
+        equipment: String? = nil,
+        momentIndex: Int? = nil
     ) {
         self.id = id
         self.setNumber = setNumber
@@ -190,6 +205,9 @@ struct ExerciseSet: Codable, Identifiable {
         self.weightUnit = weightUnit
         self.duration = duration
         self.notes = notes
+        self.side = side
+        self.equipment = equipment
+        self.momentIndex = momentIndex
     }
 
     init(from decoder: Decoder) throws {
@@ -226,6 +244,48 @@ struct ExerciseSet: Codable, Identifiable {
         self.weightUnit = (try? container.decode(WeightUnit.self, forKey: .weightUnit)) ?? .lbs
         self.duration = try? container.decodeIfPresent(TimeInterval.self, forKey: .duration)
         self.notes = try? container.decodeIfPresent(String.self, forKey: .notes)
+
+        // Per-set detail added Sep 2026 (see docs/ARCHITECTURE.md, "Richer
+        // strength sets"). All optional; older session files lack the keys.
+        self.side = try? container.decodeIfPresent(BodySide.self, forKey: .side)
+        if let text = try? container.decodeIfPresent(String.self, forKey: .equipment) {
+            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            self.equipment = trimmed.isEmpty ? nil : trimmed
+        } else {
+            self.equipment = nil
+        }
+        // momentIndex: try Int, then String→Int
+        if let intVal = try? container.decodeIfPresent(Int.self, forKey: .momentIndex) {
+            self.momentIndex = intVal
+        } else if let strVal = try? container.decode(String.self, forKey: .momentIndex), let parsed = Int(strVal) {
+            self.momentIndex = parsed
+        } else {
+            self.momentIndex = nil
+        }
+    }
+}
+
+/// Side of the body a unilateral set was performed on. Mirrors the per-set
+/// "side" Apple's strength workout records carry; the wire values here are
+/// RUXP's own until Apple publishes theirs.
+enum BodySide: String, Codable {
+    case left
+    case right
+    case both
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let raw = (try? container.decode(String.self))?.lowercased().trimmingCharacters(in: .whitespaces) ?? ""
+        switch raw {
+        case "left", "l":
+            self = .left
+        case "right", "r":
+            self = .right
+        case "both", "bilateral":
+            self = .both
+        default:
+            throw DecodingError.dataCorruptedError(in: container, debugDescription: "Unknown body side: \(raw)")
+        }
     }
 }
 

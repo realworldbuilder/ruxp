@@ -190,6 +190,15 @@ Typical: `-RUXPSkipGameCenter -RUXPSkipHealthKit -RUXPLoadSamples -RUXPSkipMinim
 
 ---
 
+## Watching (not wired, check each Apple beta cycle)
+
+**Richer strength sets in Apple Health.** The iOS 27 / watchOS 27 betas added a private per-set model to the health database: a strength `HKWorkoutActivity` per exercise (exercise type, muscle groups) holding sets with rep count, weight, equipment, body side, duration, repetition type. Found by code-diving the HealthDaemon framework (MacRumors forums, Sep 2026; diffs in `blacktop/ipsw-diffs`). As of iOS 27 beta 8 it is stubbed: no public header, no third-party write, nothing readable. This Mac has the iOS 26.2 SDK only. RUXP still writes one `traditionalStrengthTraining` workout per session and keeps sets in `session.json`.
+
+- **Already done (Sep 2026):** `ExerciseSet` carries optional `side`, `equipment`, `momentIndex` (the voice moment a set was spoken in, which is how a set gets a timestamp later). The parser fills them only when spoken. Mapping when the door opens: one `ExerciseGroup` → one strength activity, one `ExerciseSet` → one set.
+- **Trigger 1, write:** a public strength initializer on `HKWorkoutActivity` (or an `HKWorkoutSet`-style type) in a shipping SDK. Then attach sets from `HealthKitService` after the parse lands, remembering the workout is already closed by then and the watch may own it (`watchHealthWorkoutIDs`).
+- **Trigger 2, read:** Apple's Workout app logging sets natively on Series 12 / Ultra 4. Then ingest them and award PR XP for lifts logged without voice. That is the aliveness win: more lifting becomes visible without changing how anyone trains.
+- **Until then:** no `#available(iOS 27)` seam, no private selectors, no Xcode beta on the shipping machine. Detail in `docs/ARCHITECTURE.md` under "Later".
+
 ## Known debt (don't rediscover it)
 
 - ~2,400 lines of unreachable Momentary code compile with no entry point: `ChatView`, `ChatBlockView`, `InsightsTab`, `InsightStoryView`, `StoryCarouselView`, `HomeIntelligenceEngine`, `InsightsIntelligenceEngine`, `StoryReadTracker`. `ChatEngine`/`ConversationStore` are constructed with no consumer. `InsightsEngine.generateInsights()` is intentionally not called (it spent the bundled key). Delete as a separate task.
