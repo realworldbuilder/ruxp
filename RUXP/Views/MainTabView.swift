@@ -10,10 +10,26 @@ enum AppTab: Hashable {
     case home, train, profile
 }
 
+#if DEBUG
+/// `-RUXPScreen seasonpass|settings|livehistory|archivedpass`: open a sheet or cover at launch so
+/// every screen can be screenshotted from the command line. Read by HomeView and ProfileView.
+enum DebugScreen: String {
+    case seasonPass = "seasonpass", settings, liveHistory = "livehistory", archivedPass = "archivedpass"
+
+    static var requested: DebugScreen? {
+        let args = ProcessInfo.processInfo.arguments
+        guard let idx = args.firstIndex(of: "-RUXPScreen"), idx + 1 < args.count else { return nil }
+        return DebugScreen(rawValue: args[idx + 1].lowercased())
+    }
+}
+#endif
+
+
 /// Three tabs. One full-screen cover hosts the entire workout flow
 /// (active workout → completion) so the transition never crosses presentation hosts.
 struct MainTabView: View {
     @Environment(WorkoutManager.self) private var workoutManager
+    @Environment(ProgressionService.self) private var progression
     @State private var selectedTab: AppTab = Self.initialTab
 
     /// DEBUG: `-RUXPTab train|profile` opens on that tab for screenshots.
@@ -65,6 +81,15 @@ struct MainTabView: View {
         )
     }
 
+    /// The season that just closed, shown once. Set in `ProgressionService.init`, before any view
+    /// exists, so on a normal launch the recap is the first thing on screen.
+    private var seasonRecap: Binding<SeasonRecord?> {
+        Binding(
+            get: { progression.pendingSeasonRecap },
+            set: { if $0 == nil { progression.acknowledgeSeasonRecap() } }
+        )
+    }
+
     var body: some View {
         TabView(selection: $selectedTab) {
             HomeView()
@@ -83,6 +108,14 @@ struct MainTabView: View {
         .fullScreenCover(isPresented: workoutFlowPresented) {
             WorkoutFlowCover()
         }
+        .fullScreenCover(item: seasonRecap) { record in
+            SeasonRecapView(
+                record: record,
+                closed: SeasonCatalog.season(id: record.seasonID) ?? SeasonCatalog.earlyAdopters,
+                next: progression.season
+            )
+        }
+
         .onChange(of: workoutManager.completedWorkoutID) { old, new in
             // CONTINUE on the completion screen returns to Home.
             if old != nil && new == nil { selectedTab = .home }

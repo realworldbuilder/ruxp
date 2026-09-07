@@ -30,3 +30,6 @@ Config/Secrets.xcconfig
 
 # Local preview config
 .claude/launch.json
+
+# Python
+__pycache__/

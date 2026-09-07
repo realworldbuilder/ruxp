@@ -37,8 +37,25 @@
 /* Begin PBXFileReference section */
 		C1000001 /* RUXP.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RUXP.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C2000001 /* RUXP Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "RUXP Watch App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
-		C3000001 /* RUXP.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config/RUXP.xcconfig; sourceTree = "<group>"; };
+		C3000001 /* Config/RUXP.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config/RUXP.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		FSX00002 /* Exceptions for "RUXP" folder in "RUXP" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = T1000001 /* RUXP */;
+		};
+		FSX00003 /* Exceptions for "RUXP Watch App" folder in "RUXP Watch App" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = T2000001 /* RUXP Watch App */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		FS000001 /* Shared */ = {
@@ -64,23 +81,6 @@
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		FSX00002 /* Exceptions for "RUXP" folder in "RUXP" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Info.plist,
-			);
-			target = T1000001 /* RUXP */;
-		};
-		FSX00003 /* Exceptions for "RUXP Watch App" folder in "RUXP Watch App" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Info.plist,
-			);
-			target = T2000001 /* RUXP Watch App */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
-
 /* Begin PBXFrameworksBuildPhase section */
 		E1000001 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
@@ -105,7 +105,7 @@
 				FS000001 /* Shared */,
 				FS000002 /* RUXP */,
 				FS000003 /* RUXP Watch App */,
-				C3000001 /* RUXP.xcconfig */,
+				C3000001 /* Config/RUXP.xcconfig */,
 				F9000001 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -369,17 +369,18 @@
 		};
 		X1D00001 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = C3000001 /* RUXP.xcconfig */;
+			baseConfigurationReference = C3000001 /* Config/RUXP.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = RUXP/RUXP.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = RUXP/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = RUXP;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSGKFriendListUsageDescription = "RUXP shows which of your Game Center friends are training this season.";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "RUXP reads your workouts to track your training and progress.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "RUXP saves your strength workouts to Apple Health.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "RUXP records your voice notes during a workout and sends the audio to OpenAI to transcribe them into your workout log.";
@@ -407,17 +408,18 @@
 		};
 		X1R00001 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = C3000001 /* RUXP.xcconfig */;
+			baseConfigurationReference = C3000001 /* Config/RUXP.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = RUXP/RUXP.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = RUXP/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = RUXP;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSGKFriendListUsageDescription = "RUXP shows which of your Game Center friends are training this season.";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "RUXP reads your workouts to track your training and progress.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "RUXP saves your strength workouts to Apple Health.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "RUXP records your voice notes during a workout and sends the audio to OpenAI to transcribe them into your workout log.";
@@ -451,7 +453,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "RUXP Watch App/RUXP Watch App.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "RUXP Watch App/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = RUXP;
@@ -485,7 +487,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "RUXP Watch App/RUXP Watch App.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "RUXP Watch App/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = RUXP;

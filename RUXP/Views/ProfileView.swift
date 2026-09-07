@@ -5,13 +5,16 @@ struct ProfileView: View {
     @Environment(ProgressionService.self) private var progression
     @Environment(InsightsStore.self) private var insightsStore
     @Environment(GameCenterService.self) private var gameCenter
+    @Environment(LiveSessionService.self) private var liveSessions
 
+    @State private var showLiveHistory = false
     @State private var showNameEditor = false
     @State private var nameDraft = ""
     @State private var showPRs = false
     @State private var showLifetime = false
     @State private var showSettings = false
     @State private var showSeasonPass = false
+    @State private var archivedSeason: Season?
 
     private var p: PlayerProgress { progression.progress }
     private var loadout: SeasonPassLoadout { SeasonPassCatalog.loadout(for: p, season: progression.season) }
@@ -33,6 +36,7 @@ struct ProfileView: View {
                         .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.radiusLarge, style: .continuous))
                         .overlay(RoundedRectangle(cornerRadius: Theme.radiusLarge, style: .continuous).stroke(Theme.border, lineWidth: 1))
                     statsGrid
+                    seasonsSection
                     links
                 }
                 .padding(.horizontal, 20)
@@ -42,8 +46,26 @@ struct ProfileView: View {
             .statusBarBackdrop()
             .background(HUDBackground())
             .toolbar(.hidden, for: .navigationBar)
+            .onAppear {
+                #if DEBUG
+                // -RUXPScreen settings|livehistory|archivedpass (pair with -RUXPTab profile).
+                // Presented after a beat: a sheet requested during the very first appearance is dropped.
+                guard let screen = DebugScreen.requested else { return }
+                Task {
+                    try? await Task.sleep(for: .milliseconds(500))
+                    switch screen {
+                    case .settings: showSettings = true
+                    case .liveHistory: showLiveHistory = true
+                    case .archivedPass: archivedSeason = (p.seasonHistory ?? []).last.flatMap { SeasonCatalog.season(id: $0.seasonID) }
+                    default: break
+                    }
+                }
+
+                #endif
+            }
         }
         .alert("Display name", isPresented: $showNameEditor) {
+
             TextField("Name", text: $nameDraft)
             Button("Save") { progression.setDisplayName(nameDraft) }
             Button("Cancel", role: .cancel) {}
@@ -52,6 +74,12 @@ struct ProfileView: View {
         }
         .fullScreenCover(isPresented: $showSeasonPass) {
             SeasonPassView()
+        }
+        .fullScreenCover(item: $archivedSeason) { season in
+            SeasonPassView(season: season)
+        }
+        .fullScreenCover(isPresented: $showLiveHistory) {
+            LiveHistoryView()
         }
         .fullScreenCover(isPresented: $showPRs) {
             PRDetailView(personalRecords: insightsStore.personalRecords)
@@ -125,24 +153,59 @@ struct ProfileView: View {
     // MARK: - Stats
 
     private var statsGrid: some View {
-        let joined = p.joinDate.formatted(.dateTime.month(.abbreviated).year())
         let (done, goal) = progression.seasonProgress
         return LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
             StatTile(title: "Lifetime XP", value: p.lifetimeXP.grouped, accent: true)
             StatTile(title: "Workouts", value: p.workoutCount.grouped)
-            StatTile(title: "Week streak", value: "\(p.currentWeekStreak)")
+            StatTile(title: "Week streak", value: "\(progression.currentWeekStreak)")
             StatTile(title: "PRs", value: "\(max(p.prCount, insightsStore.personalRecords.count))")
             StatTile(title: "Season", value: "\(done) / \(goal)")
-            StatTile(title: "Joined", value: joined)
+            StatTile(title: "Live sessions", value: "\(liveSessions.completedCount)")
+        }
+    }
+
+    // MARK: - Seasons
+
+    /// Where this player has been. Always shown: the header carries "SINCE SEP 2026" even
+    /// before the first season closes.
+    private var seasonsSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SectionHeader(title: "SEASONS", trailing: "SINCE \(p.sinceLabel)")
+            ForEach((p.seasonHistory ?? []).reversed()) { record in
+                Button {
+                    archivedSeason = SeasonCatalog.season(id: record.seasonID)
+                } label: {
+                    HStack(spacing: 10) {
+                        Text("\(record.seasonID) \(SeasonCatalog.season(id: record.seasonID)?.name ?? "") · LVL \(record.finalLevel) · \(record.seasonWorkoutCount)/\(record.goalWorkouts)")
+                            .font(Theme.Fonts.mono(12))
+                            .foregroundStyle(Theme.textPrimary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                        Spacer()
+                        if record.reachedGoal {
+                            SlantTag(text: "GOAL", fill: Theme.xpSubtle, textColor: Theme.xp, size: 10)
+                        }
+                        Image(systemName: "chevron.right").font(Theme.Fonts.ui(.caption, weight: .bold)).foregroundStyle(Theme.textTertiary)
+                    }
+                    .padding(14)
+                    .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.radiusMedium, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: Theme.radiusMedium, style: .continuous).stroke(Theme.border, lineWidth: 1))
+                }
+                .buttonStyle(PressableButtonStyle())
+            }
         }
     }
 
     // MARK: - Links
 
     private var links: some View {
+
         VStack(spacing: 10) {
             linkRow(title: "Season Pass", subtitle: seasonPassSubtitle, icon: "ticket.fill") {
                 showSeasonPass = true
+            }
+            linkRow(title: "Live sessions", subtitle: liveSessionsSubtitle, icon: "dot.radiowaves.left.and.right") {
+                showLiveHistory = true
             }
             linkRow(title: "Personal records", subtitle: "\(insightsStore.personalRecords.count) lifts tracked", icon: "trophy.fill") {
                 showPRs = true
@@ -160,7 +223,18 @@ struct ProfileView: View {
                 linkRow(title: "Week streak leaderboard", subtitle: "Longest run of weeks with a workout", icon: "flame.fill") {
                     gameCenter.presentLeaderboard(id: GameCenterCatalog.weekStreak)
                 }
+                linkRow(title: "Live sessions leaderboard", subtitle: "Who keeps showing up", icon: "list.number") {
+                    gameCenter.presentLeaderboard(id: GameCenterCatalog.liveSessions)
+                }
             }
+        }
+    }
+
+    private var liveSessionsSubtitle: String {
+        switch liveSessions.completedCount {
+        case 0: return "Sunday Reset, Friday Night. Show up."
+        case 1: return "1 completed"
+        default: return "\(liveSessions.completedCount) completed"
         }
     }
 

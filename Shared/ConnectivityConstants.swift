@@ -24,6 +24,9 @@ enum ConnectivityConstants {
     static let contextStartedAtKey = "ctx_startedAt"
     static let contextMomentCountKey = "ctx_momentCount"
     static let contextPlanDataKey = "ctx_planData"
+    /// Watch → phone: the watch has a live HealthKit session for `ctx_workoutID`, so the phone
+    /// must not write its own Health workout for it.
+    static let contextWatchHealthSessionKey = "ctx_watchHealthSession"
 
     // Progression context keys (phone → watch, piggyback on application context)
     static let contextLevelKey = "ctx_level"

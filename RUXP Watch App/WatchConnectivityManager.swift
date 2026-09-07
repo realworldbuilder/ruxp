@@ -71,22 +71,30 @@ final class WatchConnectivityManager: NSObject, ObservableObject {
         }
     }
 
-    func updateWorkoutContext(workoutID: UUID?, isActive: Bool, startedAt: Date?) {
+    /// `healthSession` tells the phone this watch owns the Health workout, so the phone must
+    /// not write its own.
+    func updateWorkoutContext(workoutID: UUID?, isActive: Bool, startedAt: Date?, healthSession: Bool = false) {
         var context: [String: Any] = [ConnectivityConstants.contextIsActiveKey: isActive]
         if let workoutID { context[ConnectivityConstants.contextWorkoutIDKey] = workoutID.uuidString }
         if let startedAt { context[ConnectivityConstants.contextStartedAtKey] = startedAt.timeIntervalSince1970 }
+        context[ConnectivityConstants.contextWatchHealthSessionKey] = healthSession
         try? session.updateApplicationContext(context)
+    }
+
+    /// Applies a phone context: workout state first, then the moment count, so a cold join
+    /// can reset its counters before the phone's true total lands on top.
+    private func applyWorkoutContext(_ context: [String: Any]) {
+        let (workoutID, isActive, startedAt) = parseWorkoutContext(context)
+        onReceivedWorkoutContext?(workoutID, isActive, startedAt)
+        if let count = context[ConnectivityConstants.contextMomentCountKey] as? Int {
+            onMomentCountUpdated?(count)
+        }
     }
 
     private func parseWorkoutContext(_ context: [String: Any]) -> (UUID?, Bool, Date?) {
         let isActive = context[ConnectivityConstants.contextIsActiveKey] as? Bool ?? false
         let workoutID = (context[ConnectivityConstants.contextWorkoutIDKey] as? String).flatMap(UUID.init)
         let startedAt = (context[ConnectivityConstants.contextStartedAtKey] as? TimeInterval).map { Date(timeIntervalSince1970: $0) }
-
-        // Sync moment count if present
-        if let count = context[ConnectivityConstants.contextMomentCountKey] as? Int {
-            onMomentCountUpdated?(count)
-        }
 
         // Level / season XP snapshot (phone pushes it with every context update)
         if let progression = ProgressionContext.from(context) {
@@ -175,15 +183,13 @@ extension WatchConnectivityManager: WCSessionDelegate {
         let ctx = session.receivedApplicationContext
         guard !ctx.isEmpty else { return }
         Task { @MainActor in
-            let (workoutID, isActive, startedAt) = self.parseWorkoutContext(ctx)
-            self.onReceivedWorkoutContext?(workoutID, isActive, startedAt)
+            self.applyWorkoutContext(ctx)
         }
     }
 
     nonisolated func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
         Task { @MainActor in
-            let (workoutID, isActive, startedAt) = self.parseWorkoutContext(applicationContext)
-            self.onReceivedWorkoutContext?(workoutID, isActive, startedAt)
+            self.applyWorkoutContext(applicationContext)
         }
     }
 

@@ -8,21 +8,37 @@ struct HomeView: View {
     @Environment(PlannedWorkoutStore.self) private var plannedWorkoutStore
     @Environment(\.livePresence) private var presence
     @Environment(GameCenterService.self) private var gameCenter
+    @Environment(LiveSessionService.self) private var liveSessions
     @Environment(\.liveEvents) private var events
+    @Environment(WorldSnapshotService.self) private var world
 
     @State private var now = ScheduledEventService.now()
     @State private var showSeasonPass = false
+    /// The Live Session lobby. Its START WORKOUT dismisses first, then Home starts the workout,
+    /// so the workout cover (owned by MainTabView) never stacks on this one.
+    @State private var lobbyEvent: LiveEvent?
+    @State private var startAfterLobby = false
     private let clock = Timer.publish(every: 20, on: .main, in: .common).autoconnect()
 
     private var live: LiveSnapshot { presence?.snapshot ?? .unavailable }
     private var featured: LiveEvent { events.featuredEvent(at: now) }
+    private var featuredModifier: LiveModifier? { events.featuredModifier(at: now) }
     private var season: Season { progression.season }
+    private var loadout: SeasonPassLoadout { SeasonPassCatalog.loadout(for: progression.progress, season: season) }
 
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 18) {
                 header
                 presenceBlock
+                if world.isLedgerVisible, let ledger = world.ledger {
+                    ReturnLedgerCard(
+                        items: ledger.items,
+                        awayLabel: ReturnLedger.awayLabel(from: ledger.baselineAt, to: now),
+                        onDismiss: { withAnimation(Theme.Motion.snappy) { world.dismissLedger() } }
+                    )
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                }
                 eventCard
                 if let plan = pendingPlan { planRow(plan) }
                 youCard
@@ -35,19 +51,83 @@ struct HomeView: View {
         .statusBarBackdrop()
         .background(HUDBackground())
         .fullScreenCover(isPresented: $showSeasonPass) { SeasonPassView() }
+        .fullScreenCover(item: $lobbyEvent, onDismiss: {
+            if startAfterLobby {
+                startAfterLobby = false
+                workoutManager.startWorkout()
+            }
+        }) { event in
+            LiveSessionView(event: event) {
+                startAfterLobby = true
+                lobbyEvent = nil
+            }
+        }
         .onReceive(clock) { _ in now = ScheduledEventService.now() }
-        .onAppear { now = ScheduledEventService.now() }
+        .onAppear {
+            now = ScheduledEventService.now()
+            #if DEBUG
+            // -RUXPScreen seasonpass: open the Season Pass cover (screenshots without taps).
+            // Presented after a beat: a cover requested during the very first appearance is dropped.
+            if DebugScreen.requested == .seasonPass {
+                Task { try? await Task.sleep(for: .milliseconds(500)); showSeasonPass = true }
+            }
+
+
+            // -RUXPLiveScene lobby: join the live event and open its lobby (simulator screenshots).
+            let args = ProcessInfo.processInfo.arguments
+            if let idx = args.firstIndex(of: "-RUXPLiveScene"), idx + 1 < args.count, args[idx + 1] == "lobby",
+               lobbyEvent == nil, featured.isActive(at: now), !featured.isSeasonWide {
+                liveSessions.join(featured, now: now)
+                lobbyEvent = featured
+            }
+            #endif
+        }
     }
 
     // MARK: - Header
 
     private var header: some View {
-        HStack(alignment: .center) {
-            RUXPWordmark(size: 30)
-            Spacer()
-            SlantTag(text: "\(season.code) · \(season.name)")
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .center) {
+                RUXPWordmark(size: 30)
+                Spacer()
+                SlantTag(text: "\(season.code) · \(season.name)")
+            }
+            // The clock is part of the product. One mono line: now, what's next, when the season ends.
+            Text(clockLine)
+                .font(Theme.Fonts.mono(11, weight: .medium))
+                .monospacedDigit()
+                .foregroundStyle(Theme.textTertiary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
         }
         .padding(.top, 6)
+    }
+
+    private var clockLine: String {
+        let day = now.formatted(.dateTime.weekday(.abbreviated)).uppercased()
+        let time = now.formatted(date: .omitted, time: .shortened).uppercased()
+        var parts = ["\(day) \(time)"]
+        if let liveEvent = events.activeEvent(at: now), !liveEvent.isSeasonWide {
+            parts.append("\(liveEvent.title) LIVE · \(liveEvent.endsInLabel(now: now).uppercased())")
+        } else if let next = events.nextEvent(at: now) {
+            parts.append("\(next.title) IN \(countdown(to: next.start))")
+        }
+        if let modifier = featuredModifier {
+            parts.append(modifier.isActive(at: now) ? "\(modifier.title) ON" : "\(modifier.title) \(modifier.windowLabel(now: now))")
+        }
+        let days = season.daysRemaining(now: now)
+        parts.append(days == 0 ? "\(season.code) ENDS TODAY" : "\(season.code) ENDS IN \(days)D")
+        return parts.joined(separator: " · ")
+    }
+
+    /// "3D 6H", "6H 12M", "12M"
+    private func countdown(to date: Date) -> String {
+        let seconds = max(0, Int(date.timeIntervalSince(now)))
+        let days = seconds / 86400, hours = (seconds % 86400) / 3600, minutes = (seconds % 3600) / 60
+        if days > 0 { return "\(days)D \(hours)H" }
+        if hours > 0 { return "\(hours)H \(minutes)M" }
+        return "\(max(1, minutes))M"
     }
 
     // MARK: - Presence
@@ -83,10 +163,18 @@ struct HomeView: View {
     private var eventCard: some View {
         let isLive = featured.isActive(at: now)
         let participants = presence?.participantCount(for: featured) ?? 0
+        let isSession = isLive && !featured.isSeasonWide
+        let joined = isSession && liveSessions.isJoined(featured)
+        let completed = isSession && liveSessions.hasCompleted(featured)
         return VStack(alignment: .leading, spacing: 14) {
-            HStack {
+            HStack(spacing: 8) {
                 if isLive {
                     LiveDot(label: "LIVE NOW")
+                    if completed {
+                        SlantTag(text: "Complete", fill: Theme.xpSubtle, textColor: Theme.xp)
+                    } else if joined {
+                        SlantTag(text: "You're in")
+                    }
                 } else if featured.isSeasonWide {
                     Text("SEASON \(season.numberLabel)").eyebrow().foregroundStyle(Theme.secondary)
                 } else {
@@ -102,21 +190,72 @@ struct HomeView: View {
                 .lineLimit(2)
                 .minimumScaleFactor(0.7)
 
+            // Live Ops: a rule in effect (or starting soon) rides on the event card. No new screen.
+            if let modifier = featuredModifier {
+                let on = modifier.isActive(at: now)
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 8) {
+                        SlantTag(text: "\(modifier.title) · \(modifier.rule.summaryLabel)",
+                                 fill: Theme.violetSubtle, textColor: Theme.violet, size: 10)
+                        Text(on ? modifier.windowLabel(now: now) : "STARTS \(modifier.windowLabel(now: now))")
+                            .eyebrow()
+                            .foregroundStyle(on ? Theme.violet : Theme.textTertiary)
+                    }
+                    Text(modifier.description)
+                        .font(Theme.Fonts.ui(.caption))
+                        .foregroundStyle(Theme.textSecondary)
+                }
+            }
+
             VStack(alignment: .leading, spacing: 4) {
+                if isSession {
+                    Text(featured.endsInLabel(now: now))
+                        .font(Theme.Fonts.label).monospacedDigit()
+                        .foregroundStyle(Theme.textSecondary)
+                }
                 if participants > 0 {
                     Text(participantsLine(count: participants, isLive: isLive))
                         .font(Theme.Fonts.title(16))
                         .foregroundStyle(Theme.textPrimary)
                 }
-                Text(featured.description)
-                    .font(Theme.Fonts.body)
-                    .foregroundStyle(Theme.textSecondary)
+                if completed {
+                    Text("\(featured.title.capitalized) complete. +\(featured.xpReward.grouped) XP earned. You showed up.")
+                        .font(Theme.Fonts.body)
+                        .foregroundStyle(Theme.xp)
+                } else {
+                    Text(featured.description)
+                        .font(Theme.Fonts.body)
+                        .foregroundStyle(Theme.textSecondary)
+                }
             }
 
-            PrimaryButton(title: isLive ? "JOIN + START WORKOUT" : "START WORKOUT") {
-                workoutManager.startWorkout()
+            if completed {
+                SecondaryButton(title: "VIEW SESSION", icon: "checkmark.seal.fill") { lobbyEvent = featured }
+                    .padding(.top, 4)
+            } else if joined {
+                PrimaryButton(title: "START WORKOUT", icon: "bolt.fill") {
+                    workoutManager.startWorkout()
+                }
+                .padding(.top, 4)
+                Button { lobbyEvent = featured } label: {
+                    Text("Open lobby")
+                        .font(Theme.Fonts.label)
+                        .foregroundStyle(Theme.accent)
+                        .frame(maxWidth: .infinity)
+                }
+                .padding(.top, -4)
+            } else if isSession {
+                PrimaryButton(title: "JOIN SESSION", icon: "person.2.fill") {
+                    liveSessions.join(featured, now: now)
+                    lobbyEvent = featured
+                }
+                .padding(.top, 4)
+            } else {
+                PrimaryButton(title: "START WORKOUT") {
+                    workoutManager.startWorkout()
+                }
+                .padding(.top, 4)
             }
-            .padding(.top, 4)
         }
         .padding(20)
         .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.radiusLarge, style: .continuous))
@@ -166,11 +305,17 @@ struct HomeView: View {
         let thisWeek = progression.workoutsThisWeek
         let remaining = progression.workoutsUntilWeeklyBonus
         return VStack(alignment: .leading, spacing: 14) {
-            HStack {
+            HStack(spacing: 6) {
                 Text("YOU").eyebrow().foregroundStyle(Theme.textSecondary)
                 Spacer()
-                Text(p.displayName).eyebrow().foregroundStyle(Theme.textTertiary)
+                if let badge = loadout.badge {
+                    Image(systemName: badge)
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(loadout.nameColor ?? Theme.accent)
+                }
+                Text(p.displayName).eyebrow().foregroundStyle(loadout.nameColor ?? Theme.textTertiary)
             }
+
             XPBar(level: p.level, xpIntoLevel: p.xpIntoLevel, xpToNext: p.xpToNextLevel)
             Divider().overlay(Theme.divider)
             HStack(alignment: .firstTextBaseline) {

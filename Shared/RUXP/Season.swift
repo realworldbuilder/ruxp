@@ -60,6 +60,17 @@ enum SeasonCatalog {
     /// `ProgressionService.rolloverSeasonIfNeeded` renames it to `earlyAdopters` in place.
     static let legacyLaunchID = "S01"
 
+    #if DEBUG
+    /// `-RUXPSeason S01` (or the Developer picker, after a relaunch): pretend that season is
+    /// current so the rollover, boards, and ladders can be exercised before its start date.
+    /// The event clock cannot do this: it only ever picks the next Friday or Sunday.
+    nonisolated(unsafe) static var overrideID: String?
+    #endif
+
+    static func season(id: String) -> Season? {
+        all.first { $0.id == id }
+    }
+
     /// The season active on `date`, else the most recently started one, else the first.
     static func season(at date: Date) -> Season {
         all.first { $0.isActive(at: date) }
@@ -67,5 +78,16 @@ enum SeasonCatalog {
             ?? all[0]
     }
 
-    static var current: Season { season(at: Date()) }
+    /// The season that follows `season` in the catalog, if one is scheduled.
+    static func next(after season: Season) -> Season? {
+        all.first { $0.number == season.number + 1 }
+    }
+
+    static var current: Season {
+        #if DEBUG
+        if let id = overrideID, let season = season(id: id) { return season }
+        #endif
+        return season(at: Date())
+    }
 }
+

@@ -7,6 +7,7 @@ struct ActiveWorkoutTab: View {
     @Environment(WorkoutManager.self) private var workoutManager
     @Environment(\.livePresence) private var presence
     @Environment(\.liveEvents) private var events
+    @Environment(LiveSessionService.self) private var liveSessions
     @StateObject private var recorder = PhoneAudioRecorderService()
     @State private var showMicPermissionDenied = false
     @State private var showEndConfirmation = false
@@ -19,6 +20,9 @@ struct ActiveWorkoutTab: View {
             VStack(spacing: 0) {
                 timerBlock
                 liveStrip
+                if let event = events.activeEvent(at: ScheduledEventService.now()), liveSessions.isJoined(event) {
+                    LiveRoomPanel(event: event, compact: true)
+                }
                 if let plan = workoutManager.activeSession?.plannedWorkout {
                     PlanStripView(plan: plan, transcriptBlob: transcriptBlob)
                 }
@@ -120,7 +124,7 @@ struct ActiveWorkoutTab: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(moment.transcript)
                 .font(Theme.Fonts.ui(.body))
-                .foregroundStyle(Theme.textPrimary)
+                .foregroundStyle(moment.hasUsableTranscript ? Theme.textPrimary : Theme.textSecondary)
             HStack {
                 Text(moment.timestamp, style: .time)
                     .font(Theme.Fonts.ui(.caption))
@@ -191,8 +195,12 @@ struct ActiveWorkoutTab: View {
             }
             Spacer()
             if let event {
+                let joined = liveSessions.isJoined(event)
                 HStack(spacing: 6) {
                     Text(event.title).eyebrow().foregroundStyle(Theme.accent)
+                    if joined {
+                        Text("· LIVE").eyebrow().foregroundStyle(Theme.live)
+                    }
                     Text("+\(event.xpReward) XP").eyebrow().foregroundStyle(Theme.xp)
                 }
                 .padding(.horizontal, 10).padding(.vertical, 5)

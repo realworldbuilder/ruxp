@@ -36,7 +36,10 @@ final class WorkoutProcessor {
     private let aiService: AIService
     private let workoutStore: WorkoutStore
     private let networkMonitor = NWPathMonitor()
-    private var isNetworkAvailable = true
+    /// Readable by WorkoutManager so a moment can go straight to "pending" instead of waiting on a 60 s timeout.
+    private(set) var isNetworkAvailable = true
+    /// Fired on the offline → online edge after the workout queue drains. Assigned once in RUXPApp.init.
+    var onNetworkRestored: (() async -> Void)?
     private let maxRetries = 3
 
     private static var pendingQueueURL: URL {
@@ -55,7 +58,9 @@ final class WorkoutProcessor {
     /// Returns the AIError that stopped processing, or nil on success/queue/non-AI failures.
     @discardableResult
     func processWorkout(_ session: WorkoutSession) async -> AIError? {
-        guard !session.moments.isEmpty else {
+        // Only real speech is worth a model call. A workout whose moments are all still pending
+        // transcription completes quietly and is re-processed once a retry lands.
+        guard session.moments.contains(where: \.hasUsableTranscript) else {
             state = .completed
             return nil
         }
@@ -112,8 +117,9 @@ final class WorkoutProcessor {
                 if !newPRs.isEmpty {
                     progression?.rewardPersonalRecords(workoutID: updatedSession.id, count: newPRs.count)
                 }
-                await insightsEngine?.generateInsights()
+                // InsightsEngine stories render nowhere in RUXP; not generated (saves the bundled key).
                 return nil
+
 
             } catch let error as AIError {
                 lastError = error
@@ -187,7 +193,7 @@ final class WorkoutProcessor {
     private func queueForLater(_ session: WorkoutSession) {
         let request = WorkoutProcessingRequest(
             workoutID: session.id,
-            transcripts: session.moments.map {
+            transcripts: session.moments.filter(\.hasUsableTranscript).map {
                 MomentTranscript(momentID: $0.id, timestamp: $0.timestamp, transcript: $0.transcript)
             },
             workoutDate: session.startedAt,
@@ -265,6 +271,7 @@ final class WorkoutProcessor {
                 self.isNetworkAvailable = path.status == .satisfied
                 if wasUnavailable && self.isNetworkAvailable {
                     await self.processPendingQueue()
+                    await self.onNetworkRestored?()
                 }
             }
         }

@@ -132,7 +132,9 @@ final class WatchWorkoutManager {
         connectivity.updateWorkoutContext(workoutID: workoutID, isActive: true, startedAt: workoutStartTime!)
 
         Task {
-            await healthKitService.startWorkout()
+            await healthKitService.startWorkout(at: workoutStartTime ?? Date())
+            connectivity.updateWorkoutContext(workoutID: workoutID, isActive: true, startedAt: workoutStartTime,
+                                              healthSession: healthKitService.hasLiveSession)
         }
 
         Self.logger.info("Started workout \(workoutID)")
@@ -347,34 +349,11 @@ final class WatchWorkoutManager {
             guard let self else { return }
             switch message.command {
             case .start:
-                // Allow new workout even if old one is in completed/ending state
-                if self.workoutEndReady || self.isEndingWorkout {
-                    self.completeWorkoutDismissal()
-                }
-                if !self.isWorkoutActive {
-                    self.currentWorkoutID = message.workoutID
-                    self.isWorkoutActive = true
-                    self.momentCount = 0
-                    self.elapsedTime = 0
-                    self.latestTranscriptSnippet = nil
-                    self.lastError = nil
-                    self.workoutStartTime = message.timestamp
-                    self.extendedSession.startSession()
-                    self.gameCenter.startHeartbeat()
-                    self.startElapsedTimer()
-                    Task { await self.healthKitService.startWorkout() }
-                    self.connectivity.updateWorkoutContext(workoutID: message.workoutID, isActive: true, startedAt: message.timestamp)
-                }
+                self.joinRemoteWorkout(id: message.workoutID, startedAt: message.timestamp)
             case .stop:
-                if self.currentWorkoutID == message.workoutID {
-                    self.stopElapsedTimer()
-                    self.extendedSession.endSession()
-                    self.gameCenter.stopHeartbeat()
-                    Task { await self.healthKitService.endWorkout() }
-                    self.didReceiveRemoteStop = true
-                    self.connectivity.updateWorkoutContext(workoutID: message.workoutID, isActive: false, startedAt: nil)
-                    self.awaitReward()
-                }
+                self.handleRemoteStop(id: message.workoutID)
+            case .workoutHealth:
+                break
             case .workoutReward:
                 // Phone computed XP for this workout. A second message (PR update) replaces the snapshot.
                 guard message.workoutID == self.currentWorkoutID || self.currentWorkoutID == nil else { return }
@@ -400,6 +379,8 @@ final class WatchWorkoutManager {
                 if let transcript = message.transcript {
                     self.latestTranscriptSnippet = transcript
                     self.connectivity.isSending = false
+                    // A recovered transcript supersedes any earlier "saved, retrying" notice.
+                    self.lastError = nil
                     // Phone moment was transcribed — bump count if we're behind
                     // (watch-recorded moments already counted in stopRecordingMoment)
                 } else if let error = message.error {
@@ -413,29 +394,87 @@ final class WatchWorkoutManager {
 
         connectivity.onReceivedWorkoutContext = { [weak self] workoutID, isActive, startedAt in
             guard let self else { return }
-            // Clear stale completed state so new workout can start
-            if isActive, (self.workoutEndReady || self.isEndingWorkout) {
-                self.completeWorkoutDismissal()
+            if isActive, let workoutID {
+                self.joinRemoteWorkout(id: workoutID, startedAt: startedAt)
+            } else if !isActive, let workoutID, self.isWorkoutActive, self.currentWorkoutID == workoutID {
+                self.handleRemoteStop(id: workoutID)
             }
-            if isActive, let workoutID, !self.isWorkoutActive {
-                self.currentWorkoutID = workoutID
-                self.isWorkoutActive = true
-                self.momentCount = 0
-                self.elapsedTime = 0
-                self.latestTranscriptSnippet = nil
-                self.lastError = nil
-                self.workoutStartTime = startedAt ?? Date()
-                self.extendedSession.startSession()
-                self.gameCenter.startHeartbeat()
-                self.startElapsedTimer()
-                Task { await self.healthKitService.startWorkout() }
-            } else if !isActive, self.isWorkoutActive, self.currentWorkoutID == workoutID {
-                self.stopElapsedTimer()
-                self.extendedSession.endSession()
-                self.gameCenter.stopHeartbeat()
-                Task { await self.healthKitService.endWorkout() }
-                self.didReceiveRemoteStop = true
+        }
+    }
+
+    // MARK: - Phone-driven workouts
+
+    /// The phone started (or is still running) a workout. Idempotent: a `.start` message and the
+    /// application context both land here, and either may arrive first or late.
+    ///
+    /// - A finished workout still on screen (local end, or a remote stop whose summary was never
+    ///   dismissed) is cleared so the new one is never ignored.
+    /// - If this workout is already active, only the start time is corrected. The phone's
+    ///   `startedAt` is the truth; the fallback `Date()` from a context without one is not.
+    private func joinRemoteWorkout(id: UUID, startedAt: Date?) {
+        let isDifferentWorkout = currentWorkoutID != id
+        if isDifferentWorkout, (workoutEndReady || isEndingWorkout || didReceiveRemoteStop) {
+            completeWorkoutDismissal()
+        }
+
+        if isWorkoutActive, currentWorkoutID == id {
+            if let startedAt, let current = workoutStartTime, abs(current.timeIntervalSince(startedAt)) > 1 {
+                workoutStartTime = startedAt
+                elapsedTime = max(0, Date().timeIntervalSince(startedAt))
+                Self.logger.info("Corrected start time for workout \(id)")
             }
+            return
+        }
+        guard !isWorkoutActive else { return }
+
+        currentWorkoutID = id
+        isWorkoutActive = true
+        momentCount = 0
+        elapsedTime = 0
+        latestTranscriptSnippet = nil
+        lastError = nil
+        let start = startedAt ?? Date()
+        workoutStartTime = start
+        elapsedTime = max(0, Date().timeIntervalSince(start))
+        extendedSession.startSession()
+        gameCenter.startHeartbeat()
+        startElapsedTimer()
+        Task {
+            // Backdate Health to the phone's start so the workout spans the whole session.
+            await healthKitService.startWorkout(at: start)
+            guard currentWorkoutID == id else { return }
+            connectivity.updateWorkoutContext(workoutID: id, isActive: true, startedAt: start,
+                                              healthSession: healthKitService.hasLiveSession)
+        }
+        Self.logger.info("Joined phone workout \(id) started at \(start)")
+    }
+
+    /// The phone ended the workout. Closes Health here and reports the result back, since the
+    /// phone skips its own Health save whenever the watch joined.
+    private func handleRemoteStop(id: UUID) {
+        guard currentWorkoutID == id, isWorkoutActive, !didReceiveRemoteStop, !isEndingWorkout else { return }
+        stopElapsedTimer()
+        extendedSession.endSession()
+        gameCenter.stopHeartbeat()
+        didReceiveRemoteStop = true
+        awaitReward()
+        Task {
+            await withTaskGroup(of: Void.self) { group in
+                group.addTask { await self.healthKitService.endWorkout() }
+                group.addTask { try? await Task.sleep(for: .seconds(8)) }
+                await group.next()
+                group.cancelAll()
+            }
+            let health = WorkoutMessage(
+                command: .workoutHealth,
+                workoutID: id,
+                healthWorkoutUUID: healthKitService.workoutUUID,
+                avgHeartRate: healthKitService.averageHeartRate > 0 ? healthKitService.averageHeartRate : nil,
+                activeCalories: healthKitService.totalActiveCalories > 0 ? healthKitService.totalActiveCalories : nil
+            )
+            connectivity.sendWorkoutCommand(health)
+            connectivity.updateWorkoutContext(workoutID: id, isActive: false, startedAt: nil)
+            Self.logger.info("Remote stop for \(id): Health \(self.healthKitService.workoutUUID?.uuidString ?? "none")")
         }
     }
 }

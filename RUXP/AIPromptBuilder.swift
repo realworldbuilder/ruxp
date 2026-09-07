@@ -81,7 +81,8 @@ enum AIPromptBuilder {
 
         prompt += "\n\nVOICE TRANSCRIPTS (in chronological order):"
 
-        for (index, moment) in moments.enumerated() {
+        // Pending and placeholder moments carry no speech; keep them out of the model's input.
+        for (index, moment) in moments.filter(\.hasUsableTranscript).enumerated() {
             let relativeTime = moment.timestamp.timeIntervalSince(workoutDate)
             let minutesIn = Int(relativeTime / 60)
             prompt += "\n[\(minutesIn)min] Moment \(index + 1): \"\(moment.transcript)\""

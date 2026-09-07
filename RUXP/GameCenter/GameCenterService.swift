@@ -24,6 +24,8 @@ final class GameCenterService {
     private(set) var isSyncEnabled: Bool
     /// Fired after sign-in succeeds (presence starts polling, watch learns the sync flag).
     var onAuthenticated: (() -> Void)?
+    /// Fired with the persistent `gamePlayerID` after sign-in (Live participations attach it).
+    var onPlayerIdentified: ((String) -> Void)?
     /// Fired after a presence ping lands so the poller can refresh right away.
     var onPresenceSubmitted: (() -> Void)?
     /// Fired when the sync toggle changes (pushed to the watch).
@@ -82,6 +84,12 @@ final class GameCenterService {
     var alias: String? {
         if case .authenticated(let alias) = authState { return alias }
         return nil
+    }
+
+    /// Persistent, app-scoped Game Center identity. Nil until signed in.
+    var playerID: String? {
+        guard isAuthenticated else { return nil }
+        return GKLocalPlayer.local.gamePlayerID
     }
 
     /// One line for the Profile rows.
@@ -154,6 +162,7 @@ final class GameCenterService {
         persistCache()
         scheduleFlush(after: .zero)
         onAuthenticated?()
+        onPlayerIdentified?(player.gamePlayerID)
     }
 
     /// First sign-in only: a card that still says PLAYER takes the Game Center nickname.
@@ -232,22 +241,21 @@ final class GameCenterService {
             }
         }
 
+        // One achievement per call: an ID missing from App Store Connect fails the whole batch
+        // otherwise, and would block every other achievement forever.
         let reports = GameCenterCatalog.achievements(for: progress, season: season)
             .filter { (cache.lastAchievements[$0.id] ?? 0) < $0.percent }
-        if !reports.isEmpty {
-            let achievements = reports.map { report -> GKAchievement in
-                let achievement = GKAchievement(identifier: report.id)
-                achievement.percentComplete = report.percent
-                achievement.showsCompletionBanner = true
-                return achievement
-            }
+        for report in reports {
+            let achievement = GKAchievement(identifier: report.id)
+            achievement.percentComplete = report.percent
+            achievement.showsCompletionBanner = true
             do {
-                try await GKAchievement.report(achievements)
-                for report in reports { cache.lastAchievements[report.id] = report.percent }
-                Self.logger.info("Reported \(reports.count) achievement(s)")
+                try await GKAchievement.report([achievement])
+                cache.lastAchievements[report.id] = report.percent
+                Self.logger.info("Reported \(report.id) at \(report.percent)%")
             } catch {
-                failures.append("achievements")
-                Self.logger.error("Achievement report failed: \(error.localizedDescription)")
+                failures.append(report.id)
+                Self.logger.error("Achievement report failed for \(report.id): \(error.localizedDescription)")
             }
         }
 
@@ -277,6 +285,63 @@ final class GameCenterService {
         }
         if landed { onPresenceSubmitted?() }
     }
+
+    // MARK: - Friends
+
+    /// A Game Center friend who has played RUXP this season. Level is derived from their
+    /// season XP score, the same way the local level is.
+    struct LiveFriend: Identifiable, Equatable {
+        let id: String
+        let displayName: String
+        let level: Int
+        let seasonXP: Int
+    }
+
+    /// Friends with a score on the season XP board. Best-effort: signed out, no friends, or a
+    /// board that is not configured yet all yield an empty list, never an error in the UI.
+    func loadFriendsOnSeasonBoard() async -> [LiveFriend] {
+        guard isActive else { return [] }
+        let boardID = GameCenterCatalog.seasonXP(progression.season)
+        do {
+            guard let board = try await GKLeaderboard.loadLeaderboards(IDs: [boardID]).first else { return [] }
+            let (_, entries, _) = try await board.loadEntries(for: .friendsOnly, timeScope: .allTime, range: NSRange(location: 1, length: 50))
+            let me = GKLocalPlayer.local.gamePlayerID
+            return entries
+                .filter { $0.player.gamePlayerID != me }
+                .map { LiveFriend(id: $0.player.gamePlayerID, displayName: $0.player.displayName, level: LevelCurve.level(forSeasonXP: $0.score), seasonXP: $0.score) }
+                .sorted { $0.level > $1.level }
+        } catch {
+            Self.logger.info("Friends on \(boardID) unavailable: \(error.localizedDescription)")
+            return []
+        }
+    }
+
+    // MARK: - Standing
+
+    /// The local player's line on a classic board, plus how many players are on it.
+    struct LocalStanding: Equatable {
+        let boardID: String
+        /// Nil when the player has no score on the board yet.
+        let rank: Int?
+        let score: Int?
+        let totalPlayers: Int
+    }
+
+    /// One call: a one-entry read returns the local player's entry (rank) and the board's player
+    /// count. Best-effort, nil on any error.
+    func loadLocalStanding(boardID: String) async -> LocalStanding? {
+        guard isActive else { return nil }
+        do {
+            guard let board = try await GKLeaderboard.loadLeaderboards(IDs: [boardID]).first else { return nil }
+            let (local, _, total) = try await board.loadEntries(for: .global, timeScope: .allTime, range: NSRange(location: 1, length: 1))
+            let rank = local.map(\.rank).flatMap { $0 > 0 ? $0 : nil }
+            return LocalStanding(boardID: boardID, rank: rank, score: local.map(\.score), totalPlayers: total)
+        } catch {
+            Self.logger.info("Standing on \(boardID) unavailable: \(error.localizedDescription)")
+            return nil
+        }
+    }
+
 
     // MARK: - Presentation
 

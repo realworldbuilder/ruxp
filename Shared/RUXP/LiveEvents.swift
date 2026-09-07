@@ -40,6 +40,30 @@ struct LiveEvent: Identifiable, Equatable {
         return workoutStart < end && workoutEnd >= start
     }
 
+    /// "Ends in 2h 14m", "Ends in 40m", "Ended".
+    func endsInLabel(now: Date = Date()) -> String {
+        let remaining = Int(end.timeIntervalSince(now))
+        guard remaining > 0 else { return "Ended" }
+        let hours = remaining / 3600
+        let minutes = (remaining % 3600) / 60
+        if hours > 0 { return "Ends in \(hours)h \(minutes)m" }
+        return "Ends in \(max(1, minutes))m"
+    }
+
+    /// Game Center hooks for timed events. Season-wide events have none.
+    var gameCenterLeaderboardID: String? {
+        isSeasonWide ? nil : GameCenterCatalog.liveSessions
+    }
+
+    var gameCenterAchievementID: String? {
+        isSeasonWide ? nil : GameCenterCatalog.liveFirstSession
+    }
+
+    /// Share-sheet copy for INVITE A FRIEND.
+    var shareText: String {
+        "Join me for \(title) on RUXP. Complete any strength workout and earn +\(xpReward) XP."
+    }
+
     /// "FRI 5PM", "TODAY 5PM", "SUN"
     func startLabel(now: Date = Date()) -> String {
         let cal = Calendar.current
@@ -64,12 +88,35 @@ protocol LiveEventProviding {
     func seasonEvent() -> LiveEvent
     /// Timed events (active or upcoming) that overlap the given range. Used to award bonuses.
     func events(overlapping start: Date, end: Date) -> [LiveEvent]
+    /// Live Ops rules (see `LiveOps.swift`). Defaults read `LiveOpsCatalog.current`.
+    func activeModifiers(at date: Date) -> [LiveModifier]
+    func nextModifier(at date: Date) -> LiveModifier?
+    func modifiers(overlapping start: Date, end: Date) -> [LiveModifier]
 }
 
 extension LiveEventProviding {
     /// What the Home screen should show: live first, then the next timed event, then the season theme.
     func featuredEvent(at date: Date = Date()) -> LiveEvent {
         activeEvent(at: date) ?? nextEvent(at: date) ?? seasonEvent()
+    }
+
+    func activeModifiers(at date: Date) -> [LiveModifier] {
+        LiveOpsCatalog.current.activeModifiers(at: date)
+    }
+
+    func nextModifier(at date: Date) -> LiveModifier? {
+        LiveOpsCatalog.current.nextModifier(at: date)
+    }
+
+    func modifiers(overlapping start: Date, end: Date) -> [LiveModifier] {
+        LiveOpsCatalog.current.modifiers(overlapping: start, end: end)
+    }
+
+    /// The rule worth showing on Home: active now, else one starting within `horizon`.
+    func featuredModifier(at date: Date, horizon: TimeInterval = 48 * 3600) -> LiveModifier? {
+        if let live = activeModifiers(at: date).first { return live }
+        if let next = nextModifier(at: date), next.start.timeIntervalSince(date) <= horizon { return next }
+        return nil
     }
 }
 
@@ -120,8 +167,9 @@ struct ScheduledEventService: LiveEventProviding {
 
     // MARK: - Schedule
 
-    /// Friday Night and Sunday Reset occurrences for the week containing `date` and the following week.
+    /// Friday Night and Sunday Reset occurrences for the previous, current, and following ISO week.
     private func timedEvents(around date: Date) -> [LiveEvent] {
+
         var events: [LiveEvent] = []
         let weekStart = Calendar.ruxpWeek.startOfWeek(for: date)
         for weekOffset in -1...1 {
@@ -157,10 +205,10 @@ struct ScheduledEventService: LiveEventProviding {
             kind: .sundayReset,
             title: "SUNDAY RESET",
             subtitle: "All day Sunday",
-            description: "Complete a workout Sunday. Start the week ahead.",
+            description: "Complete any strength workout today. Start the week ahead.",
             start: start,
             end: end,
-            xpReward: 250,
+            xpReward: 500,
             isSeasonWide: false
         )
     }

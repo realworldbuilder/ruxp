@@ -1,15 +1,22 @@
 import SwiftUI
 
 /// The free Season Pass ladder. Tier N unlocks at level N; unlocked cosmetics can be equipped.
+/// Pass a finished `season` to open its archived ladder: what was unlocked stays equippable,
+/// what was not stays locked for good.
 struct SeasonPassView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(ProgressionService.self) private var progression
 
+    var season: Season? = nil
+
     private var p: PlayerProgress { progression.progress }
-    private var season: Season { progression.season }
-    private var rewards: [SeasonPassReward] { SeasonPassCatalog.rewards(for: season) }
-    private var currentTier: Int { SeasonPassCatalog.currentTier(level: p.level) }
-    private var next: SeasonPassReward? { SeasonPassCatalog.next(after: p.level, season: season) }
+    private var shown: Season { season ?? progression.season }
+    private var archived: Bool { shown.id != progression.season.id }
+    private var record: SeasonRecord? { p.seasonRecord(for: shown.id) }
+    private var unlockLevel: Int { SeasonPassCatalog.unlockLevel(seasonID: shown.id, progress: p, currentSeason: progression.season) }
+    private var rewards: [SeasonPassReward] { SeasonPassCatalog.rewards(for: shown) }
+    private var currentTier: Int { SeasonPassCatalog.currentTier(level: unlockLevel) }
+    private var next: SeasonPassReward? { SeasonPassCatalog.next(after: unlockLevel, season: shown) }
 
     var body: some View {
         ScrollView(showsIndicators: false) {
@@ -33,8 +40,11 @@ struct SeasonPassView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("SEASON PASS · \(season.code)").eyebrow().foregroundStyle(Theme.violet)
+            HStack(spacing: 8) {
+                Text("SEASON PASS · \(shown.code)").eyebrow().foregroundStyle(Theme.violet)
+                if archived {
+                    SlantTag(text: "ARCHIVED", fill: Theme.surfaceElevated, textColor: Theme.textSecondary, size: 10)
+                }
                 Spacer()
                 Button { dismiss() } label: {
                     Image(systemName: "xmark")
@@ -46,7 +56,7 @@ struct SeasonPassView: View {
                 }
                 .buttonStyle(.plain)
             }
-            Text(season.name)
+            Text(shown.name)
                 .font(Theme.Fonts.title(24))
                 .foregroundStyle(Theme.textPrimary)
             HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -59,13 +69,22 @@ struct SeasonPassView: View {
                     .font(Theme.Fonts.mono(14))
                     .foregroundStyle(Theme.textTertiary)
             }
-            XPBar(level: p.level, xpIntoLevel: p.xpIntoLevel, xpToNext: p.xpToNextLevel, compact: true)
-            Text(next.map { "NEXT: TIER \($0.tier) · \($0.name)" } ?? "ALL \(SeasonPassCatalog.tierCount) TIERS UNLOCKED")
-                .font(Theme.Fonts.mono(12))
-                .foregroundStyle(Theme.textSecondary)
-            Text("Free track. Every level unlocks something. Cosmetics only, no purchases.")
-                .font(Theme.Fonts.ui(.caption))
-                .foregroundStyle(Theme.textTertiary)
+            if archived {
+                Text(record.map { "FINAL · LVL \($0.finalLevel) · \($0.seasonWorkoutCount) / \($0.goalWorkouts) WORKOUTS" } ?? "NOT PLAYED")
+                    .font(Theme.Fonts.mono(12))
+                    .foregroundStyle(Theme.textSecondary)
+                Text("Locked tiers stay locked. Unlocked ones are yours for good.")
+                    .font(Theme.Fonts.ui(.caption))
+                    .foregroundStyle(Theme.textTertiary)
+            } else {
+                XPBar(level: p.level, xpIntoLevel: p.xpIntoLevel, xpToNext: p.xpToNextLevel, compact: true)
+                Text(next.map { "NEXT: TIER \($0.tier) · \($0.name)" } ?? "ALL \(SeasonPassCatalog.tierCount) TIERS UNLOCKED")
+                    .font(Theme.Fonts.mono(12))
+                    .foregroundStyle(Theme.textSecondary)
+                Text("Free track. Every level unlocks something. Cosmetics only, no purchases. Finish the pass by showing up: both rituals, every week.")
+                    .font(Theme.Fonts.ui(.caption))
+                    .foregroundStyle(Theme.textTertiary)
+            }
         }
         .padding(20)
         .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.radiusLarge, style: .continuous))
@@ -76,7 +95,7 @@ struct SeasonPassView: View {
     // MARK: - Tier rows
 
     private func tierRow(_ reward: SeasonPassReward) -> some View {
-        let unlocked = SeasonPassCatalog.isUnlocked(reward, level: p.level)
+        let unlocked = SeasonPassCatalog.isUnlocked(reward, level: unlockLevel)
         let equipped = unlocked && SeasonPassCatalog.isEquipped(reward, in: p)
         return HStack(spacing: 14) {
             Text("\(reward.tier)")
@@ -103,11 +122,12 @@ struct SeasonPassView: View {
                     if let color = reward.color {
                         Circle().fill(color).frame(width: 10, height: 10)
                     }
-                    if !unlocked {
+                    if !unlocked && !archived {
                         Text("LVL \(reward.tier)")
                             .font(Theme.Fonts.mono(11))
                             .foregroundStyle(Theme.textTertiary)
                     }
+
                 }
             }
             Spacer(minLength: 8)

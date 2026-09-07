@@ -52,12 +52,32 @@ final class ProgressionService {
         progress.weeklyBonusWeeks.contains(calendar.weekKey(for: ScheduledEventService.now()))
     }
     var seasonProgress: (workouts: Int, goal: Int) { (progress.seasonWorkoutCount, season.goalWorkouts) }
+    var seasonPRCount: Int { progress.seasonPRCount ?? 0 }
+
+    /// The streak as of right now. The stored value is only refreshed when a workout is rewarded,
+    /// so a card that read it directly could show a streak the player has already lost.
+    var currentWeekStreak: Int { Self.weekStreak(workoutDates: progress.workoutDates, now: ScheduledEventService.now(), calendar: calendar) }
+
+    /// The finished season whose recap has not been shown yet.
+    var pendingSeasonRecap: SeasonRecord? {
+        progress.pendingSeasonRecapID.flatMap { progress.seasonRecord(for: $0) }
+    }
+
+    func acknowledgeSeasonRecap() {
+        guard progress.pendingSeasonRecapID != nil else { return }
+        progress.pendingSeasonRecapID = nil
+        save()
+    }
+
+    /// Resolves a Live Ops rule that covered a past workout (PR bonuses land later than completion).
+    var modifierResolver: (String) -> LiveModifier? = { LiveOpsCatalog.current.modifier(id: $0) }
 
     // MARK: - Rewards
 
     /// Award XP for finishing a workout. Safe to call more than once for the same workout.
+    /// `modifiers` are the Live Ops rules whose windows the workout overlapped.
     @discardableResult
-    func rewardWorkoutCompletion(session: WorkoutSession, events: [LiveEvent], now: Date? = nil) -> WorkoutRewardSummary {
+    func rewardWorkoutCompletion(session: WorkoutSession, events: [LiveEvent], modifiers: [LiveModifier] = [], now: Date? = nil) -> WorkoutRewardSummary {
         let now = now ?? ScheduledEventService.now()
         let before = progress
         var summary = WorkoutRewardSummary(
@@ -94,7 +114,7 @@ final class ProgressionService {
             for event in events where !event.isSeasonWide && event.xpReward > 0 {
                 guard progress.eventsJoined[event.id] == nil else { continue }
                 progress.eventsJoined[event.id] = now
-                summary.awards.append(XPAward(reason: .eventBonus, label: event.title, amount: event.xpReward))
+                summary.awards.append(XPAward(reason: .eventBonus, label: event.title, amount: event.xpReward, eventID: event.id))
                 if summary.eventTitle == nil { summary.eventTitle = event.title }
             }
 
@@ -103,6 +123,21 @@ final class ProgressionService {
                !progress.weeklyBonusWeeks.contains(weekKey) {
                 progress.weeklyBonusWeeks.insert(weekKey)
                 summary.awards.append(XPAward(reason: .weeklyBonus, amount: ProgressionRules.weeklyBonusXP))
+            }
+
+            // Live Ops: rules that covered this workout. Remembered so a PR multiplier can still
+            // apply when the AI parse lands minutes later.
+            let covering = modifiers.filter { $0.covers(start: session.startedAt, end: session.endedAt ?? now) }
+            if !covering.isEmpty {
+                var map = progress.modifierIDsByWorkout ?? [:]
+                map[session.id] = covering.map(\.id)
+                progress.modifierIDsByWorkout = map
+            }
+            let baseAwards = summary.awards
+            for modifier in covering {
+                let bonus = modifier.bonus(baseAwards: baseAwards, workoutStart: session.startedAt)
+                guard bonus > 0 else { continue }
+                summary.awards.append(XPAward(reason: .modifier, label: modifier.title, amount: bonus))
             }
 
             recomputeWeekStreak(now: now)
@@ -126,11 +161,23 @@ final class ProgressionService {
         guard count > 0 else { return nil }
         let already = progress.prRewardsByWorkout[workoutID] ?? 0
         let grant = min(count, ProgressionRules.maxPRBonusesPerWorkout) - already
-        if already == 0 { progress.prCount += count }
+        if already == 0 {
+            progress.prCount += count
+            progress.seasonPRCount = (progress.seasonPRCount ?? 0) + count
+        }
         guard grant > 0 else { save(); return nil }
         progress.prRewardsByWorkout[workoutID] = already + grant
 
-        let awards = (0..<grant).map { _ in XPAward(reason: .personalRecord, amount: ProgressionRules.personalRecordXP) }
+        var awards = (0..<grant).map { _ in XPAward(reason: .personalRecord, amount: ProgressionRules.personalRecordXP) }
+        // A PR multiplier that covered this workout pays now, on the PR awards only.
+        // (Only multipliers apply here, and they do not look at the start time.)
+        for id in progress.modifierIDsByWorkout?[workoutID] ?? [] {
+            guard let modifier = modifierResolver(id),
+                  case .multiplier(.personalRecord, _) = modifier.rule else { continue }
+            let bonus = modifier.bonus(baseAwards: awards, workoutStart: ScheduledEventService.now())
+
+            if bonus > 0 { awards.append(XPAward(reason: .modifier, label: modifier.title, amount: bonus)) }
+        }
         apply(xp: awards.reduce(0) { $0 + $1.amount })
 
         var summary: WorkoutRewardSummary
@@ -186,15 +233,19 @@ final class ProgressionService {
     }
 
     /// Replay history so an existing user (or the sample-data loader) gets a believable profile.
+    /// Finished seasons are kept: a rebuild must never erase "I was there".
     func rebuild(from sessions: [WorkoutSession], events: LiveEventProviding) {
         let joinDate = sessions.map(\.startedAt).min() ?? Date()
         progress = PlayerProgress(displayName: progress.displayName, joinDate: joinDate, seasonID: season.id,
-                                  equippedCosmetics: progress.equippedCosmetics)
+                                  equippedCosmetics: progress.equippedCosmetics,
+                                  seasonHistory: progress.seasonHistory,
+                                  pendingSeasonRecapID: progress.pendingSeasonRecapID)
         var bestByExercise: [String: Double] = [:]
         for session in sessions.sorted(by: { $0.startedAt < $1.startedAt }) {
             guard let endedAt = session.endedAt else { continue }
             let overlapping = events.events(overlapping: session.startedAt, end: endedAt)
-            rewardWorkoutCompletion(session: session, events: overlapping, now: endedAt)
+            let modifiers = events.modifiers(overlapping: session.startedAt, end: endedAt)
+            rewardWorkoutCompletion(session: session, events: overlapping, modifiers: modifiers, now: endedAt)
             if let log = session.structuredLog {
                 var newPRs = 0
                 for exercise in log.exercises {
@@ -223,14 +274,18 @@ final class ProgressionService {
     }
 
     private func recomputeWeekStreak(now: Date) {
-        let weeks = Set(progress.workoutDates.map { calendar.weekKey(for: $0) })
-        guard !weeks.isEmpty else {
-            progress.currentWeekStreak = 0
-            return
-        }
+        let streak = Self.weekStreak(workoutDates: progress.workoutDates, now: now, calendar: calendar)
+        progress.currentWeekStreak = streak
+        progress.longestWeekStreak = max(progress.longestWeekStreak, streak)
+    }
+
+    /// Consecutive ISO weeks with a rewarded workout, ending at `now`'s week (or last week when
+    /// the current one is still empty). Pure, so Profile can read it live.
+    static func weekStreak(workoutDates: [Date], now: Date, calendar: Calendar = .ruxpWeek) -> Int {
+        let weeks = Set(workoutDates.map { calendar.weekKey(for: $0) })
+        guard !weeks.isEmpty else { return 0 }
         var streak = 0
         var cursor = calendar.startOfWeek(for: now)
-        // The current week counts if it has a workout; otherwise start from last week.
         if !weeks.contains(calendar.weekKey(for: cursor)) {
             cursor = calendar.date(byAdding: .day, value: -7, to: cursor) ?? cursor
         }
@@ -239,33 +294,52 @@ final class ProgressionService {
             guard let previous = calendar.date(byAdding: .day, value: -7, to: cursor) else { break }
             cursor = previous
         }
-        progress.currentWeekStreak = streak
-        progress.longestWeekStreak = max(progress.longestWeekStreak, streak)
+        return streak
     }
 
-    private func rolloverSeasonIfNeeded() {
-        guard progress.seasonID != season.id else { return }
-        if progress.seasonID == SeasonCatalog.legacyLaunchID, season.id == SeasonCatalog.earlyAdopters.id {
-            // Builds 1–3 called the launch window S01. Same window, new code:
-            // rename in place, keep XP, remap equipped reward IDs.
-            progress.seasonID = season.id
+    /// Files written by this build and later carry this. A nil marks builds 1–4.
+    private static let schemaVersion = 2
+
+    /// First launch inside a new season: close the old one into a `SeasonRecord` (the recap
+    /// shows it once), then start fresh. Season XP and level begin again; lifetime totals,
+    /// streaks, and equipped cosmetics survive. A player who never trained in the old season
+    /// gets no record and no recap: an empty ceremony would be an inflated one.
+    private func rolloverSeasonIfNeeded(now: Date = ScheduledEventService.now()) {
+        if progress.seasonID == SeasonCatalog.legacyLaunchID, progress.schemaVersion == nil {
+            // Builds 1–3 called the launch window S01. Same window, new code: rename in place,
+            // keep XP, remap equipped reward IDs. Only a file without a schema version can be
+            // legacy; after Dec 1 a real S01 file carries one and must not be renamed.
+            progress.seasonID = SeasonCatalog.earlyAdopters.id
             progress.equippedCosmetics = progress.equippedCosmetics?.mapValues { id in
                 id.hasPrefix("S01-") ? "S00-" + id.dropFirst(4) : id
             }
-            save()
+        }
+        guard progress.seasonID != season.id else {
+            if progress.schemaVersion == nil { save() }
             return
+        }
+        if let closed = SeasonCatalog.season(id: progress.seasonID), progress.seasonXP > 0 {
+            let record = SeasonRecord.closing(progress, season: closed, closedAt: now)
+            var history = (progress.seasonHistory ?? []).filter { $0.seasonID != closed.id }
+            history.append(record)
+            progress.seasonHistory = history
+            progress.pendingSeasonRecapID = closed.id
+            Self.logger.info("Closed \(closed.id) at level \(record.finalLevel), \(record.seasonWorkoutCount) workouts")
         }
         progress.seasonID = season.id
         progress.seasonXP = 0
         progress.seasonWorkoutCount = 0
+        progress.seasonPRCount = nil
         save()
     }
 
     private func save() {
+        progress.schemaVersion = Self.schemaVersion
         do {
             let encoder = JSONEncoder()
             encoder.dateEncodingStrategy = .iso8601
             let data = try encoder.encode(progress)
+
             try data.write(to: fileURL, options: .atomic)
         } catch {
             Self.logger.error("Failed to save progression: \(error)")

@@ -57,6 +57,21 @@ struct Moment: Codable, Identifiable {
     var source: MomentSource
     var tags: [String]
     var confidence: Double
+    /// Audio is stored on disk but Whisper hasn't succeeded yet; retried when online.
+    /// nil once transcribed or permanently failed. Optional so older session files still decode.
+    var transcriptionPending: Bool? = nil
+
+    /// Shown while a moment waits for a transcription retry. Not bracketed: it reads as status, not an error.
+    static let pendingTranscript = "Not transcribed yet. Retries when online."
+    /// Whisper returned no text: the recording was silent. Never retried.
+    static let noSpeechTranscript = "[No speech detected]"
+    /// Permanent failure with nothing left to retry from.
+    static let failedTranscript = "[Transcription failed]"
+
+    /// True when the transcript is real speech, not a placeholder or a pending marker.
+    var hasUsableTranscript: Bool {
+        transcriptionPending != true && !transcript.isEmpty && !transcript.hasPrefix("[") && transcript != Self.pendingTranscript
+    }
 
     init(
         id: UUID = UUID(),
@@ -64,7 +79,8 @@ struct Moment: Codable, Identifiable {
         transcript: String = "",
         source: MomentSource = .watch,
         tags: [String] = [],
-        confidence: Double = 1.0
+        confidence: Double = 1.0,
+        transcriptionPending: Bool? = nil
     ) {
         self.id = id
         self.timestamp = timestamp
@@ -72,6 +88,7 @@ struct Moment: Codable, Identifiable {
         self.source = source
         self.tags = tags
         self.confidence = confidence
+        self.transcriptionPending = transcriptionPending
     }
 }
 
@@ -668,6 +685,9 @@ enum WorkoutCommand: String, Codable {
     case momentTranscribed
     /// Phone → watch: XP earned for a finished workout. May be sent more than once (PR update).
     case workoutReward
+    /// Watch → phone: the HealthKit workout the watch closed after a phone-ended stop
+    /// (UUID, average heart rate, active calories). The watch owns Health whenever it joined.
+    case workoutHealth
 }
 
 struct WorkoutMessage: Codable {

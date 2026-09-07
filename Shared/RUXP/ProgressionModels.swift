@@ -7,6 +7,8 @@ enum XPReason: String, Codable, CaseIterable {
     case eventBonus
     case weeklyBonus
     case personalRecord
+    /// A Live Ops rule in effect for this workout (PR WEEKEND, S00 FINALE). Label is the rule's title.
+    case modifier
 
     var title: String {
         switch self {
@@ -14,6 +16,7 @@ enum XPReason: String, Codable, CaseIterable {
         case .eventBonus: return "EVENT BONUS"
         case .weeklyBonus: return "WEEKLY BONUS"
         case .personalRecord: return "NEW PR"
+        case .modifier: return "LIVE MODIFIER"
         }
     }
 }
@@ -24,12 +27,16 @@ struct XPAward: Codable, Identifiable, Equatable {
     /// Display label. For event bonuses this is the event title (e.g. "FRIDAY NIGHT").
     var label: String
     var amount: Int
+    /// For event bonuses: the `LiveEvent.id` occurrence this award was paid for.
+    /// Optional so summaries encoded before this field existed still decode.
+    var eventID: String?
 
-    init(id: UUID = UUID(), reason: XPReason, label: String? = nil, amount: Int) {
+    init(id: UUID = UUID(), reason: XPReason, label: String? = nil, amount: Int, eventID: String? = nil) {
         self.id = id
         self.reason = reason
         self.label = label ?? reason.title
         self.amount = amount
+        self.eventID = eventID
     }
 }
 
@@ -48,6 +55,8 @@ struct WorkoutRewardSummary: Codable, Equatable {
     var didLevelUp: Bool { levelAfter > levelBefore }
     var prCount: Int { awards.filter { $0.reason == .personalRecord }.count }
     var isEmpty: Bool { awards.isEmpty }
+    /// Event bonuses paid with this workout (Live Session completions).
+    var eventAwards: [XPAward] { awards.filter { $0.reason == .eventBonus } }
 }
 
 // MARK: - Player state
@@ -75,6 +84,35 @@ struct PlayerProgress: Codable, Equatable {
     /// Season Pass cosmetics by kind ("title", "nameColor", "badge") → reward ID ("S00-T05").
     /// Optional so progress files written before this field existed still decode.
     var equippedCosmetics: [String: String]? = nil
+
+    // Every field below is Optional with a nil default for the same reason: `PlayerProgress`
+    // uses synthesized Decodable, so a non-optional addition would blank every existing profile.
+
+    /// Finished seasons, oldest first. Written once per rollover by `ProgressionService`.
+    var seasonHistory: [SeasonRecord]? = nil
+    /// PR bonuses counted inside the current season (zeroed at rollover; feeds the recap).
+    var seasonPRCount: Int? = nil
+    /// Season whose recap has not been shown yet ("S00"). Cleared by `acknowledgeSeasonRecap()`.
+    var pendingSeasonRecapID: String? = nil
+    /// Live Ops rules that applied to a rewarded workout, so the later PR bonus can honor a PR multiplier.
+    var modifierIDsByWorkout: [UUID: [String]]? = nil
+    /// Written by every save from build 5 on. Nil marks a file from builds 1–4 (see the legacy season rename).
+    var schemaVersion: Int? = nil
+
+    /// Live Sessions completed. An event bonus is paid once per occurrence and only for a
+    /// qualifying workout, so the ledger size is the completion count.
+    var liveSessionsCompleted: Int { eventsJoined.count }
+
+    func seasonRecord(for seasonID: String) -> SeasonRecord? {
+        seasonHistory?.first { $0.seasonID == seasonID }
+    }
+
+    /// "SEP 2026": when this player first showed up.
+    var sinceLabel: String {
+        let f = DateFormatter()
+        f.dateFormat = "MMM yyyy"
+        return f.string(from: joinDate).uppercased()
+    }
 
     var levelProgress: LevelCurve.Progress { LevelCurve.progress(seasonXP: seasonXP) }
     var level: Int { levelProgress.level }
@@ -130,7 +168,48 @@ struct ProgressionContext: Equatable {
     }
 }
 
+// MARK: - Season record
+
+/// Final state of a finished season, captured at rollover. This is what "I was there" means:
+/// the level, the attendance, and the ladder position are frozen here and never recomputed.
+struct SeasonRecord: Codable, Equatable, Identifiable {
+    var id: String { seasonID }
+    let seasonID: String
+    let finalLevel: Int
+    let finalSeasonXP: Int
+    let seasonWorkoutCount: Int
+    let goalWorkouts: Int
+    let liveSessionsCompleted: Int
+    let fridayNightsAttended: Int
+    let sundayResetsAttended: Int
+    let prCount: Int
+    let weeklyBonusWeeks: Int
+    let closedAt: Date
+
+    var reachedGoal: Bool { seasonWorkoutCount >= goalWorkouts }
+
+    /// The record for `season` as it stands in `progress` right now (pure; nothing is mutated).
+    static func closing(_ progress: PlayerProgress, season: Season, closedAt: Date, calendar: Calendar = .ruxpWeek) -> SeasonRecord {
+        let inSeason = progress.eventsJoined.filter { season.isActive(at: $0.value) }
+        let weeks = Set(progress.workoutDates.filter { season.isActive(at: $0) }.map { calendar.weekKey(for: $0) })
+        return SeasonRecord(
+            seasonID: season.id,
+            finalLevel: progress.level,
+            finalSeasonXP: progress.seasonXP,
+            seasonWorkoutCount: progress.seasonWorkoutCount,
+            goalWorkouts: season.goalWorkouts,
+            liveSessionsCompleted: inSeason.count,
+            fridayNightsAttended: inSeason.keys.filter { $0.hasPrefix(LiveEventKind.fridayNight.rawValue + "-") }.count,
+            sundayResetsAttended: inSeason.keys.filter { $0.hasPrefix(LiveEventKind.sundayReset.rawValue + "-") }.count,
+            prCount: progress.seasonPRCount ?? 0,
+            weeklyBonusWeeks: progress.weeklyBonusWeeks.intersection(weeks).count,
+            closedAt: closedAt
+        )
+    }
+}
+
 // MARK: - Calendar helpers
+
 
 extension Calendar {
     /// ISO-8601 weeks (Monday start) in the user's local time zone.

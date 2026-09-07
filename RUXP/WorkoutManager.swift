@@ -23,6 +23,10 @@ final class WorkoutManager {
     var gameCenter: GameCenterService? {
         didSet { if activeSession != nil { startPresenceHeartbeat() } }
     }
+    /// RUXP Live participation. Set after init; nil in previews.
+    var liveSessions: LiveSessionService?
+    /// Fired once a workout has been rewarded and cleared (used to close the Training Room).
+    var onWorkoutEnded: (() -> Void)?
     private var heartbeatTask: Task<Void, Never>?
     private static let heartbeatInterval: Duration = .seconds(5 * 60)
     /// The workout ID currently being finalized (AI processing). Publicly readable so the UI can present a completion sheet.
@@ -124,6 +128,7 @@ final class WorkoutManager {
         // Start HealthKit tracking (on phone, just records start time for manual save)
         Task { await healthKit.startWorkout() }
         startPresenceHeartbeat()
+        liveSessions?.noteWorkoutStarted()
 
         Self.logger.info("Started workout \(session.id)")
     }
@@ -227,9 +232,14 @@ final class WorkoutManager {
 
     /// Awards completion XP synchronously (offline, no AI). PR XP arrives later from the processor.
     private func rewardCompletion(for session: WorkoutSession) {
-        let overlapping = events.events(overlapping: session.startedAt, end: session.endedAt ?? ScheduledEventService.now())
-        let reward = progression.rewardWorkoutCompletion(session: session, events: overlapping)
+        let end = session.endedAt ?? ScheduledEventService.now()
+        let overlapping = events.events(overlapping: session.startedAt, end: end)
+        let modifiers = events.modifiers(overlapping: session.startedAt, end: end)
+        let reward = progression.rewardWorkoutCompletion(session: session, events: overlapping, modifiers: modifiers)
+
         recordCompletionPresence(reward: reward, events: overlapping)
+        liveSessions?.recordCompletion(session: session, reward: reward, events: overlapping)
+        onWorkoutEnded?()
     }
 
     // MARK: - Presence
@@ -280,10 +290,15 @@ final class WorkoutManager {
 
     private func finalizeEnd(workoutID: UUID) {
         guard endingSessionID == workoutID else { return }
-        let finalSession = workoutStore.loadSession(id: workoutID)
-        endingSessionID = nil
-        if let finalSession {
-            Task { await processor?.processWorkout(finalSession) }
+        Task {
+            // A moment that failed to transcribe seconds ago gets one more chance to make the log.
+            await retryPendingTranscriptions()
+            guard endingSessionID == workoutID else { return }
+            let finalSession = workoutStore.loadSession(id: workoutID)
+            endingSessionID = nil
+            if let finalSession {
+                await processor?.processWorkout(finalSession)
+            }
         }
     }
 
@@ -322,40 +337,171 @@ final class WorkoutManager {
         let storedURL = workoutStore.storeAudioFile(from: audioURL, momentID: mID, workoutID: workoutID)
         // Clean up temp recording file (audio is now safely in persistent storage)
         if source == .phone { try? FileManager.default.removeItem(at: audioURL) }
-        // Transcribe from the persistent copy if available, otherwise original
-        let transcribeURL = storedURL ?? audioURL
-        let result = await transcription.transcribe(audioURL: transcribeURL)
+        defer { try? FileManager.default.removeItem(at: audioURL) }
+        // Only a stored copy can be retried later; without one this is a single shot.
+        let canRetry = storedURL != nil
 
-        var moment = Moment(id: mID, timestamp: Date(), transcript: "", source: source)
-
-        switch result {
-        case .success(let text):
-            moment.transcript = text
-        case .failure(let error):
-            if error.isAPIKeyProblem {
-                moment.transcript = "[Not transcribed — add an OpenAI API key in Settings]"
-            } else {
-                moment.transcript = "[Transcription failed]"
-            }
-            moment.confidence = 0
-            lastError = error.localizedDescription
-        }
-
+        // The moment exists the instant the audio lands. Whisper fills in the text afterwards,
+        // so a network blip never costs the recording, only the wait.
+        let moment = Moment(id: mID, timestamp: Date(), transcript: Moment.pendingTranscript,
+                            source: source, transcriptionPending: canRetry)
         guard var session = workoutStore.loadSession(id: workoutID) else { return }
         session.moments.append(moment)
         workoutStore.saveSession(session)
         if activeSession?.id == workoutID { activeSession = session }
-
-        // Sync moment count to watch
         connectivity.updateMomentCount(session.moments.count, workoutID: workoutID)
 
-        if source == .watch, case .success(let text) = result {
-            connectivity.sendTranscriptionToWatch(text, momentID: mID, workoutID: workoutID)
-        } else if source == .watch, case .failure = result {
-            connectivity.sendErrorToWatch(lastError ?? "Transcription failed", workoutID: workoutID)
+        // Plainly offline: don't sit on a 60 s timeout. The retry path picks it up when the network returns.
+        if canRetry, processor?.isNetworkAvailable == false {
+            if source == .watch { connectivity.sendErrorToWatch(Self.savedForRetryMessage, workoutID: workoutID) }
+            return
         }
 
-        try? FileManager.default.removeItem(at: audioURL)
+        inFlightMomentIDs.insert(mID)
+        let outcome = await transcribeWithRetry(url: storedURL ?? audioURL)
+        inFlightMomentIDs.remove(mID)
+        apply(outcome, to: mID, in: workoutID, source: source, canRetry: canRetry)
+
+        // We are clearly online: earlier moments still waiting get their turn now.
+        if case .transcribed = outcome { await retryPendingTranscriptions() }
+    }
+
+    // MARK: - Transcription retry
+
+    /// What the watch shows when a moment is stored but not yet transcribed. Honest, not alarming.
+    static let savedForRetryMessage = "Saved. Transcribes when iPhone is online."
+    private static let transcriptionAttempts = 2
+    private var isRetryingTranscriptions = false
+    /// Moments mid-transcription in `processAudioMoment`; the retry sweep leaves these alone.
+    private var inFlightMomentIDs: Set<UUID> = []
+
+    private enum TranscriptionOutcome {
+        case transcribed(String)
+        /// Worth trying again later (offline, timeout, rate limit, server error). The moment stays pending.
+        case transient(Error)
+        /// Nothing a retry can fix. Carries the placeholder text to store.
+        case permanent(placeholder: String, Error)
+    }
+
+    /// One Whisper call with a single short retry for transient failures. The offline sweep handles the rest,
+    /// so this stays short: a flaky gym connection must not stall the feed for minutes.
+    private func transcribeWithRetry(url: URL) async -> TranscriptionOutcome {
+        var lastFailure: Error = AIError.networkUnavailable
+        for attempt in 0..<Self.transcriptionAttempts {
+            if attempt > 0 {
+                var delay: Double = 2
+                if case .rateLimited(let retryAfter)? = lastFailure as? AIError { delay = min(retryAfter, 10) }
+                try? await Task.sleep(for: .seconds(delay))
+            }
+            switch await transcription.transcribe(audioURL: url) {
+            case .success(let text):
+                return .transcribed(text)
+            case .failure(let error):
+                lastFailure = error
+                if error.isAPIKeyProblem {
+                    return .permanent(placeholder: "[Not transcribed — add an OpenAI API key in Settings]", error)
+                }
+                if case .emptyResult? = error as? AIError {
+                    return .permanent(placeholder: Moment.noSpeechTranscript, error)
+                }
+                if !error.isTransientAIFailure {
+                    return .permanent(placeholder: Moment.failedTranscript, error)
+                }
+            }
+        }
+        return .transient(lastFailure)
+    }
+
+    /// Writes an outcome into the stored moment and tells the watch. Reloads the session first so a
+    /// moment appended while Whisper was running is never clobbered.
+    private func apply(_ outcome: TranscriptionOutcome, to momentID: UUID, in workoutID: UUID, source: MomentSource, canRetry: Bool) {
+        switch outcome {
+        case .transcribed(let text):
+            updateMoment(momentID, in: workoutID) { moment in
+                moment.transcript = text
+                moment.transcriptionPending = nil
+                moment.confidence = 1.0
+            }
+            if source == .watch { connectivity.sendTranscriptionToWatch(text, momentID: momentID, workoutID: workoutID) }
+        case .transient(let error) where canRetry:
+            lastError = error.localizedDescription
+            Self.logger.info("Moment \(momentID) kept pending for retry: \(error.localizedDescription)")
+            if source == .watch { connectivity.sendErrorToWatch(Self.savedForRetryMessage, workoutID: workoutID) }
+        case .transient(let error):
+            lastError = error.localizedDescription
+            updateMoment(momentID, in: workoutID) { moment in
+                moment.transcript = Moment.failedTranscript
+                moment.transcriptionPending = nil
+                moment.confidence = 0
+            }
+            if source == .watch { connectivity.sendErrorToWatch(error.localizedDescription, workoutID: workoutID) }
+        case .permanent(let placeholder, let error):
+            lastError = error.localizedDescription
+            updateMoment(momentID, in: workoutID) { moment in
+                moment.transcript = placeholder
+                moment.transcriptionPending = nil
+                moment.confidence = 0
+            }
+            if source == .watch { connectivity.sendErrorToWatch(error.localizedDescription, workoutID: workoutID) }
+        }
+    }
+
+    private func updateMoment(_ momentID: UUID, in workoutID: UUID, _ change: (inout Moment) -> Void) {
+        guard var session = workoutStore.loadSession(id: workoutID),
+              let index = session.moments.firstIndex(where: { $0.id == momentID }) else { return }
+        change(&session.moments[index])
+        workoutStore.saveSession(session)
+        if activeSession?.id == workoutID { activeSession = session }
+    }
+
+    /// Transcribes every moment still marked pending from its stored audio. Runs on foreground, on the
+    /// offline → online edge, after a successful in-workout transcription, and right before a workout is
+    /// parsed. A finished workout that recovers speech is parsed again so its log includes it.
+    func retryPendingTranscriptions() async {
+        guard !isRetryingTranscriptions, processor?.isNetworkAvailable != false, APIKeyProvider.hasKey else { return }
+        isRetryingTranscriptions = true
+        defer { isRetryingTranscriptions = false }
+
+        for entry in workoutStore.index {
+            guard let session = workoutStore.loadSession(id: entry.id) else { continue }
+            let pending = session.moments.filter { $0.transcriptionPending == true && !inFlightMomentIDs.contains($0.id) }
+            guard !pending.isEmpty else { continue }
+            var recovered = false
+
+            for moment in pending {
+                let url = workoutStore.audioFileURL(momentID: moment.id, workoutID: session.id)
+                guard FileManager.default.fileExists(atPath: url.path) else {
+                    // The audio is gone; stop scanning this one forever.
+                    updateMoment(moment.id, in: session.id) { m in
+                        m.transcript = Moment.failedTranscript
+                        m.transcriptionPending = nil
+                        m.confidence = 0
+                    }
+                    continue
+                }
+                let outcome = await transcribeWithRetry(url: url)
+                switch outcome {
+                case .transcribed:
+                    recovered = true
+                    let isLive = activeSession?.id == session.id || endingSessionID == session.id
+                    apply(outcome, to: moment.id, in: session.id, source: isLive ? moment.source : .phone, canRetry: true)
+                case .transient:
+                    // Still not reachable. Leave the rest for the next network edge or foreground.
+                    Self.logger.info("Transcription retry paused; network still unreliable")
+                    return
+                case .permanent(_, let error):
+                    apply(outcome, to: moment.id, in: session.id, source: .phone, canRetry: true)
+                    if error.isAPIKeyProblem { return }
+                }
+            }
+
+            // A workout that already ended was parsed without this speech (or not at all). Parse it again.
+            // finalizeEnd handles the one currently ending; PR XP is idempotent per workout.
+            if recovered, session.endedAt != nil, session.id != activeSession?.id, session.id != endingSessionID,
+               let refreshed = workoutStore.loadSession(id: session.id) {
+                await processor?.processWorkout(refreshed)
+            }
+        }
     }
 
     // MARK: - Connectivity Callbacks
@@ -376,6 +522,7 @@ final class WorkoutManager {
                     self.workoutStore.saveSession(session)
                     self.connectivity.updateWorkoutContext(workoutID: message.workoutID, isActive: true, startedAt: message.timestamp)
                     self.startPresenceHeartbeat()
+                    self.liveSessions?.noteWorkoutStarted(at: message.timestamp)
                 }
             case .stop:
                 if self.activeSession?.id == message.workoutID {
@@ -393,6 +540,7 @@ final class WorkoutManager {
                 self.activeSession = session
                 self.workoutStore.saveSession(session)
                 self.startPresenceHeartbeat()
+                self.liveSessions?.noteWorkoutStarted(at: session.startedAt)
             } else if !isActive, let activeID = self.activeSession?.id, activeID == workoutID {
                 self.handleRemoteStop(workoutID: activeID)
             }

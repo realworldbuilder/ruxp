@@ -6,7 +6,13 @@ import Foundation
 /// App Store Connect configuration (all leaderboards Integer, High-to-Low, Best Score):
 ///
 /// Set "Rankings" (Classic):
-///   lifetime_xp, season_xp_s00, season_xp_s01, … (one per season), week_streak
+///   lifetime_xp, season_xp_s00, season_xp_s01, … (one per season), week_streak, live_sessions
+///
+/// Achievements (standard, one localization each; create before the client reports them):
+///   first_workout, first_pr, four_workout_week, four_week_streak, friday_night,
+///   season_goal_* (one per season), level_5 / level_10 / level_25 / level_50,
+///   live_first_session  "SUNDAY RESET — Complete your first RUXP Live Session."
+///   live_five_sessions  "SHOWED UP — Complete 5 Live Sessions."
 ///
 /// Set "Live" (Recurring; the score is always 1, only the occurrence's player count matters).
 /// Windows are in US Eastern and padded so every US time zone's local event falls inside:
@@ -20,12 +26,33 @@ enum GameCenterCatalog {
 
     static let lifetimeXP = "lifetime_xp"
     static let weekStreak = "week_streak"
+    /// Live Sessions completed (consistency, not tonnage).
+    static let liveSessions = "live_sessions"
+
+    static let liveFirstSession = "live_first_session"
+    static let liveFiveSessions = "live_five_sessions"
+    static let liveSessionsGoal = 5
 
     static func seasonXP(_ season: Season) -> String { "season_xp_\(season.id.lowercased())" }
     static func seasonGoal(_ season: Season) -> String { "season_goal_\(season.id.lowercased())" }
 
     static func rankingBoards(season: Season) -> [String] {
-        [lifetimeXP, seasonXP(season), weekStreak]
+        [lifetimeXP, seasonXP(season), weekStreak, liveSessions]
+    }
+
+    // MARK: Live rooms
+
+    /// `GKMatchRequest.playerGroup` for a Live Session occurrence so only players in the same
+    /// event match together. FNV-1a, not `hashValue` (which is randomly seeded per process).
+    /// The version suffix keeps builds with a different reaction protocol apart.
+    static func roomPlayerGroup(for event: LiveEvent, protocolVersion: Int = 1) -> Int {
+        var hash: UInt64 = 0xcbf29ce484222325
+        for byte in "\(event.id)|v\(protocolVersion)".utf8 {
+            hash ^= UInt64(byte)
+            hash = hash &* 0x100000001b3
+        }
+        // Keep it well inside the range GameKit accepts (non-zero, 32-bit safe).
+        return Int(max(1, hash & 0x7fffffff))
     }
 
     // MARK: Live presence
@@ -65,7 +92,8 @@ enum GameCenterCatalog {
         [
             ScoreSubmission(leaderboardID: lifetimeXP, value: progress.lifetimeXP),
             ScoreSubmission(leaderboardID: seasonXP(season), value: progress.seasonXP),
-            ScoreSubmission(leaderboardID: weekStreak, value: progress.longestWeekStreak)
+            ScoreSubmission(leaderboardID: weekStreak, value: progress.longestWeekStreak),
+            ScoreSubmission(leaderboardID: liveSessions, value: progress.liveSessionsCompleted)
         ].filter { $0.value > 0 }
     }
 
@@ -91,6 +119,8 @@ enum GameCenterCatalog {
             AchievementReport(id: "four_workout_week", percent: progress.weeklyBonusWeeks.isEmpty ? 0 : 100),
             AchievementReport(id: "four_week_streak", percent: percent(progress.longestWeekStreak, of: 4)),
             AchievementReport(id: "friday_night", percent: joinedFridayNight ? 100 : 0),
+            AchievementReport(id: liveFirstSession, percent: progress.liveSessionsCompleted >= 1 ? 100 : 0),
+            AchievementReport(id: liveFiveSessions, percent: percent(progress.liveSessionsCompleted, of: liveSessionsGoal)),
             AchievementReport(id: seasonGoal(season), percent: percent(progress.seasonWorkoutCount, of: season.goalWorkouts))
         ]
         for milestone in levelMilestones {

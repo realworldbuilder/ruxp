@@ -8,6 +8,10 @@ struct SettingsView: View {
     @Environment(\.liveEvents) private var events
     @Environment(GameCenterService.self) private var gameCenter
     @Environment(\.livePresence) private var presence
+    @Environment(LiveSessionService.self) private var liveSessions
+    @Environment(\.liveRoom) private var liveRoom
+    @Environment(LiveOpsService.self) private var liveOps
+    @Environment(WorldSnapshotService.self) private var world
 
     @AppStorage("weightUnit") private var weightUnit: String = WeightUnit.lbs.rawValue
     @AppStorage(GameCenterService.syncEnabledKey) private var gameCenterSync = true
@@ -33,6 +37,7 @@ struct SettingsView: View {
     @State private var sampleDataLoaded = false
     @State private var eventClock: EventClock = .now
     @State private var skipMinimumDuration = ProgressionRules.minimumWorkoutDuration == 0
+    @State private var seasonOverride = UserDefaults.standard.string(forKey: "ruxp.debugSeasonOverride") ?? ""
 
     private enum EventClock: String, CaseIterable, Identifiable {
         case now = "Now", fridayNight = "Friday 7 PM", sunday = "Sunday noon", tuesday = "Tuesday 10 AM"
@@ -256,6 +261,24 @@ struct SettingsView: View {
                             ProgressionRules.minimumWorkoutDuration = skipMinimumDuration ? 0 : 10 * 60
                         }
 
+                    LabeledContent("Season", value: progression.season.id)
+                    Picker("Season override", selection: $seasonOverride) {
+                        Text("Now").tag("")
+                        ForEach(SeasonCatalog.all) { Text($0.id).tag($0.id) }
+                    }
+                    .onChange(of: seasonOverride) {
+                        UserDefaults.standard.set(seasonOverride, forKey: "ruxp.debugSeasonOverride")
+                    }
+                    if seasonOverride != progression.season.id, !seasonOverride.isEmpty {
+                        Text("Relaunch to apply. Rolling forward closes the current season into a record and shows the recap; rolling back does not restore its XP.")
+                            .font(Theme.Fonts.ui(.caption))
+                            .foregroundStyle(Theme.warning)
+                    }
+                    if let record = progression.progress.seasonHistory?.last {
+                        LabeledContent("Last closed season", value: "\(record.seasonID) · LVL \(record.finalLevel)")
+                    }
+
+
                     LabeledContent("Game Center", value: gameCenter.statusLine)
                     LabeledContent("Last submission", value: gameCenter.lastSubmissionResult)
                     if let live = presence as? GameCenterLivePresence {
@@ -269,8 +292,25 @@ struct SettingsView: View {
                         Button("Refresh presence") { live.refreshNow() }
                     }
                     Button("Flush Game Center now") { gameCenter.flushNow() }
+                    if let liveRoom {
+                        LabeledContent("Training room", value: roomStateLabel(liveRoom.state))
+                        LabeledContent("Room peers", value: "\(liveRoom.members.count) now · \(liveRoom.peakPeerCount) peak")
+                    }
+                    LabeledContent("Live sessions joined", value: "\(liveSessions.participations.count)")
+
+                    LabeledContent("Live ops", value: liveOps.sourceLabel)
+                    LabeledContent("Rules active", value: "\(liveOps.activeModifiers().count) of \(liveOps.calendar.modifiers.count)")
+                    if let error = liveOps.lastError {
+                        Text(error).font(.caption).foregroundStyle(Theme.error)
+                    }
+                    Button("Refresh live ops") { liveOps.refresh(force: true) }
+                    LabeledContent("Bundled round trip", value: LiveOpsService.bundledRoundTripReport())
+
+                    LabeledContent("World snapshot", value: world.debugDescription)
+                    Button("Reset return ledger") { world.debugResetSnapshot() }
                 } header: {
                     Text("Developer")
+
                 } footer: {
                     Text("Debug builds only. The event clock pretends it is a different time so live events can be tested.")
                 }
@@ -291,6 +331,7 @@ struct SettingsView: View {
                 workoutManager.workoutStore.deleteAllData()
                 insightsStore.resetAll()
                 progression.resetAll()
+                liveSessions.resetAll()
                 gameCenter.clearLocalCache()
             }
             Button("Cancel", role: .cancel) {}
@@ -352,6 +393,19 @@ struct SettingsView: View {
             case .failure(let error):
                 keyTestResult = .invalid(error.localizedDescription)
             }
+        }
+    }
+
+    // MARK: - Live (Developer)
+
+    private func roomStateLabel(_ state: LiveRoomState) -> String {
+        switch state {
+        case .idle: return "idle"
+        case .unavailable(let why): return "unavailable: \(why)"
+        case .searching: return "searching"
+        case .connecting: return "connecting"
+        case .live: return "live"
+        case .failed(let why): return "failed: \(why)"
         }
     }
 

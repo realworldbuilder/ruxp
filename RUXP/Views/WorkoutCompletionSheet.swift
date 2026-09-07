@@ -6,6 +6,8 @@ struct WorkoutCompletionSheet: View {
     @Environment(WorkoutManager.self) private var workoutManager
     @Environment(WorkoutProcessor.self) private var processor
     @Environment(ProgressionService.self) private var progression
+    @Environment(LiveSessionService.self) private var liveSessions
+    @Environment(\.liveEvents) private var events
     @Environment(\.livePresence) private var presence
     @AppStorage("weightUnit") private var weightUnit: String = WeightUnit.lbs.rawValue
 
@@ -76,11 +78,25 @@ struct WorkoutCompletionSheet: View {
 
     // MARK: - Header
 
+    /// The event bonus paid with this workout, if any (a completed Live Session).
+    private var eventAward: XPAward? { reward?.eventAwards.first }
+
     private var completionHeader: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Workout complete")
+            if let eventAward {
+                HStack(spacing: 8) {
+                    LiveDot(label: nil, size: 7)
+                    Text("RUXP LIVE · \(eventAward.label)").eyebrow().foregroundStyle(Theme.live)
+                }
+            }
+            Text(eventAward.map { "\($0.label.capitalized) complete" } ?? "Workout complete")
                 .font(.system(size: 28, weight: .bold))
                 .foregroundStyle(Theme.textPrimary)
+            if eventAward != nil {
+                Text("You showed up.")
+                    .font(Theme.Fonts.title(17))
+                    .foregroundStyle(Theme.accent)
+            }
             HStack(spacing: 10) {
                 if let duration = session?.duration {
                     Text(formatDuration(duration)).font(Theme.Fonts.mono(12))
@@ -180,7 +196,9 @@ struct WorkoutCompletionSheet: View {
         case .eventBonus: return "bolt.fill"
         case .weeklyBonus: return "calendar"
         case .personalRecord: return "trophy.fill"
+        case .modifier: return "sparkles"
         }
+
     }
 
     private func totalBlock(_ reward: WorkoutRewardSummary) -> some View {
@@ -239,11 +257,11 @@ struct WorkoutCompletionSheet: View {
                 }
             }
 
-            if live.isAvailable {
+            if let line = togetherLine(reward: reward, live: live) {
                 Divider().overlay(Theme.divider)
                 HStack(spacing: 8) {
                     LiveDot(label: nil, size: 7)
-                    Text(live.workoutsToday <= 1 ? "You're the first to train today." : live.trainedTodayLine)
+                    Text(line)
                         .font(Theme.Fonts.body)
                         .foregroundStyle(Theme.textSecondary)
                 }
@@ -255,6 +273,23 @@ struct WorkoutCompletionSheet: View {
             RoundedRectangle(cornerRadius: Theme.radiusLarge, style: .continuous)
                 .stroke(Theme.borderNeon, lineWidth: 1)
         )
+    }
+
+    /// "You were not training alone." Room peers first (people who were actually connected),
+    /// then the event's real join count, then today's count. Nothing is invented.
+    private func togetherLine(reward: WorkoutRewardSummary, live: LiveSnapshot) -> String? {
+        if let award = eventAward {
+            let participation = liveSessions.participations.first { $0.associatedWorkoutID == reward.workoutID }
+            if let peers = participation?.roomPeerCount, peers > 0 {
+                return peers == 1 ? "1 player trained with you in your room." : "\(peers) players trained with you in your room."
+            }
+            if let event = events.activeEvent(at: ScheduledEventService.now()), event.id == award.eventID {
+                let joined = liveSessions.participantCount(for: event)
+                if joined > 1 { return "\(joined.grouped) players joined \(event.title.capitalized) with you." }
+            }
+        }
+        guard live.isAvailable else { return nil }
+        return live.workoutsToday <= 1 ? "You're the first to train today." : live.trainedTodayLine
     }
 
     // MARK: - Reveal choreography
@@ -467,7 +502,7 @@ struct WorkoutCompletionSheet: View {
         guard let session else { return }
         let renderer = ImageRenderer(content:
             ShareableWorkoutCard(session: session, weightUnit: weightUnit, reward: reward,
-                                 title: SeasonPassCatalog.loadout(for: progression.progress, season: progression.season).title)
+                                 loadout: SeasonPassCatalog.loadout(for: progression.progress, season: progression.season))
                 .frame(width: 390)
         )
         renderer.scale = 3.0
@@ -512,7 +547,7 @@ private struct ShareableWorkoutCard: View {
     let session: WorkoutSession
     let weightUnit: String
     let reward: WorkoutRewardSummary?
-    let title: String?
+    let loadout: SeasonPassLoadout
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -528,9 +563,13 @@ private struct ShareableWorkoutCard: View {
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
                     Text("+\(reward.totalXP.grouped) XP").font(Theme.Fonts.number(30)).foregroundStyle(Theme.xp)
                     Text("LVL \(reward.levelAfter)").font(Theme.Fonts.title(16)).foregroundStyle(.white.opacity(0.7))
-                    if let title {
-                        Text(title).font(Theme.Fonts.mono(12)).foregroundStyle(Theme.violet)
+                    if let badge = loadout.badge {
+                        Image(systemName: badge).font(.system(size: 12, weight: .bold)).foregroundStyle(loadout.nameColor ?? Theme.violet)
                     }
+                    if let title = loadout.title {
+                        Text(title).font(Theme.Fonts.mono(12)).foregroundStyle(loadout.nameColor ?? Theme.violet)
+                    }
+
                 }
             }
 

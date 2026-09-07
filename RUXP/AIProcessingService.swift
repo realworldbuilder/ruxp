@@ -202,4 +202,21 @@ enum AIError: LocalizedError {
 extension Error {
     /// True when this is an AIError that only a valid API key can fix.
     var isAPIKeyProblem: Bool { (self as? AIError)?.isKeyProblem == true }
+
+    /// True when trying again later has a real chance: offline, timeout, rate limit, server error.
+    /// False for key problems, silence, client-side 4xx, and parse failures.
+    var isTransientAIFailure: Bool {
+        if let urlError = self as? URLError {
+            return urlError.code != .cancelled
+        }
+        guard let aiError = self as? AIError else { return false }
+        switch aiError {
+        case .rateLimited, .networkUnavailable, .invalidResponse:
+            return true
+        case .apiError(let statusCode, _):
+            return (500...599).contains(statusCode)
+        case .noAPIKey, .invalidAPIKey, .emptyResult, .parsingFailed:
+            return false
+        }
+    }
 }

@@ -74,19 +74,36 @@ Users earn XP for healthy, useful behavior. Grinding is not rewarded.
 | Action | XP | Rule |
 |---|---|---|
 | Complete a workout | +500 | 10+ minutes, max 2 rewarded per day |
-| Join a live event | +250 / +500 | Workout overlaps the event window |
+| Join a live event | +500 | Workout overlaps the event window (FRIDAY NIGHT, SUNDAY RESET) |
+| Live Ops rule | varies | A dated rule in effect (PR WEEKEND ×2 PR XP, EARLY SHIFT +250 before 8 AM, S00 FINALE +250). See `docs/live.json` |
 | Weekly consistency | +500 | 4th workout of the ISO week |
 | Personal record | +250 | Max 2 per workout, only after AI parses your notes |
 
 Level 1–100 is derived from **season XP**; **lifetime XP** is a career total. Season 00 is EARLY ADOPTERS (Sep 1 – Nov 30, 2026): 32 workouts, finish the season. Season 01, PRESS START, starts Dec 1. `SeasonCatalog.current` picks the season active today. Everything lives in `ProgressionService`.
 
+When a season closes, the first launch inside the next one shows a recap (final level, workouts, live sessions, Friday Nights, PRs, pass tier, the cosmetics you keep) and freezes it as a `SeasonRecord` on the profile. Season Pass cosmetics unlocked in a finished season stay equippable forever; Profile lists every season played.
+
+## The world moves while you're gone
+
+Home carries a one-line clock (`MON 10:42 AM · FRIDAY NIGHT IN 4D 6H · S00 ENDS IN 84D`) and, after an absence of six hours or more, a **WHILE YOU WERE GONE** card: which rituals ran (with the real join count if it was seen live), a friend who leveled up, your season-XP rank move, a new week for the weekly bonus, the season getting close to its end, new players on the season board. Every line is computed from the clock or observed from Game Center (`WorldSnapshotService`, `Documents/world_snapshot.json`); nothing is invented, and the card does not appear when nothing changed.
+
+## Live Ops: rules, not features
+
+`Shared/RUXP/LiveOps.swift` is a dated list of rules that change how XP is earned for a window: a multiplier on one reason, a flat bonus per workout, or a bonus for workouts started before an hour. The bundled copy ships in the app; `docs/live.json` on the site is fetched at most once an hour and replaces it when it validates (version, caps, window length). Edit the JSON, bump `version`, push: the rule is live on each player's next foreground. Rules show on the Home event card and the clock line and pay as an extra row on the reward screen.
+
 ## Live presence and events
 
 Live counts are **real**. They come from Game Center, with no server of our own: an active workout pings a short recurring leaderboard every five minutes, and the number of players in that window is "lifting now". A daily board pinged on completion is "trained today"; weekly boards whose windows match the events are "players joined". `GameCenterLivePresence` polls those counts and sits behind `LivePresenceProviding`; the watch mirrors the phone's numbers (`MirroredLivePresence`) and pings on its own during a watch-run workout. Counts include only RUXP players signed into Game Center, so early on they are small and shown as they are. Events (FRIDAY NIGHT, SUNDAY RESET, the current season theme) come from `ScheduledEventService` behind `LiveEventProviding`.
 
+## RUXP Live
+
+You may be training alone, but you are not training alone. A timed event (SUNDAY RESET all day Sunday, FRIDAY NIGHT from 5 PM) is a lobby: JOIN SESSION on Home records a `LiveSessionParticipation` (keyed by the event occurrence and your Game Center player ID) and opens the session screen with the countdown, who you joined as, the real join count, your Game Center friends who play RUXP this season (with their level), an invite share sheet, and your history. Any strength workout finished while the event is live completes it: `ProgressionService` pays the event bonus once per occurrence, `LiveSessionService` records the completion against the workout, and the reward screen reads "Reset complete. You showed up." Starting a workout during an event joins it automatically, so nobody loses XP for skipping the lobby. History lives in Profile → Live sessions and in `Documents/live_sessions.json`.
+
+The Training Room is an experiment: a 2–8 player Game Center real-time match (`LiveRoomService`, auto-matched by event occurrence) where the only messages are four reactions. Rooms are foreground-only (the peer connection drops when the phone locks), never retry on their own, and need two physical devices with two Apple IDs to test; the simulator cannot carry the peer transport. Members shown are always real Game Center players.
+
 ## Game Center
 
-Sign-in is silent if the player is already in Game Center. Three leaderboards (lifetime XP, season XP, longest week streak) and ten achievements (first workout, first PR, four-workout week, four-week streak, Friday Night, season goal, levels 5/10/25/50) are submitted from `ProgressionService` totals, never deltas. Profile opens each leaderboard; Settings has an off switch. IDs and the App Store Connect window configuration are documented in `Shared/RUXP/GameCenterCatalog.swift`. A new season needs its own `season_xp_*` and `season_goal_*` entries created before it starts; Season 0 uses `season_xp_s00` and `season_goal_s00`.
+Sign-in is silent if the player is already in Game Center. Four leaderboards (lifetime XP, season XP, longest week streak, live sessions completed) and twelve achievements (first workout, first PR, four-workout week, four-week streak, Friday Night, first live session, five live sessions, season goal, levels 5/10/25/50) are submitted from `ProgressionService` totals, never deltas. Profile opens each leaderboard; Settings has an off switch. IDs and the App Store Connect window configuration are documented in `Shared/RUXP/GameCenterCatalog.swift`. A new season needs its own `season_xp_*` and `season_goal_*` entries created before it starts; Season 0 uses `season_xp_s00` and `season_goal_s00`.
 
 ## Architecture
 
@@ -128,7 +145,8 @@ RUXP/
     └── Views/                     WatchHomeView, ActiveWorkoutView, WorkoutSummaryView
 ```
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the protocols and what a real backend replaces.
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the protocols and what a real backend replaces, [docs/PHILOSOPHY.md](docs/PHILOSOPHY.md) for the living-product design philosophy, and [CLAUDE.md](CLAUDE.md) for the rules every change follows.
+
 
 ## Quick start
 
@@ -158,7 +176,8 @@ git config core.hooksPath .githooks                           # refuses commits 
 Without `Config/Secrets.xcconfig` the app builds in bring-your-own-key mode. A key pasted in Settings always overrides the bundled one. `Scripts/ship.sh` refuses to archive without the file and verifies the key landed in the archive.
 
 ### Debug helpers
-Debug builds add a Developer section in Settings (load 7 sample workouts, pretend it is Friday night, skip the 10-minute minimum, Game Center state and presence counts) and accept launch arguments `-RUXPSkipMinimum`, `-RUXPEventClock friday|sunday|tuesday`, `-RUXPSkipHealthKit`, and `-RUXPSkipGameCenter`.
+Debug builds add a Developer section in Settings (load 7 sample workouts, pretend it is Friday night, skip the 10-minute minimum, season override, Game Center state and presence counts, live ops source, world snapshot) and accept launch arguments `-RUXPSkipMinimum`, `-RUXPEventClock friday|sunday|tuesday`, `-RUXPSkipHealthKit`, `-RUXPSkipGameCenter`, `-RUXPLiveScene lobby|active|complete`, `-RUXPSeason S00|S01`, `-RUXPLastSeen 3d|18h|45m`, `-RUXPWorldDemo`, and `-RUXPLiveOps off|<path.json>`.
+
 
 ## Privacy
 

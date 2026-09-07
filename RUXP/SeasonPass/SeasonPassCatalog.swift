@@ -24,6 +24,8 @@ enum SeasonPassRewardKind: String, CaseIterable {
 
 struct SeasonPassReward: Identifiable, Equatable {
     let id: String
+    /// Ladder this reward belongs to ("S00"). A reward stays resolvable after its season ends.
+    let seasonID: String
     let tier: Int
     let kind: SeasonPassRewardKind
     /// Row label, e.g. "GRINDER", "TERMINAL GREEN", "BOLT BADGE".
@@ -44,12 +46,18 @@ struct SeasonPassLoadout: Equatable {
 enum SeasonPassCatalog {
     static let tierCount = 20
 
-    /// Season 0 ladder. Tiers 1–2 are the early-adopter mark and are never re-issued.
-    /// Follow-up before the Dec 1 rollover: `reward(id:)` must resolve any season's
-    /// ladder (`ladder(for: seasonID)`) and `PlayerProgress` needs an Optional
-    /// `seasonsPlayed: [String: Int]?` (season ID → high-water level) so S0 cosmetics
-    /// survive into Season 1.
-    private static let ladder: [(SeasonPassRewardKind, String, String)] = [
+    private typealias Entry = (SeasonPassRewardKind, String, String)
+
+    /// Every season keeps its ladder forever. A cosmetic unlocked in a finished season is
+    /// owned for good: `reward(id:)` resolves any season, and unlocks on a past ladder are judged
+    /// by the level recorded in that season's `SeasonRecord`, never by the current level.
+    private static let ladders: [String: [Entry]] = [
+        SeasonCatalog.earlyAdopters.id: s00Ladder,
+        SeasonCatalog.pressStart.id: s01Ladder,
+    ]
+
+    /// Season 00. Tiers 1–2 are the early-adopter mark; SEASON ZERO and FOUNDER are never re-issued.
+    private static let s00Ladder: [Entry] = [
         (.title, "EARLY ADOPTER", "EARLY ADOPTER"),
         (.badge, "EARLY ADOPTER BADGE", "sunrise.fill"),
         (.title, "REGULAR", "REGULAR"),
@@ -72,21 +80,70 @@ enum SeasonPassCatalog {
         (.title, "FOUNDER", "FOUNDER"),
     ]
 
-    static func rewards(for season: Season) -> [SeasonPassReward] {
-        ladder.enumerated().map { index, entry in
+    /// Season 01 — PRESS START. Same rhythm, its own marks. Nothing from S00 returns.
+    private static let s01Ladder: [Entry] = [
+        (.title, "PRESS START", "PRESS START"),
+        (.badge, "PLAYER ONE BADGE", "gamecontroller.fill"),
+        (.title, "LOADED IN", "LOADED IN"),
+        (.nameColor, "MAGENTA NAME", "magenta"),
+        (.title, "CONSISTENT", "CONSISTENT"),
+        (.badge, "BOLT BADGE", "bolt.fill"),
+        (.title, "IRON", "IRON"),
+        (.nameColor, "TERMINAL GREEN", "green"),
+        (.badge, "FLAME BADGE", "flame.fill"),
+        (.title, "TWO PLATE ENERGY", "TWO PLATE ENERGY"),
+        (.nameColor, "CYAN NAME", "cyan"),
+        (.title, "FRIDAY NIGHT VET", "FRIDAY NIGHT VET"),
+        (.badge, "TROPHY BADGE", "trophy.fill"),
+        (.nameColor, "VIOLET NAME", "violet"),
+        (.title, "SEASON ONE", "SEASON ONE"),
+        (.badge, "CROWN BADGE", "crown.fill"),
+        (.title, "HEAVY", "HEAVY"),
+        (.nameColor, "GOLD NAME", "gold"),
+        (.badge, "STAR BADGE", "star.fill"),
+        (.title, "COMPLETIONIST", "COMPLETIONIST"),
+    ]
+
+    static func rewards(forSeasonID seasonID: String) -> [SeasonPassReward] {
+        guard let ladder = ladders[seasonID] else {
+            assertionFailure("No Season Pass ladder for \(seasonID)")
+            return []
+        }
+        return ladder.enumerated().map { index, entry in
             let tier = index + 1
-            return SeasonPassReward(id: "\(season.code)-T\(tier)", tier: tier, kind: entry.0, name: entry.1, value: entry.2)
+            return SeasonPassReward(id: "\(seasonID)-T\(tier)", seasonID: seasonID, tier: tier, kind: entry.0, name: entry.1, value: entry.2)
         }
     }
 
-    /// Resolves a stored reward ID against the current season's ladder. IDs from a
-    /// past season do not resolve yet (see the note above `ladder`).
+    static func rewards(for season: Season) -> [SeasonPassReward] {
+        rewards(forSeasonID: season.id)
+    }
+
+    /// Resolves a stored reward ID ("S00-T5") against its own season's ladder, forever.
     static func reward(id: String) -> SeasonPassReward? {
-        rewards(for: SeasonCatalog.current).first { $0.id == id }
+        guard let code = id.split(separator: "-").first, ladders[String(code)] != nil else { return nil }
+        return rewards(forSeasonID: String(code)).first { $0.id == id }
     }
 
     static func isUnlocked(_ reward: SeasonPassReward, level: Int) -> Bool {
         level >= reward.tier
+    }
+
+    /// The level that governs unlocks on a season's ladder: the live level for the current
+    /// season, the recorded final level for a finished one, 0 for a season never played.
+    static func unlockLevel(seasonID: String, progress: PlayerProgress, currentSeason: Season) -> Int {
+        if seasonID == currentSeason.id { return progress.level }
+        return progress.seasonRecord(for: seasonID)?.finalLevel ?? 0
+    }
+
+    /// Does this player own the reward? Past-season rewards are owned by the recorded level.
+    static func isUnlocked(_ reward: SeasonPassReward, progress: PlayerProgress, currentSeason: Season) -> Bool {
+        reward.tier <= unlockLevel(seasonID: reward.seasonID, progress: progress, currentSeason: currentSeason)
+    }
+
+    /// Cosmetics kept from a finished season, by its recorded level.
+    static func kept(from record: SeasonRecord) -> [SeasonPassReward] {
+        rewards(forSeasonID: record.seasonID).filter { $0.tier <= record.finalLevel }
     }
 
     static func currentTier(level: Int) -> Int {
@@ -116,21 +173,21 @@ enum SeasonPassCatalog {
         return reward.kind == .title && reward.tier == 1
     }
 
+    /// What to draw. An equipped ID only counts if the player still owns it (a rebuilt or reset
+    /// profile could otherwise show a cosmetic it never earned).
     static func loadout(for progress: PlayerProgress, season: Season) -> SeasonPassLoadout {
+        func owned(_ kind: SeasonPassRewardKind) -> SeasonPassReward? {
+            guard let id = equippedID(for: kind, in: progress), let r = reward(id: id),
+                  isUnlocked(r, progress: progress, currentSeason: season) else { return nil }
+            return r
+        }
         var loadout = SeasonPassLoadout()
-        if let id = equippedID(for: .title, in: progress), let r = reward(id: id) {
-            loadout.title = r.value
-        } else {
-            loadout.title = rewards(for: season).first { $0.kind == .title }?.value
-        }
-        if let id = equippedID(for: .nameColor, in: progress), let r = reward(id: id) {
-            loadout.nameColor = r.color
-        }
-        if let id = equippedID(for: .badge, in: progress), let r = reward(id: id) {
-            loadout.badge = r.value
-        }
+        loadout.title = owned(.title)?.value ?? rewards(for: season).first { $0.kind == .title }?.value
+        loadout.nameColor = owned(.nameColor)?.color
+        loadout.badge = owned(.badge)?.value
         return loadout
     }
+
 
     static func color(forKey key: String) -> Color? {
         switch key {
