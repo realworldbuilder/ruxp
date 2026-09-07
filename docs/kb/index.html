@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Where we are · RUXP knowledge base</title>
+  <meta name="description" content="How RUXP works and where it is: the living-product philosophy, every screen, the systems, the data, and the runbooks.">
+  <meta name="theme-color" content="#0F0F10">
+  <link rel="icon" href="../assets/favicon.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Orbitron:wght@800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="kb.css">
+</head>
+<body data-page="index">
+<div class="layout">
+<main>
+<span class="eyebrow">Knowledge base · <span id="season-code">S00 · EARLY ADOPTERS</span></span>
+<h1>Where RUXP is right now</h1>
+<p class="lede">RUXP is a social, live-feeling strength app for iPhone and Apple Watch. This site explains what exists, how it works, and why it was built that way. It is generated from the code and screenshots of the current build, so treat it as a map, not marketing.</p>
+<p class="clockline" id="live-strip">—</p>
+
+<div class="status">
+  <div class="stat"><div class="k">Season</div><div class="v accent" id="season-code-2">S00</div></div>
+  <div class="stat"><div class="k">Season ends in</div><div class="v" id="days-left">—</div></div>
+  <div class="stat"><div class="k">Build</div><div class="v">1.0 (5)</div></div>
+  <div class="stat"><div class="k">Distribution</div><div class="v violet">TestFlight</div></div>
+  <div class="stat"><div class="k">Backend</div><div class="v xp">none</div></div>
+</div>
+
+<div class="toc"><a href="#loop">The loop</a><a href="#standard">The standard</a><a href="#shipped">What's live</a><a href="#calendar">Calendar</a><a href="#read">How to read this</a></div>
+
+<h2 id="loop">The loop</h2>
+<p>Every screen serves one loop. If a feature does not improve it, it is not built.</p>
+<pre class="mermaid">
+flowchart LR
+  A[OPEN] --> B[SEE WHAT'S HAPPENING]
+  B --> C[START WORKOUT]
+  C --> D[TALK THROUGH SETS]
+  D --> E[END · EARN XP]
+  E --> F[SEE WHO TRAINED WITH YOU]
+  F --> G[COME BACK]
+  G --> A
+</pre>
+<p>Underneath is the Momentary engine: a real HealthKit strength session, voice notes transcribed and parsed into exercises, sets, reps, weight, and personal records. On top is the product layer that makes the gym feel like a place: real presence counts, two weekly rituals, seasons, a free pass, live sessions, and a world that keeps moving while you are gone.</p>
+
+<h2 id="standard">The standard</h2>
+<div class="standard">
+  <span>01</span> something is happening right now.<br>
+  <span>02</span> something happened while you were gone.<br>
+  <span>03</span> something new might happen tonight.
+</div>
+<p>That is the whole design philosophy in three lines. The long version, the fifteen-question Aliveness Test, and the list of things RUXP refuses to do are on <a href="philosophy.html">the philosophy page</a>.</p>
+
+<h2 id="shipped">What's live in build 5</h2>
+<div class="cards">
+  <div class="card neon"><h3>Right now</h3><p>Real "lifting now" and "trained today" counts from Game Center, a featured ritual card, a LIVE dot, and a one-line clock under the Home wordmark.</p></div>
+  <div class="card neon"><h3>While you were gone</h3><p>After six hours away, Home lists what changed: rituals that ran, a friend who leveled up, your rank move, the new week, the season closing in, new players. Nothing invented.</p></div>
+  <div class="card neon"><h3>Rituals</h3><p>FRIDAY NIGHT (Fri 5 PM to midnight) and SUNDAY RESET (all Sunday), +500 XP each, with a lobby, a live join count, friends, and a reactions-only training room.</p></div>
+  <div class="card neon"><h3>Seasons</h3><p>S00 EARLY ADOPTERS closes Nov 30. The first launch after that shows a recap and freezes a record. S00 cosmetics stay yours forever. S01 PRESS START starts Dec 1.</p></div>
+  <div class="card neon"><h3>Rules, not features</h3><p>Live Ops: dated rules that change how XP is earned for a window. Three are scheduled for S00. They can be changed by editing one JSON file on this site.</p></div>
+  <div class="card neon"><h3>Identity</h3><p>Game Center name, Season Pass title, name color and badge, "SINCE SEP 2026", and a season history on the player card.</p></div>
+</div>
+
+<ul class="check">
+  <li class="done">Voice-logged workouts, PR detection, HealthKit sessions (Momentary engine)</li>
+  <li class="done">XP, levels 1–100, week streaks, weekly bonus, daily cap</li>
+  <li class="done">Real Game Center presence, four ranking boards, twelve achievements</li>
+  <li class="done">Live Sessions with lobby, history, and the Training Room experiment</li>
+  <li class="done">Season 00 → 01 transition with recap and permanent cosmetics</li>
+  <li class="done">WHILE YOU WERE GONE ledger and the Home clock line</li>
+  <li class="done">Live Ops calendar with remote JSON</li>
+  <li class="part">Training Room: built, needs two devices with two Apple IDs to test</li>
+  <li class="part">Friend and rank ledger lines: built, need a device with Game Center friends</li>
+  <li>Push notifications (none, on purpose for now)</li>
+  <li>Squads, gym-hosted events, player-created events</li>
+</ul>
+
+<h2 id="calendar">Calendar</h2>
+<div class="table-wrap"><table>
+  <tr><th>When</th><th>What</th><th>Rule</th></tr>
+  <tr><td>Every Friday 5 PM – midnight</td><td>FRIDAY NIGHT</td><td>+500 XP on any strength workout that overlaps the window</td></tr>
+  <tr><td>Every Sunday</td><td>SUNDAY RESET</td><td>+500 XP; the ISO week starts Monday, so Sunday is last call for the weekly bonus</td></tr>
+  <tr><td>Sep 26 – 27, 2026</td><td>PR WEEKEND</td><td>Every PR pays double</td></tr>
+  <tr><td>Oct 24 – 25, 2026</td><td>EARLY SHIFT</td><td>+250 XP for workouts started before 8 AM</td></tr>
+  <tr><td>Nov 27 – 30, 2026</td><td>S00 FINALE · LAST CALL</td><td>+250 XP on every rewarded workout</td></tr>
+  <tr><td>Dec 1, 2026</td><td>Season 01 PRESS START</td><td>Everyone starts at LVL 1. The S00 recap shows once.</td></tr>
+  <tr><td>Mar 1, 2027</td><td>Season 01 ends</td><td>Season 02 is not defined yet</td></tr>
+</table></div>
+<p>Rule windows are local wall-clock, like the rituals: a rule starts at each player's own midnight.</p>
+
+<h2 id="read">How to read this</h2>
+<div class="kv">
+  <dt>philosophy</dt><dd>The lens. Read once, then use the Aliveness Test on every idea.</dd>
+  <dt>screens</dt><dd>Every screen with a screenshot, what it shows, and what makes it alive.</dd>
+  <dt>systems</dt><dd>XP, seasons, presence, live sessions, live ops, the world snapshot. Diagrams and numbers.</dd>
+  <dt>data</dt><dd>What is stored where, the Game Center boards, the decode-compatibility rule.</dd>
+  <dt>runbooks</dt><dd>Build, verify, change a rule, close a season, ship.</dd>
+  <dt>roadmap</dt><dd>What is next, what is debt, what was cut on purpose.</dd>
+</div>
+<p>The source of truth is the code. <a href="https://github.com/realworldbuilder/ruxp/blob/main/CLAUDE.md">CLAUDE.md</a> is the contract every change follows; <a href="https://github.com/realworldbuilder/ruxp/blob/main/docs/ARCHITECTURE.md">ARCHITECTURE.md</a> is the service-by-service reference.</p>
+
+</main>
+</div>
+<script src="kb.js" defer></script>
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({ startOnLoad: true, theme: "dark", themeVariables: { fontFamily: "JetBrains Mono, monospace", fontSize: "13px", primaryColor: "#26262A", primaryTextColor: "#ECECEC", primaryBorderColor: "#FF2DAA", lineColor: "#A0A0A6", secondaryColor: "#1A1A1D", tertiaryColor: "#1A1A1D", background: "#1A1A1D", mainBkg: "#26262A", nodeBorder: "#A78BFA", actorBkg: "#26262A", actorBorder: "#A78BFA", actorTextColor: "#ECECEC", signalColor: "#A0A0A6", signalTextColor: "#ECECEC", noteBkgColor: "#26262A", noteTextColor: "#ECECEC" } });
+</script>
+</body>
+</html>

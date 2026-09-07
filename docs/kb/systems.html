@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Systems · RUXP knowledge base</title>
+  <meta name="description" content="How RUXP works and where it is: the living-product philosophy, every screen, the systems, the data, and the runbooks.">
+  <meta name="theme-color" content="#0F0F10">
+  <link rel="icon" href="../assets/favicon.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Orbitron:wght@800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="kb.css">
+</head>
+<body data-page="systems">
+<div class="layout">
+<main>
+<span class="eyebrow">How it works</span>
+<h1>Systems</h1>
+<p class="lede">Six systems, all client-side, all on the same two sources of truth: the clock and Game Center. Numbers here are the actual constants in the code.</p>
+<div class="toc"><a href="#xp">XP & levels</a><a href="#rituals">Rituals</a><a href="#seasons">Seasons & pass</a><a href="#presence">Live presence</a><a href="#sessions">Live sessions</a><a href="#liveops">Live Ops</a><a href="#world">World snapshot</a></div>
+
+<h2 id="xp">XP and levels</h2>
+<p>XP rewards healthy, useful behavior. Grinding is not rewarded. Completion XP is computed synchronously when a workout ends, offline, with no AI involved.</p>
+<div class="table-wrap"><table>
+  <tr><th>Award</th><th>XP</th><th>Rule</th></tr>
+  <tr><td>Workout complete</td><td>+500</td><td>10 minutes or longer, at most 2 rewarded per day</td></tr>
+  <tr><td>Event bonus</td><td>+500</td><td>The workout overlaps a ritual window; paid once per occurrence</td></tr>
+  <tr><td>Weekly bonus</td><td>+500</td><td>The 4th rewarded workout of the ISO week (Monday start); once per week</td></tr>
+  <tr><td>Personal record</td><td>+250</td><td>Per PR, max 2 per workout; only once the AI parses your notes; a first-ever lift is a baseline, not a PR</td></tr>
+  <tr><td>Live Ops rule</td><td>varies</td><td>An extra row per rule in effect, labeled with the rule's title</td></tr>
+</table></div>
+<p><strong>Level</strong> is a pure function of <strong>season XP</strong>: going from level L to L+1 costs <code>1000 + 150 × (L − 1)</code>. Level 5 is 4,900 XP, level 10 is 14,400, level 20 is 44,650, level 100 is 826,650. <strong>Lifetime XP</strong> is the career total and never resets. The <strong>week streak</strong> is consecutive ISO weeks with a rewarded workout, computed live so the card never shows a streak you have already lost.</p>
+<pre class="mermaid">
+sequenceDiagram
+  participant W as WorkoutManager
+  participant P as ProgressionService
+  participant AI as AIProcessingPipeline
+  participant GC as GameCenterService
+  W->>P: rewardWorkoutCompletion(session, events, modifiers)
+  P-->>W: WorkoutRewardSummary (+500, event, weekly, rule rows)
+  P->>GC: onProgressChanged (debounced 8 s)
+  W->>AI: processWorkout (voice notes → structured log)
+  AI->>P: rewardPersonalRecords(count)
+  P-->>W: summary amended (+250 per PR, PR multiplier if a rule covered it)
+  P->>GC: onProgressChanged → scores + achievements
+</pre>
+<p class="mono" style="font-size:12px;color:var(--text-3)">Shared/RUXP/ProgressionService.swift · LevelCurve.swift · ProgressionModels.swift</p>
+
+<h2 id="rituals">Rituals</h2>
+<p>Two weekly windows computed from the clock, no server. They are the reason Friday is not Tuesday.</p>
+<div class="cards">
+  <div class="card"><h3>FRIDAY NIGHT</h3><p>Friday 17:00 to midnight, local. +500 XP. "Train tonight. Earn bonus XP." A lobby, a live join count, friends, the Training Room.</p></div>
+  <div class="card"><h3>SUNDAY RESET</h3><p>All day Sunday, local. +500 XP. "Complete any strength workout today. Start the week ahead." Because the ISO week starts Monday, Sunday is also the last window for the weekly bonus.</p></div>
+</div>
+<p>Each occurrence has a stable id like <code>fridayNight-2026-09-11</code>. That id keys the bonus ledger, the participation record, the presence board window, and the Training Room match group, so a bonus is paid exactly once per occurrence and rooms only match players in the same one.</p>
+<p class="mono" style="font-size:12px;color:var(--text-3)">Shared/RUXP/LiveEvents.swift (ScheduledEventService)</p>
+
+<h2 id="seasons">Seasons and the pass</h2>
+<div class="table-wrap"><table>
+  <tr><th>Season</th><th>Window</th><th>Goal</th><th>Tagline</th></tr>
+  <tr><td>S00 EARLY ADOPTERS</td><td>Sep 1 – Nov 30, 2026</td><td>32 workouts</td><td>First in. Set the bar.</td></tr>
+  <tr><td>S01 PRESS START</td><td>Dec 1, 2026 – Feb 28, 2027</td><td>32 workouts</td><td>Load in. Level up. Own the season.</td></tr>
+</table></div>
+<p>On the first launch inside a new season, <code>ProgressionService</code> closes the old one: it freezes a <strong>SeasonRecord</strong> (final level and XP, workouts, live sessions, Friday Nights, Sunday Resets, PRs, weekly-bonus weeks), marks a recap as pending, and resets season XP and season workouts. Lifetime totals, streaks, and equipped cosmetics survive. The recap shows once.</p>
+<pre class="mermaid">
+flowchart LR
+  A[Launch] --> B{stored seasonID == current?}
+  B -- yes --> C[Home]
+  B -- no, seasonXP > 0 --> D[Freeze SeasonRecord] --> E[Reset season XP] --> F[Recap cover] --> C
+  B -- no, seasonXP == 0 --> E
+</pre>
+<p><strong>Season Pass.</strong> Twenty tiers per season, tier N unlocks at level N, cosmetics only: nine titles, five name colors, six badges. Every season keeps its ladder forever. A reward id like <code>S00-T5</code> resolves against its own season, and unlocks on a finished ladder are judged by the recorded final level, never the current one. The profile only draws cosmetics the player still owns.</p>
+<p class="mono" style="font-size:12px;color:var(--text-3)">Shared/RUXP/Season.swift · RUXP/SeasonPass/SeasonPassCatalog.swift · RUXP/Views/SeasonRecapView.swift</p>
+
+<h2 id="presence">Live presence</h2>
+<p>"Who is training right now?" is answered by Game Center recurring leaderboards with no server of our own. A recurring board's current occurrence reports how many players submitted a score in that window. Every score is 1; only the player count matters.</p>
+<div class="table-wrap"><table>
+  <tr><th>Board</th><th>Window</th><th>Pinged when</th><th>Shown as</th></tr>
+  <tr><td>active_a / active_b</td><td>30 min, staggered by 15 min</td><td>every 5 min during a workout (phone or watch)</td><td>LIFTING NOW = max of the two, so it never dips at a boundary</td></tr>
+  <tr><td>trained_today</td><td>24 h</td><td>on a rewarded completion</td><td>"N people trained today"</td></tr>
+  <tr><td>event_friday_night</td><td>18 h from Fri noon ET</td><td>on join and during the workout</td><td>"N players joined"</td></tr>
+  <tr><td>event_sunday_reset</td><td>30 h from Sun 00:00 ET</td><td>on join and during the workout</td><td>"N players joined"</td></tr>
+  <tr><td>season_xp_s00</td><td>classic</td><td>XP submissions</td><td>"N players this season", your rank, friends' levels</td></tr>
+</table></div>
+<pre class="mermaid">
+sequenceDiagram
+  participant You
+  participant GC as Game Center
+  participant Others
+  You->>GC: score 1 → active_a, active_b (every 5 min while lifting)
+  Others->>GC: score 1 → active_a, active_b
+  You->>GC: read totalPlayerCount (every 60 s in foreground)
+  GC-->>You: 12 → "12 LIFTING NOW"
+</pre>
+<p>Counts include only RUXP players signed into Game Center, so early on they are small and shown as they are. The watch mirrors the phone's numbers and shows a dash when they are older than ten minutes.</p>
+<p class="mono" style="font-size:12px;color:var(--text-3)">Shared/RUXP/GameCenterCatalog.swift · RUXP/GameCenter/GameCenterLivePresence.swift · GameCenterService.swift</p>
+
+<h2 id="sessions">Live sessions and rooms</h2>
+<p>JOIN SESSION records a participation keyed by the occurrence id and your Game Center player id, and counts you on the event board right away. Any strength workout that finishes while the ritual is live completes the session; the participation stores the workout, the XP, and how many players were in your room. History lives on the Profile.</p>
+<p>The <strong>Training Room</strong> is a 2–8 player Game Center real-time match, auto-matched by occurrence, reactions only (🔥 🫡 💀 W), foreground only, never auto-retried. Members shown are always real players. It needs two devices with two Apple IDs to test.</p>
+<p class="mono" style="font-size:12px;color:var(--text-3)">RUXP/Live/LiveSessionService.swift · RUXP/GameCenter/LiveRoomService.swift</p>
+
+<h2 id="liveops">Live Ops: rules, not features</h2>
+<p>A <strong>rule</strong> is a dated window plus one effect. Three kinds exist: a multiplier on one XP reason, a flat bonus per rewarded workout, or a bonus for workouts started before an hour. Rules apply at reward time as extra rows; a PR multiplier is remembered per workout so it still pays when the parse lands later.</p>
+<pre class="mermaid">
+flowchart LR
+  J[docs/live.json on this site] -->|fetch ≤ 1/hour| V{decode + validate}
+  V -- ok, version ≥ bundled --> C[LiveOpsCatalog.current]
+  V -- rejected --> K[keep current]
+  B[bundled calendar in the app] --> C
+  C --> H[Home card + clock line]
+  C --> R[ProgressionService → +XP rows]
+</pre>
+<p>Validation caps what a file can do: at most 32 rules, windows of 14 days or less, multipliers 1–3×, bonuses 0–1000, unique ids, known rule types. Anything else is rejected wholesale and the current calendar stays. Rules are client-side XP only; achievements and season goals are untouched.</p>
+<p class="mono" style="font-size:12px;color:var(--text-3)">Shared/RUXP/LiveOps.swift · RUXP/LiveOps/LiveOpsService.swift · docs/live.json</p>
+
+<h2 id="world">The world snapshot</h2>
+<p>When the app goes to the background it writes a <strong>WorldSnapshot</strong>: the time, the ISO week, days left in the season, your workouts that week, the last join count seen for a live ritual, and, once observed, your friends' levels and XP on the season board, the board's player count, and your rank. On the next foreground after six or more hours, a pure function diffs the old snapshot against a fresh one and produces the ledger.</p>
+<pre class="mermaid">
+flowchart TB
+  BG[Background] --> S[(world_snapshot.json)]
+  FG[Foreground ≥ 6 h later] --> D[ReturnLedger.items previous vs now]
+  D --> L1[clock lines: rituals ran, new week, season threshold]
+  FG --> G[Game Center: friends + local standing]
+  G --> D2[recompute] --> L2[rank move, friend leveled, new players, friends trained]
+  L1 --> C[WHILE YOU WERE GONE card]
+  L2 --> C
+</pre>
+<p>Rituals that ran are found by walking the gap week by week. A season change yields no ledger; the recap owns that moment. Game Center lines need both sides observed, so a first visit shows nothing and a signed-out player gets clock lines only.</p>
+<p class="mono" style="font-size:12px;color:var(--text-3)">RUXP/World/WorldSnapshot.swift · WorldSnapshotService.swift</p>
+
+</main>
+</div>
+<script src="kb.js" defer></script>
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({ startOnLoad: true, theme: "dark", themeVariables: { fontFamily: "JetBrains Mono, monospace", fontSize: "13px", primaryColor: "#26262A", primaryTextColor: "#ECECEC", primaryBorderColor: "#FF2DAA", lineColor: "#A0A0A6", secondaryColor: "#1A1A1D", tertiaryColor: "#1A1A1D", background: "#1A1A1D", mainBkg: "#26262A", nodeBorder: "#A78BFA", actorBkg: "#26262A", actorBorder: "#A78BFA", actorTextColor: "#ECECEC", signalColor: "#A0A0A6", signalTextColor: "#ECECEC", noteBkgColor: "#26262A", noteTextColor: "#ECECEC" } });
+</script>
+</body>
+</html>

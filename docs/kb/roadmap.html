@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Roadmap & debt · RUXP knowledge base</title>
+  <meta name="description" content="How RUXP works and where it is: the living-product philosophy, every screen, the systems, the data, and the runbooks.">
+  <meta name="theme-color" content="#0F0F10">
+  <link rel="icon" href="../assets/favicon.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Orbitron:wght@800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="kb.css">
+</head>
+<body data-page="roadmap">
+<div class="layout">
+<main>
+<span class="eyebrow">Roadmap</span>
+<h1>What's next, what's debt, what was cut</h1>
+<p class="lede">The rule for what gets built: prefer the smallest version that creates the largest increase in aliveness. One to three mechanics at a time, never thirty features.</p>
+<div class="toc"><a href="#next">Next</a><a href="#dated">Dated</a><a href="#later">Later</a><a href="#debt">Known debt</a><a href="#cut">Cut on purpose</a></div>
+
+<h2 id="next">Next</h2>
+<div class="cards">
+  <div class="card"><h3>Give Sunday its own feel</h3><p>SUNDAY RESET is mechanically identical to FRIDAY NIGHT. Make it the week recap and the last call for the weekly bonus: "3/4 this week. Sunday is your last window."</p></div>
+  <div class="card"><h3>Verify on devices</h3><p>The Training Room, the friend and rank ledger lines, and the real presence counts all need signed-in devices. TestFlight testers are the test.</p></div>
+  <div class="card"><h3>Achievement art</h3><p>Twelve 512×512 images before App Store release.</p></div>
+  <div class="card"><h3>Delete the fork residue</h3><p>About 2,400 lines of unreachable Momentary code compile with no entry point. A separate, mechanical task.</p></div>
+</div>
+
+<h2 id="dated">Dated</h2>
+<div class="table-wrap"><table>
+  <tr><th>Date</th><th>Event</th><th>Ready?</th></tr>
+  <tr><td>Sep 26–27</td><td>PR WEEKEND</td><td>Shipped in build 5 and in docs/live.json</td></tr>
+  <tr><td>Oct 24–25</td><td>EARLY SHIFT</td><td>Shipped</td></tr>
+  <tr><td>Nov 27–30</td><td>S00 FINALE · LAST CALL</td><td>Shipped</td></tr>
+  <tr><td>Nov 30</td><td>Signal page window closes</td><td>Site counts down to it; what happens on the page after is undecided</td></tr>
+  <tr><td>Dec 1</td><td>Season 01 PRESS START</td><td>Catalog, ladder, boards, recap: done. Needs a build in testers' hands before the date</td></tr>
+</table></div>
+
+<h2 id="later">Later, through the lens</h2>
+<ul>
+  <li><strong>Sides.</strong> Squads or philosophies, friendly, with shared stakes. Game Center friends already surface in the lobby; the next step is a group that shows up together.</li>
+  <li><strong>Community-wide modifiers.</strong> A rule that unlocks when enough players show up: "50 in tonight unlocks double PR XP for everyone." The counts exist; the rule type does not yet.</li>
+  <li><strong>Season themes that change a rule.</strong> S01 is "the game"; a season should ship at least one temporary mechanic, not just a ladder.</li>
+  <li><strong>Gym-hosted events and brand rewards.</strong> Plug into <code>LiveEventProviding</code> with the same shape: title, window, XP, participant count.</li>
+  <li><strong>Per-lift leaderboards.</strong> Depend on parse reliability.</li>
+  <li><strong>Let players create events.</strong> The end state of the philosophy: we create the system in which things happen.</li>
+  <li><strong>Notifications.</strong> None until there is a ritual worth one; opt-in; one per ritual at most.</li>
+</ul>
+
+<h2 id="debt">Known debt</h2>
+<ul>
+  <li>~2,400 lines of unreachable code: ChatView, ChatBlockView, InsightsTab, InsightStoryView, StoryCarouselView, HomeIntelligenceEngine, InsightsIntelligenceEngine, StoryReadTracker. ChatEngine and ConversationStore are constructed with no consumer. The insights engine no longer runs; it was spending the bundled OpenAI key on stories nothing rendered.</li>
+  <li><code>InsightsStore.ingestedWorkoutIDs</code> is in memory only; the persisted PR ledger on PlayerProgress keeps XP correct.</li>
+  <li><code>ProgressionService.rebuild(from:)</code> credits all historical XP to the current season.</li>
+  <li>Profile's PR tile is <code>max(prCount, lifts tracked)</code>; two different live-session counts exist (Profile vs the live_sessions board).</li>
+  <li>The event clock override is a frozen instant, so countdowns do not tick under it, and event XP is not paid under it because workouts are stamped with the real time.</li>
+  <li>Watch: the HealthKit permission sheet cannot be completed in the simulator; test on hardware.</li>
+</ul>
+
+<h2 id="cut">Cut on purpose</h2>
+<p>Daily login rewards. Streak-loss anxiety. Push notifications for now. Inflated presence. Loot and random rewards. Paid XP or tiers. A permanent rank line on Home. Double XP every weekend. Countdowns on non-events. Chat in rooms. Arbitrary badges. Seasons as renamed releases. The point is not to make everything Fortnite. The point is to learn how Fortnite makes a digital product feel alive.</p>
+
+</main>
+</div>
+<script src="kb.js" defer></script>
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({ startOnLoad: true, theme: "dark", themeVariables: { fontFamily: "JetBrains Mono, monospace", fontSize: "13px", primaryColor: "#26262A", primaryTextColor: "#ECECEC", primaryBorderColor: "#FF2DAA", lineColor: "#A0A0A6", secondaryColor: "#1A1A1D", tertiaryColor: "#1A1A1D", background: "#1A1A1D", mainBkg: "#26262A", nodeBorder: "#A78BFA", actorBkg: "#26262A", actorBorder: "#A78BFA", actorTextColor: "#ECECEC", signalColor: "#A0A0A6", signalTextColor: "#ECECEC", noteBkgColor: "#26262A", noteTextColor: "#ECECEC" } });
+</script>
+</body>
+</html>

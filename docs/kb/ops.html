@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Runbooks · RUXP knowledge base</title>
+  <meta name="description" content="How RUXP works and where it is: the living-product philosophy, every screen, the systems, the data, and the runbooks.">
+  <meta name="theme-color" content="#0F0F10">
+  <link rel="icon" href="../assets/favicon.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Orbitron:wght@800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="kb.css">
+</head>
+<body data-page="ops">
+<div class="layout">
+<main>
+<span class="eyebrow">Runbooks</span>
+<h1>Running RUXP</h1>
+<p class="lede">How to build it, verify it without a test target, change a rule without a build, close a season, and ship. Written for whoever picks this up next, human or agent.</p>
+<div class="toc"><a href="#build">Build & run</a><a href="#args">Launch arguments</a><a href="#verify">Verify</a><a href="#liveops">Change a rule</a><a href="#season">Close a season</a><a href="#ship">Ship</a><a href="#site">This site</a></div>
+
+<h2 id="build">Build and run</h2>
+<pre><code>open RUXP.xcodeproj
+# or from the command line
+xcodebuild -scheme RUXP -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build
+xcodebuild -scheme "RUXP Watch App" -destination 'generic/platform=watchOS Simulator' build</code></pre>
+<p>Xcode 16 synchronized folders: a new Swift file under <code>Shared/</code>, <code>RUXP/</code>, or <code>RUXP Watch App/</code> needs no project edit. <code>Shared/</code> compiles into both targets, so it stays Foundation-only. Build without <code>CODE_SIGNING_ALLOWED=NO</code> when HealthKit matters. There is no test target; verification is build, launch arguments, screenshots, and reading the JSON files.</p>
+
+<h2 id="args">Debug launch arguments</h2>
+<p>All wrapped in <code>#if DEBUG</code> and mirrored in Settings › Developer.</p>
+<div class="table-wrap"><table>
+  <tr><th>Argument</th><th>Effect</th></tr>
+  <tr><td>-RUXPSkipMinimum</td><td>no 10-minute minimum for completion XP</td></tr>
+  <tr><td>-RUXPSkipHealthKit</td><td>bypass HealthKit (simulators)</td></tr>
+  <tr><td>-RUXPSkipGameCenter</td><td>no sign-in, scores, or live counts</td></tr>
+  <tr><td>-RUXPLoadSamples</td><td>seed 7 sample workouts on an empty install (dated relative to today)</td></tr>
+  <tr><td>-RUXPEventClock friday|sunday|tuesday</td><td>freeze the event clock at that day</td></tr>
+  <tr><td>-RUXPTab train|profile</td><td>open on that tab</td></tr>
+  <tr><td>-RUXPLiveScene lobby|active|complete</td><td>open the Live lobby, a joined workout, or the reward screen</td></tr>
+  <tr><td>-RUXPScreen seasonpass|settings|livehistory|archivedpass</td><td>open that sheet at launch</td></tr>
+  <tr><td>-RUXPSeason S00|S01</td><td>pretend that season is current: rollover, recap, ladders, boards</td></tr>
+  <tr><td>-RUXPLastSeen 3d|18h|45m</td><td>pretend the last visit was that long ago</td></tr>
+  <tr><td>-RUXPWorldDemo</td><td>with Game Center off, seed friends and rank so every ledger line renders</td></tr>
+  <tr><td>-RUXPLiveOps off|&lt;path.json&gt;</td><td>no rules, or a local calendar instead of the remote one</td></tr>
+</table></div>
+<pre><code>UDID=$(xcrun simctl list devices booted | grep -o '[0-9A-F-]\{36\}' | head -1)
+ARGS=(-RUXPSkipGameCenter -RUXPSkipHealthKit -RUXPLoadSamples -RUXPSkipMinimum -RUXPLiveScene complete)
+xcrun simctl launch $UDID com.whussey.ruxp "${ARGS[@]}"
+xcrun simctl io $UDID screenshot reward.png</code></pre>
+<p>In zsh, build arguments as an array or <code>simctl launch</code> receives one argument. Find the app's files with <code>xcrun simctl get_app_container $UDID com.whussey.ruxp data</code>; read its log with <code>xcrun simctl spawn $UDID log show --last 3m --predicate 'subsystem == "com.whussey.ruxp"'</code>.</p>
+
+<h2 id="verify">Verification recipes</h2>
+<ol class="steps">
+  <li><strong>Decode compatibility.</strong> Copy an older <code>player_progress.json</code> into the container, launch, confirm level and XP survive and the log has no "Failed to load progression".</li>
+  <li><strong>Season rollover.</strong> Launch with samples in S00, equip a title and badge, relaunch with <code>-RUXPSeason S01</code>: the recap appears once; Profile keeps the S00 cosmetics and lists S00 in SEASONS; the archived ladder still equips.</li>
+  <li><strong>Live Ops.</strong> Write a local calendar whose window covers today, launch with <code>-RUXPLiveOps path -RUXPSkipMinimum -RUXPLiveScene complete</code>: rule rows on the reward screen, the tag on Home. A file with a 5× factor or a 40-day window must be rejected in the log.</li>
+  <li><strong>Return ledger.</strong> <code>-RUXPLastSeen 3h</code> shows nothing; <code>3d</code> shows the rituals and the new week; <code>3d -RUXPWorldDemo</code> shows every line, capped at four; <code>-RUXPSeason S01</code> with an S00 baseline shows the recap and no ledger.</li>
+  <li><strong>On a device.</strong> Sign into Game Center; two accounts that are friends for the friend and rank lines; two devices for the Training Room.</li>
+</ol>
+
+<h2 id="liveops">Change a rule without a build</h2>
+<ol class="steps">
+  <li>Edit <a href="../live.json">docs/live.json</a>. Dates are local wall-clock <code>yyyy-MM-dd'T'HH:mm</code>.</li>
+  <li>Bump <code>version</code>. It must be at least the bundled version.</li>
+  <li>Stay within the caps: 32 rules, 14-day windows, factor 1–3, bonus 0–1000, unique ids, known types. A file outside them is rejected wholesale.</li>
+  <li>Push. GitHub Pages serves it; each app fetches at most once an hour on foreground. Settings › Developer shows the source and version.</li>
+  <li>Mirror durable rules into <code>LiveOpsCatalog.bundled</code> at the next build so offline players see them too.</li>
+</ol>
+<pre><code>{ "id": "s00-pr-weekend", "title": "PR WEEKEND", "eyebrow": "THIS WEEKEND ONLY",
+  "description": "Every PR pays double. Bring the voice notes.",
+  "start": "2026-09-26T00:00", "end": "2026-09-28T00:00",
+  "rule": { "type": "multiplier", "reason": "personalRecord", "factor": 2 } }
+// other rules: {"type":"flatBonus","amount":250}  {"type":"startedBefore","hour":8,"amount":250}</code></pre>
+
+<h2 id="season">Close a season, open the next</h2>
+<ol class="steps">
+  <li>Before it starts: the season exists in <code>SeasonCatalog</code>, its ladder in <code>SeasonPassCatalog</code>, and <code>season_xp_sNN</code> + <code>season_goal_sNN</code> exist in App Store Connect (<code>Scripts/gamecenter_setup.py --all-seasons</code>). S01 is done on all three.</li>
+  <li>Ship the build that knows the new season before its start date. The rollover is client-side; a player who launches after the date gets the recap on that launch.</li>
+  <li>Schedule the finale rule in Live Ops for the last weekend.</li>
+  <li>After the date, nothing to do. Season XP restarts, records are frozen, cosmetics persist. Test any of it early with <code>-RUXPSeason</code>.</li>
+</ol>
+
+<h2 id="ship">Ship</h2>
+<pre><code>cp Config/Secrets.example.xcconfig Config/Secrets.xcconfig   # paste the OpenAI key; gitignored
+git config core.hooksPath .githooks                           # refuses commits containing an sk- key
+# bump CURRENT_PROJECT_VERSION in RUXP.xcodeproj/project.pbxproj (4 places)
+df -h /System/Volumes/Data                                    # archives need ~20 GB free
+Scripts/ship.sh                                               # archive → export → TestFlight upload</code></pre>
+<p>Xcode must be signed into the Apple ID (Settings › Accounts); the App Store Connect API key in this setup can manage Game Center but not cloud signing. Internal TestFlight only until the privacy policy URL is on the App Store record. Achievement images (512×512) are still needed before App Store release.</p>
+
+<h2 id="site">This site</h2>
+<p><code>docs/</code> is the GitHub Pages root. The front door is the signal page, an ARG-style teaser on purpose; this knowledge base lives under <code>docs/kb/</code> and is not linked from it. Preview locally with <code>python3 -m http.server 8765 --directory docs</code> and open <code>/kb/</code>. Screenshots are in <code>docs/kb/img/</code>, captured with <code>simctl io … screenshot</code> and downscaled to 900 px.</p>
+
+</main>
+</div>
+<script src="kb.js" defer></script>
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({ startOnLoad: true, theme: "dark", themeVariables: { fontFamily: "JetBrains Mono, monospace", fontSize: "13px", primaryColor: "#26262A", primaryTextColor: "#ECECEC", primaryBorderColor: "#FF2DAA", lineColor: "#A0A0A6", secondaryColor: "#1A1A1D", tertiaryColor: "#1A1A1D", background: "#1A1A1D", mainBkg: "#26262A", nodeBorder: "#A78BFA", actorBkg: "#26262A", actorBorder: "#A78BFA", actorTextColor: "#ECECEC", signalColor: "#A0A0A6", signalTextColor: "#ECECEC", noteBkgColor: "#26262A", noteTextColor: "#ECECEC" } });
+</script>
+</body>
+</html>

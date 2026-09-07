@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Screen tour · RUXP knowledge base</title>
+  <meta name="description" content="How RUXP works and where it is: the living-product philosophy, every screen, the systems, the data, and the runbooks.">
+  <meta name="theme-color" content="#0F0F10">
+  <link rel="icon" href="../assets/favicon.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Orbitron:wght@800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="kb.css">
+</head>
+<body data-page="screens">
+<div class="layout">
+<main>
+<span class="eyebrow">Screen tour</span>
+<h1>Every screen, and what makes it alive</h1>
+<p class="lede">Captured from the current build on an iPhone 17 Pro simulator with Game Center turned off, which is why the presence line reads "Game Center is off in this build." On a device signed into Game Center those lines are real counts. The look is deliberately restrained: near-black, system type, one hero number per screen, mono readouts for XP. The game shows in small doses.</p>
+<div class="toc"><a href="#home">Home</a><a href="#gone">While you were gone</a><a href="#live">Live session</a><a href="#workout">Workout</a><a href="#reward">Reward</a><a href="#train">Train</a><a href="#profile">Profile</a><a href="#pass">Season Pass</a><a href="#recap">Season recap</a><a href="#settings">Settings</a><a href="#watch">Watch</a></div>
+
+<h2 id="home">Home: the lobby</h2>
+<div class="figure">
+  <img src="img/home.png" alt="Home screen on a weekday">
+  <div>
+    <p>Answers four questions in one glance: who is training right now, is anything happening, what level am I, should I start lifting.</p>
+    <ul>
+      <li><strong>Clock line.</strong> <code>MON 12:48 PM · FRIDAY NIGHT IN 4D 4H · S00 ENDS IN 84D</code>. Refreshes every 20 seconds. When a Live Ops rule is on it appears here too.</li>
+      <li><strong>LIFTING NOW.</strong> The big number is players who pinged an active-workout board in the last 15–30 minutes. Zero reads "Nobody's on right now. Be first."</li>
+      <li><strong>Event card.</strong> Live ritual, else the next one with its start, else the season theme. The border turns neon when live.</li>
+      <li><strong>YOU.</strong> Level bar and this week's count with the weekly-bonus line. Your Season Pass badge and name color show next to your name.</li>
+      <li><strong>Season card.</strong> Workouts toward the goal, days left, current pass tier. Tap to open the pass.</li>
+    </ul>
+    <p class="mono" style="font-size:12px;color:var(--text-3)">RUXP/Views/HomeView.swift</p>
+  </div>
+</div>
+<div class="figure">
+  <img src="img/home-liveops.png" alt="Home with a Live Ops rule active">
+  <div>
+    <p><strong>With a rule on.</strong> A Live Ops rule rides on the event card as a violet tag with its effect and its window, plus one line of copy. No new screen: rules are meant to be cheap.</p>
+    <p>The clock line adds <code>DOUBLE UP ON</code>. This capture used a local test calendar; the real S00 rules are PR WEEKEND, EARLY SHIFT, and the S00 FINALE.</p>
+  </div>
+</div>
+
+<h2 id="gone">While you were gone</h2>
+<div class="figure">
+  <img src="img/ledger.png" alt="Home with the WHILE YOU WERE GONE card">
+  <div>
+    <p>Shown after six or more hours away, above the event card, quieter than it. Up to four lines, in a fixed order: rituals that ran, your rank move, a friend who leveled up, the new week, the season closing in, new players on the season board, friends who trained.</p>
+    <p>Every line is either computed from the clock or observed from Game Center on both sides of the absence. A fact never observed is never guessed. The card does not appear when nothing changed, and dismissing it is remembered per absence.</p>
+    <p>This capture used <code>-RUXPWorldDemo</code>, which seeds the friend and rank facts so every line can be seen without a second Apple ID.</p>
+    <p class="mono" style="font-size:12px;color:var(--text-3)">RUXP/World/WorldSnapshot.swift · WorldSnapshotService.swift · Views/Components/ReturnLedgerCard.swift</p>
+  </div>
+</div>
+
+<h2 id="live">Live session</h2>
+<div class="screens">
+  <div class="screen"><img src="img/home-sunday-live.png" alt="Home during Sunday Reset"><div class="cap"><b>Home on Sunday</b>The ritual is live: LIVE NOW, ends-in countdown, JOIN SESSION. The clock line reads SUNDAY RESET LIVE. The ledger above it is from the simulated absence.</div></div>
+  <div class="screen"><img src="img/lobby.png" alt="Live session lobby"><div class="cap"><b>Lobby</b>You're in. What to do, +500 on completion, who you joined as, the real join count, friends who play RUXP this season, an invite share, your history, and the Training Room when available.</div></div>
+  <div class="screen"><img src="img/livehistory.png" alt="Live session history"><div class="cap"><b>Live history</b>Profile → Live sessions. Sessions completed, each with date, duration, XP, and how many players were in your room.</div></div>
+</div>
+<p>Any strength workout finished while a ritual is live completes it; starting a workout during one joins it automatically, so nobody loses XP for skipping the lobby. The Training Room is a 2–8 player Game Center real-time match with four reactions and no chat, foreground only.</p>
+<p class="mono" style="font-size:12px;color:var(--text-3)">RUXP/Views/LiveSessionView.swift · LiveRoomPanel.swift · LiveHistoryView.swift · RUXP/Live/ · RUXP/GameCenter/LiveRoomService.swift</p>
+
+<h2 id="workout">Workout</h2>
+<div class="figure">
+  <img src="img/active.png" alt="Active workout">
+  <div>
+    <p>Timer, moments, the live strip ("N still lifting" and the event chip), the plan strip if a trainer plan is active, and the mic. Talk through your sets; RUXP writes the log. The watch is the better place to run this; the phone mirrors it.</p>
+    <p>While a workout is active the phone pings two staggered 30-minute Game Center boards every five minutes. That ping is what makes you count as "lifting now" for everyone else.</p>
+    <p class="mono" style="font-size:12px;color:var(--text-3)">RUXP/Views/ActiveWorkoutTab.swift · RUXP/WorkoutManager.swift</p>
+  </div>
+</div>
+
+<h2 id="reward">Reward: the moment that matters</h2>
+<div class="screens">
+  <div class="screen"><img src="img/reward-clean.png" alt="Reward screen"><div class="cap"><b>Workout complete</b>Awards reveal one by one with haptics, then the total, then the XP bar animates from before to after. Below the fold: parsed exercises, plan check, health stats, share card.</div></div>
+  <div class="screen"><img src="img/reward-liveops.png" alt="Reward screen with Live Ops rows"><div class="cap"><b>With rules on</b>Each Live Ops rule in effect pays as its own row (DOUBLE UP, BONUS DAY). A level-up lists the Season Pass tier it unlocked.</div></div>
+</div>
+<p>Completion XP is awarded synchronously and offline; it never depends on the OpenAI key. PR XP arrives a minute later when the notes are parsed, and slides into the open screen.</p>
+<p class="mono" style="font-size:12px;color:var(--text-3)">RUXP/Views/WorkoutCompletionSheet.swift · Shared/RUXP/ProgressionService.swift</p>
+
+<h2 id="train">Train: history</h2>
+<div class="figure">
+  <img src="img/train.png" alt="Train tab">
+  <div>
+    <p>Every finished workout, newest first, with exercises, duration, heart rate, calories, and total volume. Unparsed sessions say how many voice notes are waiting. Swipe to delete. Tap for the detail view with the editable log and the transcript.</p>
+    <p class="mono" style="font-size:12px;color:var(--text-3)">RUXP/Views/TrainView.swift · WorkoutDetailView.swift</p>
+  </div>
+</div>
+
+<h2 id="profile">Profile: the player card</h2>
+<div class="screens">
+  <div class="screen"><img src="img/profile.png" alt="Profile in Season 00"><div class="cap"><b>Season 00</b>Name in the equipped color with the badge, the equipped title, level tile, XP bar, six stats, and the SEASONS section with "SINCE AUG 2026" from the first workout. The S00 row here comes from a simulated rollover on the test device.</div></div>
+  <div class="screen"><img src="img/profile-s01.png" alt="Profile in Season 01"><div class="cap"><b>Season 01</b>Level is back to 1, lifetime XP is intact, and the S00 badge and title are still worn. The SEASONS row records S00 at its final level and opens the archived ladder.</div></div>
+</div>
+<p>No feed, no followers. Links: Season Pass, Live sessions, Personal records, Career stats, and the four Game Center leaderboards.</p>
+<p class="mono" style="font-size:12px;color:var(--text-3)">RUXP/Views/ProfileView.swift</p>
+
+<h2 id="pass">Season Pass</h2>
+<div class="screens">
+  <div class="screen"><img src="img/seasonpass.png" alt="Season Pass ladder"><div class="cap"><b>Current season</b>Twenty tiers, one cosmetic each: titles, name colors, badges. Tier N unlocks at level N. Free, no purchases. Equip what you have unlocked.</div></div>
+  <div class="screen"><img src="img/archivedpass.png" alt="Archived Season 00 ladder"><div class="cap"><b>Archived</b>A finished season's ladder. Unlocked tiers stay equippable for good; locked tiers stay locked. EARLY ADOPTER and its badge are never re-issued.</div></div>
+</div>
+<p>Tier 20 is about 44,650 season XP, which is roughly both rituals every week for the whole season. The pass is finished by showing up, not by grinding.</p>
+<p class="mono" style="font-size:12px;color:var(--text-3)">RUXP/SeasonPass/SeasonPassCatalog.swift · RUXP/Views/SeasonPassView.swift</p>
+
+<h2 id="recap">Season recap</h2>
+<div class="figure">
+  <img src="img/recap.png" alt="Season 00 complete recap">
+  <div>
+    <p>The first launch inside a new season. Final level as the hero number, then workouts against the goal, live sessions, Friday Nights, Sunday Resets, PRs, pass tier, the cosmetics you keep, and one button: Start Season 01. Shown once. A player who never trained in the old season gets no recap; an empty ceremony would be an inflated one.</p>
+    <p class="mono" style="font-size:12px;color:var(--text-3)">RUXP/Views/SeasonRecapView.swift · Shared/RUXP/ProgressionModels.swift (SeasonRecord)</p>
+  </div>
+</div>
+
+<h2 id="settings">Settings</h2>
+<div class="figure">
+  <img src="img/settings.png" alt="Settings">
+  <div>
+    <p>Weight unit, Game Center sync (with a plain statement of what leaves the device), export and delete, the OpenAI key ("AI on the house" during S00), and About. Debug builds add a Developer section: sample workouts, the event clock, the season override, presence counts, live ops source, the world snapshot.</p>
+    <p class="mono" style="font-size:12px;color:var(--text-3)">RUXP/Views/SettingsView.swift</p>
+  </div>
+</div>
+
+<h2 id="watch">Apple Watch</h2>
+<div class="figure watch">
+  <img src="img/watch-home.png" alt="Watch home">
+  <div>
+    <p>The watch is for training, not browsing: lifting-now count mirrored from the phone (a dash when stale), your level, the active ritual, Start Workout, and days since your last lift. During a workout: timer, record button, rest timer, heart rate, "N still lifting", then the XP earned once the phone syncs it. The watch never computes XP and pings presence on its own during a watch-run workout.</p>
+    <p class="mono" style="font-size:12px;color:var(--text-3)">RUXP Watch App/Views/ · WatchWorkoutManager.swift · WatchGameCenter.swift</p>
+  </div>
+</div>
+
+</main>
+</div>
+<script src="kb.js" defer></script>
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({ startOnLoad: true, theme: "dark", themeVariables: { fontFamily: "JetBrains Mono, monospace", fontSize: "13px", primaryColor: "#26262A", primaryTextColor: "#ECECEC", primaryBorderColor: "#FF2DAA", lineColor: "#A0A0A6", secondaryColor: "#1A1A1D", tertiaryColor: "#1A1A1D", background: "#1A1A1D", mainBkg: "#26262A", nodeBorder: "#A78BFA", actorBkg: "#26262A", actorBorder: "#A78BFA", actorTextColor: "#ECECEC", signalColor: "#A0A0A6", signalTextColor: "#ECECEC", noteBkgColor: "#26262A", noteTextColor: "#ECECEC" } });
+</script>
+</body>
+</html>
