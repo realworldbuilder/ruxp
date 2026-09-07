@@ -18,7 +18,7 @@
 <span class="eyebrow">How it works</span>
 <h1>Systems</h1>
 <p class="lede">Six systems, all client-side, all on the same two sources of truth: the clock and Game Center. Numbers here are the actual constants in the code.</p>
-<div class="toc"><a href="#xp">XP & levels</a><a href="#rituals">Rituals</a><a href="#seasons">Seasons & pass</a><a href="#presence">Live presence</a><a href="#sessions">Live sessions</a><a href="#liveops">Live Ops</a><a href="#world">World snapshot</a></div>
+<div class="toc"><a href="#xp">XP & levels</a><a href="#rituals">Rituals</a><a href="#seasons">Seasons & pass</a><a href="#presence">Live presence</a><a href="#crew">Crew</a><a href="#sessions">Live sessions</a><a href="#liveops">Live Ops</a><a href="#world">World snapshot</a></div>
 
 <h2 id="xp">XP and levels</h2>
 <p>XP rewards healthy, useful behavior. Grinding is not rewarded. Completion XP is computed synchronously when a workout ends, offline, with no AI involved.</p>
@@ -29,6 +29,7 @@
   <tr><td>Weekly bonus</td><td>+500</td><td>The 4th rewarded workout of the ISO week (Monday start); once per week</td></tr>
   <tr><td>Personal record</td><td>+250</td><td>Per PR, max 2 per workout; only once the AI parses your notes; a first-ever lift is a baseline, not a PR</td></tr>
   <tr><td>Live Ops rule</td><td>varies</td><td>An extra row per rule in effect, labeled with the rule's title</td></tr>
+  <tr><td>Crew Week</td><td>+250</td><td>Every active crew member trained this ISO week; once per week, to each member who did</td></tr>
 </table></div>
 <p><strong>Level</strong> is a pure function of <strong>season XP</strong>: going from level L to L+1 costs <code>1000 + 150 × (L − 1)</code>. Level 5 is 4,900 XP, level 10 is 14,400, level 20 is 44,650, level 100 is 826,650. <strong>Lifetime XP</strong> is the career total and never resets. The <strong>week streak</strong> is consecutive ISO weeks with a rewarded workout, computed live so the card never shows a streak you have already lost.</p>
 <pre class="mermaid">
@@ -96,7 +97,29 @@ sequenceDiagram
 <p>Counts include only RUXP players signed into Game Center, so early on they are small and shown as they are. The watch mirrors the phone's numbers and shows a dash when they are older than ten minutes.</p>
 <p class="mono" style="font-size:12px;color:var(--text-3)">Shared/RUXP/GameCenterCatalog.swift · RUXP/GameCenter/GameCenterLivePresence.swift · GameCenterService.swift</p>
 
+<h2 id="crew">Crew</h2>
+<p>Fortnite's strongest pull is "3 friends online" and a party that needs a fourth. RUXP's version: your crew is your Game Center friends who lift, and the week has a shared stake.</p>
+<div class="table-wrap"><table>
+  <tr><th>Fortnite</th><th>RUXP</th><th>Source</th></tr>
+  <tr><td>Friends online</td><td>"MARCUS is lifting right now"</td><td>active boards, friends scope</td></tr>
+  <tr><td>Party quest, XP to everyone</td><td>CREW WEEK: everyone trains once by Sunday midnight, +250 each</td><td>crew_week board, friends scope, current and previous occurrence</td></tr>
+  <tr><td>The match ends</td><td>Sunday Reset is last call</td><td>ScheduledEventService</td></tr>
+  <tr><td>Friend activity</td><td>"JADE and TOBI trained. Crew at 4/5."</td><td>WorldSnapshot diff</td></tr>
+</table></div>
+<pre class="mermaid">
+flowchart LR
+  W[Rewarded workout] --> S[submit crew_week = workouts this ISO week]
+  S --> R[read crew boards, friends scope]
+  R --> C{everyone in? ≥2 others + you}
+  C -- yes --> P[+250 CREW WEEK, once per week key]
+  C -- no --> H[Home: who is in, room for N more]
+  M[Monday] --> O[previous occurrence] --> C
+</pre>
+<p>Membership is self-healing: a friend is in the crew when they trained this week or last, so a dormant friend drops out silently and rejoins by training. Crews are ego-centric (my friends are not your friends), which is honest and needs no server. What the crew never does: list who is out, keep a streak, or nudge anyone. Named crews with a shared roster and sides are the Season 01 candidate.</p>
+<p class="mono" style="font-size:12px;color:var(--text-3)">RUXP/Crew/ · GameCenterService.loadCrew · ProgressionService.rewardCrewWeek</p>
+
 <h2 id="sessions">Live sessions and rooms</h2>
+
 <p>JOIN SESSION records a participation keyed by the occurrence id and your Game Center player id, and counts you on the event board right away. Any strength workout that finishes while the ritual is live completes the session; the participation stores the workout, the XP, and how many players were in your room. History lives on the Profile.</p>
 <p>The <strong>Training Room</strong> is a 2–8 player Game Center real-time match, auto-matched by occurrence, reactions only (🔥 🫡 💀 W), foreground only, never auto-retried. Members shown are always real players. It needs two devices with two Apple IDs to test.</p>
 <p class="mono" style="font-size:12px;color:var(--text-3)">RUXP/Live/LiveSessionService.swift · RUXP/GameCenter/LiveRoomService.swift</p>

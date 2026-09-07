@@ -9,6 +9,9 @@ enum ProgressionRules {
     static let weeklyTargetWorkouts = 4
     static let maxRewardedWorkoutsPerDay = 2
     static let maxPRBonusesPerWorkout = 2
+    /// CREW WEEK: every active crew member trained this ISO week. Needs at least this many others.
+    static let crewWeekXP = 250
+    static let crewMinimumOthers = 2
     /// Workouts shorter than this earn nothing. Adjustable in DEBUG from Settings › Developer.
     nonisolated(unsafe) static var minimumWorkoutDuration: TimeInterval = 10 * 60
 }
@@ -208,6 +211,55 @@ final class ProgressionService {
     func clearLastReward() {
         lastReward = nil
     }
+
+    // MARK: - Crew
+
+    func crewWeekBonusPaid(weekKey: String) -> Bool {
+        progress.crewWeekBonusWeeks?.contains(weekKey) ?? false
+    }
+
+    /// CREW WEEK: everyone in the crew trained. Paid once per ISO week. Joins the open reward summary
+    /// when it belongs to the same week (so the row animates onto the completion screen), else stands alone.
+    @discardableResult
+    func rewardCrewWeek(weekKey: String, now: Date? = nil) -> XPAward? {
+        let now = now ?? ScheduledEventService.now()
+        guard !crewWeekBonusPaid(weekKey: weekKey) else { return nil }
+        var weeks = progress.crewWeekBonusWeeks ?? []
+        weeks.insert(weekKey)
+        progress.crewWeekBonusWeeks = weeks
+
+        var awards = [XPAward(reason: .crewWeek, amount: ProgressionRules.crewWeekXP)]
+        for modifier in LiveOpsCatalog.current.activeModifiers(at: now) {
+            guard case .multiplier(.crewWeek, _) = modifier.rule else { continue }
+            let bonus = modifier.bonus(baseAwards: awards, workoutStart: now)
+            if bonus > 0 { awards.append(XPAward(reason: .modifier, label: modifier.title, amount: bonus)) }
+        }
+        let total = awards.reduce(0) { $0 + $1.amount }
+        let levelBefore = progress.level
+        let xpBefore = progress.seasonXP
+        apply(xp: total)
+
+        var summary: WorkoutRewardSummary
+        if var existing = lastReward, calendar.weekKey(for: existing.awardedAt) == weekKey {
+            existing.awards.append(contentsOf: awards)
+            existing.seasonXPAfter = progress.seasonXP
+            existing.levelAfter = progress.level
+            summary = existing
+        } else {
+            summary = WorkoutRewardSummary(
+                workoutID: UUID(), awards: awards,
+                levelBefore: levelBefore, levelAfter: progress.level,
+                seasonXPBefore: xpBefore, seasonXPAfter: progress.seasonXP,
+                eventTitle: nil, awardedAt: now
+            )
+        }
+        lastReward = summary
+        save()
+        onRewardChanged?(summary)
+        Self.logger.info("Crew week \(weekKey) paid: +\(total) XP")
+        return awards.first
+    }
+
 
     // MARK: - Profile
 

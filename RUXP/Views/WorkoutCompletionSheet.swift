@@ -9,6 +9,7 @@ struct WorkoutCompletionSheet: View {
     @Environment(LiveSessionService.self) private var liveSessions
     @Environment(\.liveEvents) private var events
     @Environment(\.livePresence) private var presence
+    @Environment(CrewService.self) private var crew
     @AppStorage("weightUnit") private var weightUnit: String = WeightUnit.lbs.rawValue
 
     let workoutID: UUID
@@ -198,6 +199,7 @@ struct WorkoutCompletionSheet: View {
         case .weeklyBonus: return "calendar"
         case .personalRecord: return "trophy.fill"
         case .modifier: return "sparkles"
+        case .crewWeek: return "person.2.fill"
         }
 
     }
@@ -277,8 +279,13 @@ struct WorkoutCompletionSheet: View {
     }
 
     /// "You were not training alone." Room peers first (people who were actually connected),
-    /// then the event's real join count, then today's count. Nothing is invented.
+    /// then your crew, then the event's real join count, then today's count. Nothing is invented.
     private func togetherLine(reward: WorkoutRewardSummary, live: LiveSnapshot) -> String? {
+        if !crew.isEmpty {
+            let paid = reward.awards.contains { $0.reason == .crewWeek }
+            if let line = crew.completionLine(paid: paid) { return line }
+        }
+
         if let award = eventAward {
             let participation = liveSessions.participations.first { $0.associatedWorkoutID == reward.workoutID }
             if let peers = participation?.roomPeerCount, peers > 0 {

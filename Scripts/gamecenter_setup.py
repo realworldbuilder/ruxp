@@ -47,13 +47,15 @@ def recurring_starts():
         "trained_today": (iso(midnight), "PT24H", "FREQ=DAILY;INTERVAL=1"),
         "event_friday_night": (iso(weekday(4, 12)), "PT18H", "FREQ=DAILY;INTERVAL=7"),
         "event_sunday_reset": (iso(weekday(6, 0)), "PT30H", "FREQ=DAILY;INTERVAL=7"),
+        "crew_week": (iso(weekday(0, 0)), "PT168H", "FREQ=DAILY;INTERVAL=7"),
     }
 
 def leaderboards():
     boards = [("lifetime_xp", "Lifetime XP"), ("week_streak", "Longest Week Streak"), ("live_sessions", "Live Sessions")]
     boards += [(f"season_xp_{s}", f"{SEASON_NAMES[s]} XP") for s in SEASONS]
     rec = recurring_starts()
-    boards += [("active_a", "Lifting now A"), ("active_b", "Lifting now B"), ("trained_today", "Trained today"), ("event_friday_night", "Friday Night"), ("event_sunday_reset", "Sunday Reset")]
+    boards += [("active_a", "Lifting now A"), ("active_b", "Lifting now B"), ("trained_today", "Trained today"), ("event_friday_night", "Friday Night"), ("event_sunday_reset", "Sunday Reset"), ("crew_week", "Crew week")]
+
     return [(vid, name, rec.get(vid)) for vid, name in boards]
 
 def achievements():

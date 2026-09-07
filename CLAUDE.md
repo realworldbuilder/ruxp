@@ -66,7 +66,8 @@ RUXP is designed as a **world, not a tool**. A tool waits for the user. A world 
 
 **How to respond to a product idea.** First check the core utility is good. Then analyze through: CORE LOOP · RIGHT NOW · WHILE YOU WERE GONE · RITUALS · SEASONS · LIVE MECHANICS · IDENTITY · PROGRESSION · COMMUNITY · "YOU HAD TO BE THERE" · WORLD BUILDING · CUT THE BULLSHIT. End with a prioritized recommendation: the 1–3 mechanics that transform the product, smallest version first. Never propose 30 features.
 
-**Where RUXP stands (Sep 2026).** Right now: real lifting-now count, featured ritual card, LIVE dot, the Home clock line. While you were gone: `WorldSnapshotService` return ledger. Rituals: FRIDAY NIGHT (Fri 5 PM–midnight, +500), SUNDAY RESET (all Sunday, +500; the ISO week starts Monday, so Sunday is last call for the weekly bonus). Seasons: S00 → S01 with a recap ceremony, frozen `SeasonRecord`s, permanent cosmetics. Live mechanics: `LiveOps` rules (PR WEEKEND, EARLY SHIFT, S00 FINALE) editable in `docs/live.json`. Identity: Game Center alias, Season Pass title/color/badge, "SINCE SEP 2026", season history. Open opportunities: squads/sides, gym-hosted events, letting players create events.
+**Where RUXP stands (Sep 2026).** Right now: real lifting-now count, a crew member lifting right now, featured ritual card, LIVE dot, the Home clock line. While you were gone: `WorldSnapshotService` return ledger, including who in your crew showed up. Rituals: FRIDAY NIGHT (Fri 5 PM–midnight, +500), SUNDAY RESET (all Sunday, +500; the ISO week starts Monday, so Sunday is last call for the weekly bonus and for CREW WEEK). Seasons: S00 → S01 with a recap ceremony, frozen `SeasonRecord`s, permanent cosmetics. Live mechanics: `LiveOps` rules (PR WEEKEND, EARLY SHIFT, S00 FINALE) editable in `docs/live.json`. Community: CREW (Game Center friends who lift) with a shared weekly stake. Identity: Game Center alias, Season Pass title/color/badge, "SINCE SEP 2026", season history. Open opportunities: named crews with sides (S01 candidate), gym-hosted events, letting players create events.
+
 
 ---
 
@@ -83,6 +84,7 @@ RUXP is designed as a **world, not a tool**. A tool waits for the user. A world 
 - **Secrets never touch the repo or the chat.** The OpenAI key lives in gitignored `Config/Secrets.xcconfig`; `.githooks/pre-commit` blocks `sk-` literals. The user creates and pastes keys themselves.
 - **Every season needs its Game Center boards before it starts:** `season_xp_sNN` and `season_goal_sNN` in App Store Connect (`Scripts/gamecenter_setup.py --all-seasons`), plus a Season Pass ladder in `SeasonPassCatalog`.
 - **Live Ops rules change how XP is earned for a window; they never gate core function** and are capped by `LiveOpsCalendar.validationErrors()`.
+- **Crew shows who is in, never who is out.** No shame lists, no crew streaks, no nudges. A quiet friend drops out of the crew silently after two weeks and rejoins by training. Accountability is positive presence ("MARCUS is lifting right now") and a shared stake (CREW WEEK), never guilt.
 - **Commit and push only when asked.** The GitHub remote is `realworldbuilder/ruxp` (public; `docs/` is the live Pages site). Don't add feature detail to the public site without asking; it is an ARG-style teaser on purpose.
 
 ---
@@ -109,6 +111,7 @@ RUXP/                           iOS
   Live/                         LiveSessionService (participations), LiveRoom protocol
   LiveOps/LiveOpsService.swift  cached remote docs/live.json, validation, -RUXPLiveOps
   World/                        WorldSnapshot + ReturnLedger (pure diff), WorldSnapshotService
+  Crew/                         CrewModels (CrewMember, CrewSnapshot, CrewState), CrewService (friends who lift, CREW WEEK)
   SeasonPass/SeasonPassCatalog  per-season ladders, permanence, loadout
   Views/                        MainTabView (workout cover + season recap cover), HomeView (lobby), TrainView,
                                 ProfileView, ActiveWorkoutTab, WorkoutCompletionSheet, SeasonRecapView,
@@ -152,6 +155,7 @@ Xcode 16 synchronized folders: a new `.swift` file under `Shared/`, `RUXP/`, or 
 | `-RUXPWorldDemo` | with Game Center off, seed friends/rank so every ledger line renders |
 | `-RUXPLiveOps off\|<path.json>` | no rules, or a local calendar instead of the remote one |
 | `-RUXPScreen seasonpass\|settings\|livehistory\|archivedpass` | open that sheet at launch (pair `settings`/`livehistory`/`archivedpass` with `-RUXPTab profile`) |
+| `-RUXPCrewDemo room\|last\|final\|complete\|empty` | with Game Center off, seed a crew in that state (`final` + `-RUXPLiveScene complete` shows the CREW WEEK row) |
 
 
 Typical: `-RUXPSkipGameCenter -RUXPSkipHealthKit -RUXPLoadSamples -RUXPSkipMinimum -RUXPLiveScene complete`.

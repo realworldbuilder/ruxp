@@ -9,6 +9,8 @@ enum XPReason: String, Codable, CaseIterable {
     case personalRecord
     /// A Live Ops rule in effect for this workout (PR WEEKEND, S00 FINALE). Label is the rule's title.
     case modifier
+    /// Everyone in your crew trained this week. Paid once per week to each member who did.
+    case crewWeek
 
     var title: String {
         switch self {
@@ -17,6 +19,7 @@ enum XPReason: String, Codable, CaseIterable {
         case .weeklyBonus: return "WEEKLY BONUS"
         case .personalRecord: return "NEW PR"
         case .modifier: return "LIVE MODIFIER"
+        case .crewWeek: return "CREW WEEK"
         }
     }
 }
@@ -98,6 +101,9 @@ struct PlayerProgress: Codable, Equatable {
     var modifierIDsByWorkout: [UUID: [String]]? = nil
     /// Written by every save from build 5 on. Nil marks a file from builds 1–4 (see the legacy season rename).
     var schemaVersion: Int? = nil
+    /// ISO week keys for which the CREW WEEK bonus was paid.
+    var crewWeekBonusWeeks: Set<String>? = nil
+
 
     /// Live Sessions completed. An event bonus is paid once per occurrence and only for a
     /// qualifying workout, so the ledger size is the completion count.

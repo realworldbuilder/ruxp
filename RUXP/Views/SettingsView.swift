@@ -12,6 +12,7 @@ struct SettingsView: View {
     @Environment(\.liveRoom) private var liveRoom
     @Environment(LiveOpsService.self) private var liveOps
     @Environment(WorldSnapshotService.self) private var world
+    @Environment(CrewService.self) private var crew
 
     @AppStorage("weightUnit") private var weightUnit: String = WeightUnit.lbs.rawValue
     @AppStorage(GameCenterService.syncEnabledKey) private var gameCenterSync = true
@@ -308,6 +309,11 @@ struct SettingsView: View {
 
                     LabeledContent("World snapshot", value: world.debugDescription)
                     Button("Reset return ledger") { world.debugResetSnapshot() }
+
+                    LabeledContent("Crew", value: crew.isEmpty ? "none" : "\(crew.inCount)/\(crew.size) in · \(crew.liftingNow.count) lifting · met \(crew.goalMet)")
+                    LabeledContent("Crew read", value: crew.snapshot?.fetchedAt.formatted(date: .omitted, time: .standard) ?? (crew.lastError ?? "never"))
+                    Button("Refresh crew") { crew.refreshNow() }
+
                 } header: {
                     Text("Developer")
 

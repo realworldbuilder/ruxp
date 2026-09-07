@@ -21,7 +21,17 @@ import Foundation
 ///   trained_today       24 h,   restarts daily,        start 00:00
 ///   event_friday_night  18 h,   restarts weekly,       start Friday 12:00
 ///   event_sunday_reset  30 h,   restarts weekly,       start Sunday 00:00
+///
+/// Set "Crew" (Recurring; the score is this player's rewarded workouts in the ISO week, best kept):
+///   crew_week           7 days, restarts weekly,       start Monday 00:00
+///   Read with the friends scope: each friend's count this week and last (previous occurrence).
 enum GameCenterCatalog {
+    // MARK: Crew
+
+    /// Rewarded workouts this ISO week. Friends read it to see who is in.
+    static let crewWeek = "crew_week"
+
+
     // MARK: Rankings
 
     static let lifetimeXP = "lifetime_xp"

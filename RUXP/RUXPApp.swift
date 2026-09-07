@@ -17,6 +17,7 @@ struct RUXPApp: App {
     @State private var liveRoom: LiveRoomService
     @State private var liveOps: LiveOpsService
     @State private var world: WorldSnapshotService
+    @State private var crew: CrewService
     private let eventService = ScheduledEventService()
 
     init() {
@@ -77,11 +78,18 @@ struct RUXPApp: App {
         // Moments stored while offline get transcribed the moment the network is back.
         processor.onNetworkRestored = { [weak manager] in await manager?.retryPendingTranscriptions() }
 
+        // Your crew: Game Center friends who lift. Reads the crew boards; pays CREW WEEK.
+        let crewService = CrewService(gameCenter: gameCenterService, progression: progressionService, season: progressionService.season)
+        manager.crew = crewService
+
         // The world keeps moving while the player is gone. One snapshot hook: the presence
         // poller feeds both the watch and the live-event join counts the ledger remembers.
         let worldService = WorldSnapshotService(events: events, season: progressionService.season,
                                                 progression: progressionService, gameCenter: gameCenterService,
                                                 presence: presence)
+        worldService.crewStateProvider = { [weak crewService] in crewService?.state }
+        worldService.crewRefresh = { [weak crewService] in await crewService?.refresh() }
+        crewService.onSnapshotChanged = { [weak worldService] in worldService?.noteCrewUpdated() }
         presence.onSnapshotChanged = { [weak connectivity, weak worldService] snapshot in
             connectivity?.pushPresence(snapshot)
             worldService?.notePresenceUpdated()
@@ -102,6 +110,7 @@ struct RUXPApp: App {
         _liveRoom = State(initialValue: room)
         _liveOps = State(initialValue: liveOpsService)
         _world = State(initialValue: worldService)
+        _crew = State(initialValue: crewService)
 
         #if DEBUG
         // -RUXPLoadSamples: seed the seven sample workouts on an empty install (simulator screenshots).
@@ -160,6 +169,8 @@ struct RUXPApp: App {
     ///   -RUXPWorldDemo   with Game Center off, seed friends/rank so every ledger line renders
     ///   -RUXPLiveOps off|<path.json>   no Live Ops rules, or a local calendar instead of the remote one
     ///   -RUXPScreen seasonpass|settings|livehistory|archivedpass   open that sheet at launch (see MainTabView)
+    ///   -RUXPCrewDemo [room|last|final|complete|empty]   with Game Center off, seed a crew in that state
+
 
 
     private static func applyDebugLaunchArguments() {
@@ -180,6 +191,10 @@ struct RUXPApp: App {
             WorldSnapshotService.debugLastSeen = number * unit
         }
         if args.contains("-RUXPWorldDemo") { WorldSnapshotService.debugDemo = true }
+        if let idx = args.firstIndex(of: "-RUXPCrewDemo") {
+            let value = idx + 1 < args.count && !args[idx + 1].hasPrefix("-") ? args[idx + 1] : "room"
+            CrewService.demoMode = value
+        }
 
         if let idx = args.firstIndex(of: "-RUXPEventClock"), idx + 1 < args.count {
             let cal = Calendar.current
@@ -215,11 +230,13 @@ struct RUXPApp: App {
                 .environment(\.liveRoom, liveRoom)
                 .environment(liveOps)
                 .environment(world)
+                .environment(crew)
                 .preferredColorScheme(.dark)
                 .task {
                     gameCenter.start()
                     livePresence.start()
                     liveOps.refresh()
+                    crew.start()
                     world.noteForeground()
                     await workoutProcessor.processPendingQueue()
                     await workoutManager.retryPendingTranscriptions()
@@ -234,11 +251,14 @@ struct RUXPApp: App {
                         Task { await workoutManager.retryPendingTranscriptions() }
                         livePresence.start()
                         liveOps.refresh()
+                        crew.start()
                         world.noteForeground()
                     } else if scenePhase == .background {
                         // Snapshot first, while the last live count is still in hand.
                         world.noteBackground()
                         livePresence.stop()
+                        crew.stop()
+
 
                         gameCenter.flushNow()
                         // Real-time rooms are foreground-only; the peer connection dies when suspended.

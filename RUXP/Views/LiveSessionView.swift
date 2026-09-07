@@ -9,7 +9,9 @@ struct LiveSessionView: View {
     @Environment(ProgressionService.self) private var progression
     @Environment(LiveSessionService.self) private var liveSessions
     @Environment(GameCenterService.self) private var gameCenter
+    @Environment(CrewService.self) private var crew
     @Environment(\.livePresence) private var presence
+
 
     let event: LiveEvent
     let onStartWorkout: () -> Void
@@ -183,17 +185,23 @@ struct LiveSessionView: View {
                 Text("FRIENDS IN RUXP").eyebrow().foregroundStyle(Theme.textSecondary)
                 VStack(spacing: 8) {
                     ForEach(friends.prefix(6)) { friend in
-                        HStack {
+                        let member = crew.crew.first { $0.id == friend.id }
+                        HStack(spacing: 8) {
+                            if member?.liftingNow == true { LiveDot(label: nil, size: 5) }
                             Text(friend.displayName)
                                 .font(Theme.Fonts.title(15))
                                 .foregroundStyle(Theme.textPrimary)
                                 .lineLimit(1)
                             Spacer()
+                            if let member, member.thisWeek > 0 {
+                                Text("\(member.thisWeek) THIS WEEK").eyebrow().foregroundStyle(Theme.xp)
+                            }
                             Text("LVL \(friend.level)")
                                 .font(Theme.Fonts.mono(12))
                                 .foregroundStyle(Theme.textSecondary)
                         }
                     }
+
                 }
                 Divider().overlay(Theme.divider)
             } else {

@@ -25,6 +25,7 @@ final class WorkoutManager {
     }
     /// RUXP Live participation. Set after init; nil in previews.
     var liveSessions: LiveSessionService?
+    var crew: CrewService?
     /// Fired once a workout has been rewarded and cleared (used to close the Training Room).
     var onWorkoutEnded: (() -> Void)?
     private var heartbeatTask: Task<Void, Never>?
@@ -284,6 +285,8 @@ final class WorkoutManager {
 
         recordCompletionPresence(reward: reward, events: overlapping)
         liveSessions?.recordCompletion(session: session, reward: reward, events: overlapping)
+        if !reward.isEmpty { crew?.noteRewardedCompletion() }
+
         onWorkoutEnded?()
     }
 

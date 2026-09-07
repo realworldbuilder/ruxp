@@ -18,7 +18,7 @@
 <span class="eyebrow">Screen tour</span>
 <h1>Every screen, and what makes it alive</h1>
 <p class="lede">Captured from the current build on an iPhone 17 Pro simulator with Game Center turned off, which is why the presence line reads "Game Center is off in this build." On a device signed into Game Center those lines are real counts. The look is deliberately restrained: near-black, system type, one hero number per screen, mono readouts for XP. The game shows in small doses.</p>
-<div class="toc"><a href="#home">Home</a><a href="#gone">While you were gone</a><a href="#live">Live session</a><a href="#workout">Workout</a><a href="#reward">Reward</a><a href="#train">Train</a><a href="#profile">Profile</a><a href="#pass">Season Pass</a><a href="#recap">Season recap</a><a href="#settings">Settings</a><a href="#watch">Watch</a></div>
+<div class="toc"><a href="#home">Home</a><a href="#crew">Crew</a><a href="#gone">While you were gone</a><a href="#live">Live session</a><a href="#workout">Workout</a><a href="#reward">Reward</a><a href="#train">Train</a><a href="#profile">Profile</a><a href="#pass">Season Pass</a><a href="#recap">Season recap</a><a href="#settings">Settings</a><a href="#watch">Watch</a></div>
 
 <h2 id="home">Home: the lobby</h2>
 <div class="figure">
@@ -43,7 +43,19 @@
   </div>
 </div>
 
+<h2 id="crew">Crew: someone is expecting you</h2>
+<div class="screens">
+  <div class="screen"><img src="img/crew-room.png" alt="Crew card with a friend lifting now"><div class="cap"><b>Room for two more</b>MARCUS is lifting right now (neon border), MARCUS and JADE are in this week with their counts, you are not yet. The crew is your Game Center friends who lift; no setup.</div></div>
+  <div class="screen"><img src="img/crew-last.png" alt="Crew card, you're the last one"><div class="cap"><b>You're the last one</b>Everyone else is in. The only accountability line in the app that points at you, and it is true.</div></div>
+  <div class="screen"><img src="img/crew-sunday.png" alt="Crew on Sunday with last call"><div class="cap"><b>Sunday, last call</b>While Sunday Reset is live and the crew is not done, the card carries the deadline. This is what gives Sunday its own meaning.</div></div>
+  <div class="screen"><img src="img/crew-reward.png" alt="Reward screen paying CREW WEEK"><div class="cap"><b>Your workout completes the week</b>The CREW WEEK +250 row reveals with the others, and the line says everyone who trained gets it.</div></div>
+  <div class="screen"><img src="img/crew-ledger.png" alt="Ledger with crew lines"><div class="cap"><b>While you were gone</b>Who in your crew showed up outranks rank moves and stranger counts.</div></div>
+</div>
+<p>Shows who is in, never who is out. A friend who goes quiet for two weeks drops out of the crew silently and rejoins by training, so one absent person never holds the goal hostage. Captured with <code>-RUXPCrewDemo</code>; on a device the names are your real Game Center friends.</p>
+<p class="mono" style="font-size:12px;color:var(--text-3)">RUXP/Crew/CrewService.swift · RUXP/Views/Components/CrewCard.swift · GameCenterService.loadCrew</p>
+
 <h2 id="gone">While you were gone</h2>
+
 <div class="figure">
   <img src="img/ledger.png" alt="Home with the WHILE YOU WERE GONE card">
   <div>

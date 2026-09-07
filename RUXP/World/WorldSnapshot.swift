@@ -21,6 +21,8 @@ struct WorldSnapshot: Codable, Equatable {
     var playersThisSeason: Int? = nil
     /// This player's rank on the season XP board.
     var seasonRank: Int? = nil
+    /// The crew as last read: active members, their counts this week, and whether the week was met.
+    var crew: CrewState? = nil
 
     struct FriendMark: Codable, Equatable {
         var displayName: String
@@ -44,8 +46,10 @@ struct WorldSnapshot: Codable, Equatable {
 
 /// One line on the WHILE YOU WERE GONE card.
 struct ReturnItem: Identifiable, Equatable {
+    /// Display order. People you know outrank numbers about strangers.
     enum Kind: Int, Comparable {
-        case eventRan = 0, rankMoved, friendLeveled, weekRolled, seasonEnding, newPlayers, friendsTrained
+        case eventRan = 0, crewWeek, friendsTrained, friendLeveled, rankMoved, weekRolled, seasonEnding, newPlayers
+
         static func < (lhs: Kind, rhs: Kind) -> Bool { lhs.rawValue < rhs.rawValue }
     }
     enum Accent: Equatable { case neutral, live, xp, violet, warning }
@@ -72,6 +76,28 @@ enum ReturnLedger {
 
         if let line = eventsLine(ranEvents, previous: previous) {
             items.append(ReturnItem(kind: .eventRan, text: line, accent: .live))
+        }
+
+        // Crew: the week was met while you were out, or people showed up.
+        var crewHandled = false
+        if let before = previous.crew, let after = current.crew, previous.weekKey == current.weekKey {
+            if !before.met, after.met {
+                items.append(ReturnItem(kind: .crewWeek, text: "Crew week complete while you were out.", accent: .xp))
+                crewHandled = true
+            }
+            let showedUp = after.counts.filter { id, count in count > (before.counts[id] ?? 0) }.keys
+                .compactMap { after.names[$0] }.sorted()
+            if !showedUp.isEmpty {
+                var line: String
+                switch showedUp.count {
+                case 1: line = "\(showedUp[0]) trained."
+                case 2: line = "\(showedUp[0]) and \(showedUp[1]) trained."
+                default: line = "\(showedUp[0]), \(showedUp[1]) and \(showedUp.count - 2) more trained."
+                }
+                if !after.met { line += " Crew at \(after.inCount)/\(after.size)." }
+                items.append(ReturnItem(kind: .friendsTrained, text: line, accent: .violet))
+                crewHandled = true
+            }
         }
 
         if let before = previous.seasonRank, let after = current.seasonRank, before != after, before > 0, after > 0 {
@@ -122,9 +148,10 @@ enum ReturnLedger {
             items.append(ReturnItem(kind: .newPlayers, text: "+\(delta.grouped) player\(delta == 1 ? "" : "s") joined the season.", accent: .neutral))
         }
 
-        if trained > 0 {
+        if trained > 0, !crewHandled {
             items.append(ReturnItem(kind: .friendsTrained, text: "\(trained) friend\(trained == 1 ? "" : "s") trained.", accent: .neutral))
         }
+
 
         return Array(items.sorted { $0.kind < $1.kind }.prefix(maxItems))
     }

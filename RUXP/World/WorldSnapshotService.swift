@@ -31,6 +31,10 @@ final class WorldSnapshotService {
     private let gameCenter: GameCenterService
     private weak var presence: (any LivePresenceProviding)?
     private let fileURL: URL
+    /// The crew as the crew service sees it right now; set by RUXPApp. Nil when there is no crew service.
+    var crewStateProvider: () -> CrewState? = { nil }
+    /// A fresh crew read, awaited during the Game Center fill.
+    var crewRefresh: () async -> CrewState? = { nil }
     private static let dismissedKey = "world.dismissedLedgerAt"
 
     #if DEBUG
@@ -87,6 +91,7 @@ final class WorldSnapshotService {
         next.friends = previous.friends
         next.playersThisSeason = previous.playersThisSeason
         next.seasonRank = previous.seasonRank
+        next.crew = previous.crew
         current = next
         guard gap >= ReturnLedger.absenceThreshold else { return }
 
@@ -104,6 +109,7 @@ final class WorldSnapshotService {
         consumedForeground = false
         current.takenAt = now
         current.workoutsThatWeek = progression.workoutsThisWeek
+        if let crew = crewStateProvider() { current.crew = crew }
         if let live = events.activeEvent(at: now), !live.isSeasonWide, let presence {
             let count = presence.participantCount(for: live)
             if count > 0 { current.liveEventCounts[live.id] = count }
@@ -112,6 +118,11 @@ final class WorldSnapshotService {
         persist(current)
         // The next foreground compares against what was just written.
         baseline = current
+    }
+
+    /// Chained from the crew service: keep the latest crew in the snapshot that will be persisted.
+    func noteCrewUpdated() {
+        if let crew = crewStateProvider() { current.crew = crew }
     }
 
     /// Chained from the presence poller: remember the join count while an event is live.
@@ -156,9 +167,11 @@ final class WorldSnapshotService {
             }
             async let friends = self.gameCenter.loadFriendsOnSeasonBoard()
             async let standing = self.gameCenter.loadLocalStanding(boardID: GameCenterCatalog.seasonXP(self.season))
-            let (friendList, localStanding) = await (friends, standing)
+            async let crewState = self.crewRefresh()
+            let (friendList, localStanding, crew) = await (friends, standing, crewState)
             guard !Task.isCancelled else { return }
             var next = self.current
+            if let crew { next.crew = crew }
             next.friends = Dictionary(uniqueKeysWithValues: friendList.map {
                 ($0.id, WorldSnapshot.FriendMark(displayName: $0.displayName, level: $0.level, seasonXP: $0.seasonXP))
             })
@@ -280,7 +293,21 @@ final class WorldSnapshotService {
     }
 
     private func applyDemoFill(previous: WorldSnapshot) {
+        var previous = previous
         var next = current
+        if let crew = crewStateProvider() {
+            // Baseline: before the absence, only MARCUS had trained; the week was not met.
+            var before = crew
+            before.counts = before.counts.mapValues { _ in 0 }
+            if let first = before.names.keys.sorted().first { before.counts[first] = 1 }
+            before.inCount = 1
+            before.met = false
+            previous.crew = before
+            baseline = previous
+            next.crew = crew
+        }
+
+
         next.friends = [
             "demo-1": .init(displayName: "MARCUS", level: 9, seasonXP: 12_600),
             "demo-2": .init(displayName: "JADE", level: 5, seasonXP: 5_600),

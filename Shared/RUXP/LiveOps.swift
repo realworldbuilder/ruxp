@@ -41,6 +41,8 @@ extension XPReason {
         case .weeklyBonus: return "WEEKLY XP"
         case .personalRecord: return "PR XP"
         case .modifier: return "XP"
+        case .crewWeek: return "CREW XP"
+
         }
     }
 }

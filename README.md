@@ -76,12 +76,17 @@ Users earn XP for healthy, useful behavior. Grinding is not rewarded.
 | Complete a workout | +500 | 10+ minutes, max 2 rewarded per day |
 | Join a live event | +500 | Workout overlaps the event window (FRIDAY NIGHT, SUNDAY RESET) |
 | Live Ops rule | varies | A dated rule in effect (PR WEEKEND ×2 PR XP, EARLY SHIFT +250 before 8 AM, S00 FINALE +250). See `docs/live.json` |
+| Crew Week | +250 | Every active crew member trained this ISO week; once per week, to each member who did |
 | Weekly consistency | +500 | 4th workout of the ISO week |
 | Personal record | +250 | Max 2 per workout, only after AI parses your notes |
 
 Level 1–100 is derived from **season XP**; **lifetime XP** is a career total. Season 00 is EARLY ADOPTERS (Sep 1 – Nov 30, 2026): 32 workouts, finish the season. Season 01, PRESS START, starts Dec 1. `SeasonCatalog.current` picks the season active today. Everything lives in `ProgressionService`.
 
 When a season closes, the first launch inside the next one shows a recap (final level, workouts, live sessions, Friday Nights, PRs, pass tier, the cosmetics you keep) and freezes it as a `SeasonRecord` on the profile. Season Pass cosmetics unlocked in a finished season stay equippable forever; Profile lists every season played.
+
+## Crew
+
+Your crew is your Game Center friends who lift: no setup, no codes. Home shows who is lifting right now ("MARCUS is lifting right now"), who is in this week with their counts, and one line about the week's stake. **Crew Week**: when every active crew member (at least two others) has a rewarded workout by Sunday midnight, everyone who trained gets +250 XP. A friend who goes quiet for two weeks drops out of the crew silently and rejoins by training, so nobody can hold the goal hostage and nobody is ever listed as "out". Sunday Reset becomes the crew's last call, the reward screen says where you landed ("You're the 3rd in your crew this week."), and the return ledger reports who showed up. All of it comes from one recurring Game Center board (`crew_week`, your rewarded workouts this ISO week) read with the friends scope, plus the active boards for lifting-now. `CrewService` in `RUXP/Crew/`.
 
 ## The world moves while you're gone
 
@@ -176,7 +181,8 @@ git config core.hooksPath .githooks                           # refuses commits 
 Without `Config/Secrets.xcconfig` the app builds in bring-your-own-key mode. A key pasted in Settings always overrides the bundled one. `Scripts/ship.sh` refuses to archive without the file and verifies the key landed in the archive.
 
 ### Debug helpers
-Debug builds add a Developer section in Settings (load 7 sample workouts, pretend it is Friday night, skip the 10-minute minimum, season override, Game Center state and presence counts, live ops source, world snapshot) and accept launch arguments `-RUXPSkipMinimum`, `-RUXPEventClock friday|sunday|tuesday`, `-RUXPSkipHealthKit`, `-RUXPSkipGameCenter`, `-RUXPLiveScene lobby|active|complete`, `-RUXPSeason S00|S01`, `-RUXPLastSeen 3d|18h|45m`, `-RUXPWorldDemo`, and `-RUXPLiveOps off|<path.json>`.
+Debug builds add a Developer section in Settings (load 7 sample workouts, pretend it is Friday night, skip the 10-minute minimum, season override, Game Center state and presence counts, live ops source, world snapshot) and accept launch arguments `-RUXPSkipMinimum`, `-RUXPEventClock friday|sunday|tuesday`, `-RUXPSkipHealthKit`, `-RUXPSkipGameCenter`, `-RUXPLiveScene lobby|active|complete`, `-RUXPSeason S00|S01`, `-RUXPLastSeen 3d|18h|45m`, `-RUXPWorldDemo`, `-RUXPLiveOps off|<path.json>`, `-RUXPScreen seasonpass|settings|livehistory|archivedpass`, and `-RUXPCrewDemo room|last|final|complete|empty`.
+
 
 
 ## Privacy

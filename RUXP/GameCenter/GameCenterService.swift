@@ -316,7 +316,82 @@ final class GameCenterService {
         }
     }
 
+    // MARK: - Crew
+
+    /// This player's rewarded workouts this ISO week, for friends to see. Best score is kept,
+    /// and the count only grows inside a week, so resubmitting the total is safe.
+    func submitCrewWeek(count: Int) async {
+        guard isActive, count > 0 else { return }
+        do {
+            try await GKLeaderboard.submitScore(count, context: 0, player: GKLocalPlayer.local, leaderboardIDs: [GameCenterCatalog.crewWeek])
+            Self.logger.info("Crew week count \(count) submitted")
+        } catch {
+            Self.logger.error("Crew week submit failed: \(error.localizedDescription)")
+        }
+    }
+
+    /// Friends who lift: identity from the season board, this week and last from the crew board
+    /// (current and previous occurrence), lifting-now from the active boards. All friends scope.
+    /// Best-effort: nil when signed out or the crew board is not configured.
+    func loadCrew(season: Season) async -> CrewSnapshot? {
+        guard isActive else { return nil }
+        let me = GKLocalPlayer.local.gamePlayerID
+        let ids = [GameCenterCatalog.seasonXP(season), GameCenterCatalog.crewWeek, GameCenterCatalog.activeA, GameCenterCatalog.activeB]
+        do {
+            let boards = try await GKLeaderboard.loadLeaderboards(IDs: ids)
+            let byID = boards.reduce(into: [String: GKLeaderboard]()) { $0[$1.baseLeaderboardID] = $1 }
+            guard let crewBoard = byID[GameCenterCatalog.crewWeek] else { return nil }
+            let range = NSRange(location: 1, length: 50)
+
+            var members: [String: CrewMember] = [:]
+            func member(_ player: GKPlayer) -> CrewMember {
+                members[player.gamePlayerID] ?? CrewMember(id: player.gamePlayerID, displayName: player.displayName, level: 1, thisWeek: 0, lastWeek: 0, liftingNow: false)
+            }
+            if let seasonBoard = byID[GameCenterCatalog.seasonXP(season)] {
+                let (_, entries, _) = try await seasonBoard.loadEntries(for: .friendsOnly, timeScope: .allTime, range: range)
+                for e in entries where e.player.gamePlayerID != me {
+                    var m = member(e.player); m.level = LevelCurve.level(forSeasonXP: e.score); members[m.id] = m
+                }
+            }
+            let (localNow, thisWeek, _) = try await crewBoard.loadEntries(for: .friendsOnly, timeScope: .allTime, range: range)
+            _ = localNow
+            for e in thisWeek where e.player.gamePlayerID != me {
+                var m = member(e.player); m.thisWeek = e.score; members[m.id] = m
+            }
+            var localLastWeek = 0
+            if let previous = try? await crewBoard.loadPreviousOccurrence() {
+                let (localPrev, lastWeek, _) = try await previous.loadEntries(for: .friendsOnly, timeScope: .allTime, range: range)
+                localLastWeek = localPrev?.score ?? 0
+                for e in lastWeek where e.player.gamePlayerID != me {
+                    var m = member(e.player); m.lastWeek = e.score; members[m.id] = m
+                }
+            }
+            for id in GameCenterCatalog.activeBoards {
+                guard let board = byID[id] else { continue }
+                let (_, entries, _) = try await board.loadEntries(for: .friendsOnly, timeScope: .allTime, range: range)
+                for e in entries where e.player.gamePlayerID != me {
+                    var m = member(e.player); m.liftingNow = true; members[m.id] = m
+                }
+            }
+            return CrewSnapshot(
+                members: members.values.sorted { a, b in
+                    if a.liftingNow != b.liftingNow { return a.liftingNow }
+                    if a.thisWeek != b.thisWeek { return a.thisWeek > b.thisWeek }
+                    return a.displayName < b.displayName
+                },
+
+                localLastWeek: localLastWeek,
+                weekKey: Calendar.ruxpWeek.weekKey(for: Date()),
+                fetchedAt: Date()
+            )
+        } catch {
+            Self.logger.info("Crew unavailable: \(error.localizedDescription)")
+            return nil
+        }
+    }
+
     // MARK: - Standing
+
 
     /// The local player's line on a classic board, plus how many players are on it.
     struct LocalStanding: Equatable {

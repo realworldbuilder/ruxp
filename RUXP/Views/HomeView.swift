@@ -11,6 +11,7 @@ struct HomeView: View {
     @Environment(LiveSessionService.self) private var liveSessions
     @Environment(\.liveEvents) private var events
     @Environment(WorldSnapshotService.self) private var world
+    @Environment(CrewService.self) private var crew
 
     @State private var now = ScheduledEventService.now()
     @State private var showSeasonPass = false
@@ -31,7 +32,9 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: 18) {
                 header
                 presenceBlock
+                CrewCard(now: now)
                 if world.isLedgerVisible, let ledger = world.ledger {
+
                     ReturnLedgerCard(
                         items: ledger.items,
                         awayLabel: ReturnLedger.awayLabel(from: ledger.baselineAt, to: now),
