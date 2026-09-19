@@ -12,12 +12,17 @@ struct RUXPApp: App {
     @State private var plannedWorkoutStore: PlannedWorkoutStore
     @State private var progression: ProgressionService
     @State private var gameCenter: GameCenterService
-    @State private var livePresence: GameCenterLivePresence
+    @State private var livePresence: any LivePresenceProviding
+    @State private var liveObjective: any SessionObjectiveProviding
+    @State private var liveActivity: any LiveActivityProviding
     @State private var liveSessions: LiveSessionService
     @State private var liveRoom: LiveRoomService
     @State private var liveOps: LiveOpsService
     @State private var world: WorldSnapshotService
     @State private var crew: CrewService
+    @State private var community: CommunityService
+    @State private var communityMoments: CommunityMomentComposer
+    @State private var router = AppRouter()
     private let eventService = ScheduledEventService()
 
     init() {
@@ -36,11 +41,37 @@ struct RUXPApp: App {
         let chat = ChatEngine(workoutStore: store, insightsEngine: insights, aiService: aiService, conversationStore: convoStore)
         // Live Ops first: it sets `LiveOpsCatalog.current`, which the event provider reads.
         let liveOpsService = LiveOpsService()
+        // Same for the community directory (`CommunityCatalog.current`, `AppLinks.origin`).
+        let communityService = CommunityService()
         let progressionService = ProgressionService()
         let events = ScheduledEventService()
         let gameCenterService = GameCenterService(progression: progressionService)
         progressionService.onProgressChanged = { [weak gameCenterService] in gameCenterService?.noteProgressChanged($0) }
-        let presence = GameCenterLivePresence(gameCenter: gameCenterService, season: progressionService.season)
+        // Presence, the shared objective, and the floor: real Game Center readers, or (DEBUG,
+        // -RUXPLiveDemo) one simulator behind all three so every surface agrees. Views see protocols.
+        let presence: any LivePresenceProviding
+        let objective: any SessionObjectiveProviding
+        let activity: any LiveActivityProviding
+        let observed = ObservedLiveActivity()
+        #if DEBUG
+        let simulator: LiveWorldSimulator? = LiveWorldSimulator.isRequested ? LiveWorldSimulator(events: events) : nil
+        #endif
+        #if DEBUG
+        if let simulator {
+            presence = simulator
+            objective = simulator
+            activity = simulator
+        } else {
+            presence = GameCenterLivePresence(gameCenter: gameCenterService, season: progressionService.season)
+            objective = GameCenterSessionObjective(gameCenter: gameCenterService, events: events)
+            activity = observed
+        }
+        #else
+        presence = GameCenterLivePresence(gameCenter: gameCenterService, season: progressionService.season)
+        objective = GameCenterSessionObjective(gameCenter: gameCenterService, events: events)
+        activity = observed
+        #endif
+        observed.localAlias = { [weak gameCenterService] in gameCenterService?.alias }
         gameCenterService.onSyncEnabledChanged = { [weak connectivity] in connectivity?.pushGameCenterSync($0) }
         connectivity.pushGameCenterSync(gameCenterService.isSyncEnabled)
         let manager = WorkoutManager(
@@ -63,12 +94,34 @@ struct RUXPApp: App {
         let liveSessionService = LiveSessionService(events: events, presence: presence)
         liveSessionService.playerIDProvider = { [weak gameCenterService] in gameCenterService?.playerID }
         gameCenterService.onPlayerIdentified = { [weak liveSessionService] in liveSessionService?.attachPlayerID($0) }
+        // Discord: moments leave the phone through one publisher, behind a policy. The relay
+        // URL comes from the directory; with none configured, moments are logged and kept.
+        let relay = RelayCommunityPublisher(urlProvider: { [weak communityService] in communityService?.relayURL })
+        let composer = CommunityMomentComposer(events: events, publisher: relay)
+        composer.sharingProvider = { [weak communityService] in communityService?.sharing ?? CommunitySharing() }
+        composer.aliasProvider = { [weak gameCenterService] in gameCenterService?.alias }
         // Joining counts you in the event's window right away ("84 players joined" is joins, not finishes).
-        liveSessionService.onJoined = { [weak gameCenterService] event in
+        liveSessionService.onJoined = { [weak gameCenterService, weak observed, weak composer, weak presence] event in
+            observed?.noteJoined(event)
+            composer?.noteJoined(event, liftingNow: presence?.snapshot.isAvailable == true ? presence?.snapshot.liftingNow : nil)
             guard let board = GameCenterCatalog.eventBoard(for: event) else { return }
             Task { await gameCenterService?.submitPresence(boards: [board]) }
         }
+        // The shared objective: a parse credits the workout's volume to its session, the provider
+        // submits the player's cumulative total, and the floor gets a "you moved" line.
+        liveSessionService.objectiveSubmit = { [weak objective] total, event in
+            Task { await objective?.submit(volumeLB: total, for: event) }
+        }
+        liveSessionService.onContributionRecorded = { [weak observed] _, volume in observed?.noteOwnContribution(volumeLB: volume) }
+        processor.onWorkoutParsed = { [weak liveSessionService] in liveSessionService?.recordContribution(session: $0) }
+        processor.onPersonalRecords = { [weak composer, weak progressionService] records, session in
+            let paid = progressionService?.lastReward.flatMap { $0.workoutID == session.id ? $0.awards : nil } ?? []
+            composer?.notePersonalRecords(records, workoutID: session.id,
+                                          xp: paid.filter { $0.reason == .personalRecord }.map(\.amount))
+        }
+        manager.onRewardChanged = { [weak composer] in composer?.noteReward($0) }
         let room = LiveRoomService(gameCenter: gameCenterService)
+        room.onReaction = { [weak observed] in observed?.noteReaction($0) }
         liveSessionService.roomPeerCountProvider = { [weak room] in
             guard let room, room.peakPeerCount > 0 else { return nil }
             return room.peakPeerCount
@@ -89,11 +142,30 @@ struct RUXPApp: App {
                                                 presence: presence)
         worldService.crewStateProvider = { [weak crewService] in crewService?.state }
         worldService.crewRefresh = { [weak crewService] in await crewService?.refresh() }
-        crewService.onSnapshotChanged = { [weak worldService] in worldService?.noteCrewUpdated() }
-        presence.onSnapshotChanged = { [weak connectivity, weak worldService] snapshot in
+        crewService.onSnapshotChanged = { [weak worldService, weak crewService, weak observed] in
+            worldService?.noteCrewUpdated()
+            observed?.noteCrew(lifting: crewService?.liftingNow.map(\.displayName) ?? [])
+        }
+        let presenceHook: (LiveSnapshot) -> Void = { [weak connectivity, weak worldService, weak observed, weak composer, weak presence] snapshot in
             connectivity?.pushPresence(snapshot)
             worldService?.notePresenceUpdated()
+            observed?.notePresence(snapshot)
+            if snapshot.isAvailable, let presence, let event = events.activeEvent(at: ScheduledEventService.now()), !event.isSeasonWide {
+                composer?.noteLifters(presence.participantCount(for: event), for: event)
+            }
         }
+        let objectiveHook: (SessionObjectiveState) -> Void = { [weak liveSessionService, weak presence, weak observed, weak composer] state in
+            liveSessionService?.noteObjectiveUpdated(totalLB: state.totalLB, contributors: state.contributors,
+                                                     liftingNow: presence?.snapshot.liftingNow ?? 0)
+            observed?.noteObjective(state)
+            composer?.noteObjective(state)
+        }
+        (presence as? GameCenterLivePresence)?.onSnapshotChanged = presenceHook
+        (objective as? GameCenterSessionObjective)?.onStateChanged = objectiveHook
+        #if DEBUG
+        simulator?.onSnapshotChanged = presenceHook
+        simulator?.onStateChanged = objectiveHook
+        #endif
 
         _workoutManager = State(initialValue: manager)
         _workoutProcessor = State(initialValue: processor)
@@ -106,11 +178,15 @@ struct RUXPApp: App {
         _progression = State(initialValue: progressionService)
         _gameCenter = State(initialValue: gameCenterService)
         _livePresence = State(initialValue: presence)
+        _liveObjective = State(initialValue: objective)
+        _liveActivity = State(initialValue: activity)
         _liveSessions = State(initialValue: liveSessionService)
         _liveRoom = State(initialValue: room)
         _liveOps = State(initialValue: liveOpsService)
         _world = State(initialValue: worldService)
         _crew = State(initialValue: crewService)
+        _community = State(initialValue: communityService)
+        _communityMoments = State(initialValue: composer)
 
         #if DEBUG
         // -RUXPLoadSamples: seed the seven sample workouts on an empty install (simulator screenshots).
@@ -147,6 +223,17 @@ struct RUXPApp: App {
             case "complete":
                 manager.startWorkout()
                 manager.endWorkout()
+            case "contributed":
+                // Reward screen with a parsed log attached (no OpenAI): the contribution row and
+                // the ticket can be screenshotted offline.
+                manager.startWorkout()
+                manager.endWorkout()
+                if let id = manager.completedWorkoutID, var session = store.loadSession(id: id),
+                   let log = SampleDataGenerator.generate().first(where: { $0.structuredLog != nil })?.structuredLog {
+                    session.structuredLog = log
+                    store.saveSession(session)
+                    Task { try? await Task.sleep(for: .seconds(2)); processor.onWorkoutParsed?(session) }
+                }
             default:
                 break
             }
@@ -158,18 +245,21 @@ struct RUXPApp: App {
 
     /// DEBUG-only knobs for exercising the reward flow quickly:
     ///   -RUXPSkipMinimum   no 10-minute minimum for completion XP
-    ///   -RUXPEventClock friday|sunday|tuesday   pretend it is that day
+    ///   -RUXPEventClock friday|sunday|tuesday|saturday|weeknight   pretend it is that day (weeknight = Tuesday 7 PM)
     ///   -RUXPLoadSamples   seed sample workouts on an empty install
     ///   -RUXPTab train|profile   open on that tab (see MainTabView)
     ///   -RUXPSkipHealthKit   bypass HealthKit (see HealthKitService.isDisabledForTesting)
     ///   -RUXPSkipGameCenter  no Game Center sign-in, scores, or live counts (see GameCenterService.isDisabledForTesting)
-    ///   -RUXPLiveScene lobby|active|complete   open the Live Session lobby, a joined workout, or its reward screen
+    ///   -RUXPLiveScene lobby|active|complete|contributed   open the Live Session lobby, a joined workout, its reward screen, or the reward screen with a sample log attached
     ///   -RUXPSeason S00|S01|S02   pretend that season is current (exercise the rollover and recap)
     ///   -RUXPLastSeen 3d|18h|45m   pretend the last visit was that long ago (WHILE YOU WERE GONE)
     ///   -RUXPWorldDemo   with Game Center off, seed friends/rank so every ledger line renders
     ///   -RUXPLiveOps off|<path.json>   no Live Ops rules, or a local calendar instead of the remote one
     ///   -RUXPScreen seasonpass|settings|livehistory|archivedpass   open that sheet at launch (see MainTabView)
     ///   -RUXPCrewDemo [room|last|final|complete|empty]   with Game Center off, seed a crew in that state
+    ///   -RUXPLiveDemo [seed]   simulated presence, shared objective, and floor (never the release source)
+    ///   -RUXPOpenURL <url>   feed the router at launch (ruxp://join/live, https://ruxp.app/join/<id>)
+    ///   -RUXPCommunity off|<path.json>   no community directory, or a local one instead of the remote one
 
 
 
@@ -191,6 +281,13 @@ struct RUXPApp: App {
             WorldSnapshotService.debugLastSeen = number * unit
         }
         if args.contains("-RUXPWorldDemo") { WorldSnapshotService.debugDemo = true }
+        // -RUXPLiveDemo [seed]: one simulator behind presence, the objective, and the floor.
+        if let idx = args.firstIndex(of: "-RUXPLiveDemo") {
+            LiveWorldSimulator.isRequested = true
+            if idx + 1 < args.count, let seed = UInt64(args[idx + 1]) { LiveWorldSimulator.seed = seed }
+        } else if UserDefaults.standard.bool(forKey: LiveWorldSimulator.defaultsKey) {
+            LiveWorldSimulator.isRequested = true
+        }
         if let idx = args.firstIndex(of: "-RUXPCrewDemo") {
             let value = idx + 1 < args.count && !args[idx + 1].hasPrefix("-") ? args[idx + 1] : "room"
             CrewService.demoMode = value
@@ -204,6 +301,8 @@ struct RUXPApp: App {
             case "friday": comps.weekday = 6; comps.hour = 19
             case "sunday": comps.weekday = 1; comps.hour = 12
             case "tuesday": comps.weekday = 3; comps.hour = 10
+            case "saturday": comps.weekday = 7; comps.hour = 19
+            case "weeknight": comps.weekday = 3; comps.hour = 19
             default: return
             }
             ScheduledEventService.clockOverride = cal.nextDate(after: Date(), matching: comps, matchingPolicy: .nextTime)
@@ -225,17 +324,28 @@ struct RUXPApp: App {
                 .environment(progression)
                 .environment(gameCenter)
                 .environment(\.livePresence, livePresence)
+                .environment(\.liveObjective, liveObjective)
+                .environment(\.liveActivity, liveActivity)
                 .environment(\.liveEvents, eventService)
                 .environment(liveSessions)
                 .environment(\.liveRoom, liveRoom)
                 .environment(liveOps)
                 .environment(world)
                 .environment(crew)
+                .environment(community)
+                .environment(communityMoments)
+                .environment(router)
+                // Custom-scheme URLs and Universal Links both arrive here; the root is always in
+                // the hierarchy, HomeView is not (lazy tab, covers).
+                .onOpenURL { router.open($0) }
                 .preferredColorScheme(.dark)
                 .task {
                     gameCenter.start()
                     livePresence.start()
+                    liveObjective.start()
+                    liveActivity.start()
                     liveOps.refresh()
+                    community.refresh()
                     crew.start()
                     world.noteForeground()
                     await workoutProcessor.processPendingQueue()
@@ -250,13 +360,18 @@ struct RUXPApp: App {
                         workoutManager.refreshActiveSession()
                         Task { await workoutManager.retryPendingTranscriptions() }
                         livePresence.start()
+                        liveObjective.start()
+                        liveActivity.start()
                         liveOps.refresh()
+                        community.refresh()
                         crew.start()
                         world.noteForeground()
                     } else if scenePhase == .background {
                         // Snapshot first, while the last live count is still in hand.
                         world.noteBackground()
                         livePresence.stop()
+                        liveObjective.stop()
+                        liveActivity.stop()
                         crew.stop()
 
 

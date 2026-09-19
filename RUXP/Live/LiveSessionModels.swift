@@ -17,6 +17,16 @@ struct LiveSessionParticipation: Codable, Identifiable, Equatable {
     var xpEarned: Int
     /// Phase 3: most remote players seen in the Training Room during this session.
     var roomPeerCount: Int?
+    /// Volume in lb per workout (UUID string), replaced on every parse so a re-parse never double counts.
+    var volumeByWorkout: [String: Double]? = nil
+    /// The shared objective as last seen while the session was live.
+    var sessionTotalLB: Double? = nil
+    var sessionContributors: Int? = nil
+    /// Peak lifting-now count seen while the session was live.
+    var sessionLifters: Int? = nil
+    var objectiveTargetLB: Double? = nil
+    /// Denormalized from the workout so the ticket never has to load it.
+    var durationSeconds: TimeInterval? = nil
 
     init(
         id: UUID = UUID(),
@@ -41,6 +51,17 @@ struct LiveSessionParticipation: Codable, Identifiable, Equatable {
     }
 
     var completed: Bool { completedAt != nil }
+
+    /// Nil until a parse has landed; "No sets logged" is the honest copy for that.
+    var volumeContributedLB: Double? {
+        guard let volumeByWorkout, !volumeByWorkout.isEmpty else { return nil }
+        return volumeByWorkout.values.reduce(0, +)
+    }
+
+    var objectiveMet: Bool {
+        guard let total = sessionTotalLB, let target = objectiveTargetLB, target > 0 else { return false }
+        return total >= target
+    }
 
     /// The event's calendar day, taken from the occurrence ID so it survives schedule changes.
     var occurrenceDate: Date? {

@@ -11,12 +11,15 @@ struct LiveSessionView: View {
     @Environment(GameCenterService.self) private var gameCenter
     @Environment(CrewService.self) private var crew
     @Environment(\.livePresence) private var presence
+    @Environment(\.liveEvents) private var events
+    @Environment(CommunityService.self) private var community
 
 
     let event: LiveEvent
     let onStartWorkout: () -> Void
 
     @State private var now = ScheduledEventService.now()
+    @State private var ticket: LiveSessionParticipation?
     @State private var friends: [GameCenterService.LiveFriend] = []
     @State private var durations: [UUID: TimeInterval] = [:]
     private let clock = Timer.publish(every: 20, on: .main, in: .common).autoconnect()
@@ -36,6 +39,11 @@ struct LiveSessionView: View {
                 if !completed {
                     PrimaryButton(title: "START WORKOUT", icon: "bolt.fill") { onStartWorkout() }
                 }
+                // Where the conversation lives. Only when the directory names a channel for this event.
+                if let eventCommunity = events.community(for: event), eventCommunity.discord != nil {
+                    CommunityCard(community: eventCommunity, sharing: community.shareMoments)
+                }
+                LiveFloorCard(unavailableMessage: gameCenter.presenceUnavailableMessage)
                 friendsSection
                 LiveRoomPanel(event: event)
                 historySection
@@ -47,6 +55,9 @@ struct LiveSessionView: View {
         .statusBarBackdrop()
         .background(HUDBackground(glow: isLive))
         .onReceive(clock) { _ in now = ScheduledEventService.now() }
+        .sheet(item: $ticket) { record in
+            SessionTicketView(participation: record, duration: record.associatedWorkoutID.flatMap { durations[$0] })
+        }
         .onAppear {
             now = ScheduledEventService.now()
             loadDurations()
@@ -60,6 +71,7 @@ struct LiveSessionView: View {
         HStack {
             Text("RUXP LIVE").eyebrow().foregroundStyle(Theme.live)
             Spacer()
+            SimulatedTag()
             Button { dismiss() } label: {
                 Image(systemName: "xmark")
                     .font(Theme.Fonts.ui(.subheadline, weight: .semibold))
@@ -86,7 +98,10 @@ struct LiveSessionView: View {
                     Text(event.endsInLabel(now: now).uppercased()).eyebrow().foregroundStyle(Theme.textSecondary)
                 }
                 Spacer()
-                XPChip(amount: event.xpReward, prominent: true)
+                if event.xpReward > 0 { XPChip(amount: event.xpReward, prominent: true) }
+            }
+            if event.kind == .nightly {
+                Text(event.subtitle).eyebrow().foregroundStyle(Theme.textSecondary)
             }
             Text(event.title)
                 .font(Theme.Fonts.display(30))
@@ -108,18 +123,26 @@ struct LiveSessionView: View {
                     Image(systemName: "checkmark.seal.fill").foregroundStyle(Theme.xp)
                     Text("\(event.title) COMPLETE").eyebrow().foregroundStyle(Theme.xp)
                 }
-                Text("+\(participation?.xpEarned.grouped ?? "0") XP")
-                    .font(Theme.Fonts.number(30))
-                    .foregroundStyle(Theme.xp)
+                if let xp = participation?.xpEarned, xp > 0 {
+                    Text("+\(xp.grouped) XP")
+                        .font(Theme.Fonts.number(30))
+                        .foregroundStyle(Theme.xp)
+                }
                 Text("You showed up.")
                     .font(Theme.Fonts.title(16))
                     .foregroundStyle(Theme.textPrimary)
+                if let participation {
+                    SecondaryButton(title: "VIEW TICKET", icon: "ticket.fill") { ticket = participation }
+                        .padding(.top, 4)
+                }
             } else {
                 Text("YOU'RE IN").eyebrow().foregroundStyle(Theme.accent)
                 Text("Complete any strength workout while it's live. Train however you want.")
                     .font(Theme.Fonts.title(16))
                     .foregroundStyle(Theme.textPrimary)
-                Text("+\(event.xpReward.grouped) XP on completion, on top of your workout XP.")
+                Text(event.xpReward > 0
+                     ? "+\(event.xpReward.grouped) XP on completion, on top of your workout XP."
+                     : "No bonus XP tonight. Every set you log counts toward the objective.")
                     .font(Theme.Fonts.body)
                     .foregroundStyle(Theme.textSecondary)
             }
@@ -143,6 +166,11 @@ struct LiveSessionView: View {
                     .foregroundStyle(presenceAvailable ? Theme.textPrimary : Theme.textTertiary)
                     .contentTransition(.numericText())
                     .animation(Theme.Motion.snappy, value: participants)
+            }
+
+            if isLive, event.objective != nil {
+                Divider().overlay(Theme.divider)
+                SessionObjectiveBar(event: event, unavailableMessage: gameCenter.presenceUnavailableMessage)
             }
 
             if completed, gameCenter.authState != .disabled {
@@ -210,7 +238,7 @@ struct LiveSessionView: View {
                     .font(Theme.Fonts.body)
                     .foregroundStyle(Theme.textSecondary)
             }
-            ShareLink(item: event.shareText) {
+            ShareLink(item: "\(event.shareText)\n\(AppLinks.join(eventID: event.id).absoluteString)") {
                 HStack(spacing: 8) {
                     Image(systemName: "square.and.arrow.up")
                     Text(friends.isEmpty ? "Invite a friend" : "Invite another friend")
@@ -242,7 +270,10 @@ struct LiveSessionView: View {
                     Text("\(liveSessions.completedCount) COMPLETED").eyebrow().foregroundStyle(Theme.textTertiary)
                 }
                 ForEach(Array(recent)) { participation in
-                    LiveHistoryRow(participation: participation, duration: participation.associatedWorkoutID.flatMap { durations[$0] })
+                    Button { ticket = participation } label: {
+                        LiveHistoryRow(participation: participation, duration: participation.associatedWorkoutID.flatMap { durations[$0] })
+                    }
+                    .buttonStyle(PressableButtonStyle())
                 }
             }
         }

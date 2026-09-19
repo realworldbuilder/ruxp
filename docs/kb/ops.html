@@ -35,9 +35,10 @@ xcodebuild -scheme "RUXP Watch App" -destination 'generic/platform=watchOS Simul
   <tr><td>-RUXPSkipHealthKit</td><td>bypass HealthKit (simulators)</td></tr>
   <tr><td>-RUXPSkipGameCenter</td><td>no sign-in, scores, or live counts</td></tr>
   <tr><td>-RUXPLoadSamples</td><td>seed 7 sample workouts on an empty install (dated relative to today)</td></tr>
-  <tr><td>-RUXPEventClock friday|sunday|tuesday</td><td>freeze the event clock at that day</td></tr>
+  <tr><td>-RUXPEventClock friday|sunday|tuesday|saturday|weeknight</td><td>freeze the event clock at that day (weeknight = Tuesday 7 PM, a nightly session live)</td></tr>
   <tr><td>-RUXPTab train|profile</td><td>open on that tab</td></tr>
-  <tr><td>-RUXPLiveScene lobby|active|complete</td><td>open the Live lobby, a joined workout, or the reward screen</td></tr>
+  <tr><td>-RUXPLiveScene lobby|active|complete|contributed</td><td>open the Live lobby, a joined workout, the reward screen, or the reward screen with a sample log attached (contribution row, ticket)</td></tr>
+  <tr><td>-RUXPLiveDemo [seed]</td><td>debug builds only: one seeded simulator behind presence, the shared objective, and the floor; every screen it feeds says SIMULATED</td></tr>
   <tr><td>-RUXPScreen seasonpass|settings|livehistory|archivedpass</td><td>open that sheet at launch</td></tr>
   <tr><td>-RUXPSeason S00|S01</td><td>pretend that season is current: rollover, recap, ladders, boards</td></tr>
   <tr><td>-RUXPLastSeen 3d|18h|45m</td><td>pretend the last visit was that long ago</td></tr>

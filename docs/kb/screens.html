@@ -18,7 +18,7 @@
 <span class="eyebrow">Screen tour</span>
 <h1>Every screen, and what makes it alive</h1>
 <p class="lede">Captured from the current build on an iPhone 17 Pro simulator with Game Center turned off, which is why the presence line reads "Game Center is off in this build." On a device signed into Game Center those lines are real counts. The look is deliberately restrained: near-black, system type, one hero number per screen, mono readouts for XP. The game shows in small doses.</p>
-<div class="toc"><a href="#home">Home</a><a href="#crew">Crew</a><a href="#gone">While you were gone</a><a href="#live">Live session</a><a href="#workout">Workout</a><a href="#reward">Reward</a><a href="#train">Train</a><a href="#profile">Profile</a><a href="#pass">Season Pass</a><a href="#recap">Season recap</a><a href="#settings">Settings</a><a href="#watch">Watch</a></div>
+<div class="toc"><a href="#home">Home</a><a href="#crew">Crew</a><a href="#gone">While you were gone</a><a href="#live">Live session</a><a href="#tonight">Tonight's session</a><a href="#workout">Workout</a><a href="#reward">Reward</a><a href="#train">Train</a><a href="#profile">Profile</a><a href="#pass">Season Pass</a><a href="#recap">Season recap</a><a href="#settings">Settings</a><a href="#watch">Watch</a></div>
 
 <h2 id="home">Home: the lobby</h2>
 <div class="figure">
@@ -70,10 +70,22 @@
 <div class="screens">
   <div class="screen"><img src="img/home-sunday-live.png" alt="Home during Sunday Reset"><div class="cap"><b>Home on Sunday</b>The ritual is live: LIVE NOW, ends-in countdown, JOIN SESSION. The clock line reads SUNDAY RESET LIVE. The ledger above it is from the simulated absence.</div></div>
   <div class="screen"><img src="img/lobby.png" alt="Live session lobby"><div class="cap"><b>Lobby</b>You're in. What to do, +500 on completion, who you joined as, the real join count, friends who play RUXP this season, an invite share, your history, and the Training Room when available.</div></div>
+  <div class="screen"><img src="img/lobby-community.png" alt="Lobby with the COMMUNITY card"><div class="cap"><b>Community</b>When the directory names a Discord channel for the event, the lobby shows it under START WORKOUT: the channel, an optional PRESENTED BY line for a hosted event, OPEN LIVE CHAT (the Discord app, else the web), and an invite for players not in the server yet. Chat lives on Discord; lifting lives here. A link from Discord (<code>https://ruxp.app/join/live</code>) opens this lobby joined.</div></div>
   <div class="screen"><img src="img/livehistory.png" alt="Live session history"><div class="cap"><b>Live history</b>Profile → Live sessions. Sessions completed, each with date, duration, XP, and how many players were in your room.</div></div>
 </div>
 <p>Any strength workout finished while a ritual is live completes it; starting a workout during one joins it automatically, so nobody loses XP for skipping the lobby. The Training Room is a 2–8 player Game Center real-time match with four reactions and no chat, foreground only.</p>
 <p class="mono" style="font-size:12px;color:var(--text-3)">RUXP/Views/LiveSessionView.swift · LiveRoomPanel.swift · LiveHistoryView.swift · RUXP/Live/ · RUXP/GameCenter/LiveRoomService.swift</p>
+
+<h2 id="tonight">Tonight's session</h2>
+<p>Every evening from 5 PM is a session. Friday and Sunday are the rituals that pay XP; the other nights are themed (CHEST DAY WORLDWIDE, LEG DAY AFTER DARK, MIDWEEK PULL, THURSDAY THROWDOWN, SATURDAY NIGHT) and pay nothing. What they share: a collective objective, the floor, and a ticket. These captures ran with <code>-RUXPLiveDemo</code>, the debug-only simulator, which is why every one of them carries a SIMULATED tag; on a device signed into Game Center the numbers are real and, early on, small.</p>
+<div class="screens">
+  <div class="screen"><img src="img/home-night.png" alt="Home on a weeknight with the session live"><div class="cap"><b>Home, Tuesday 7 PM</b>LEG DAY AFTER DARK is live. The card carries the objective: MOVE 1,000,000 LB TOGETHER, the bar, and how many lifters are contributing.</div></div>
+  <div class="screen"><img src="img/lobby-floor.png" alt="Lobby with the floor"><div class="cap"><b>The floor</b>Below the objective, a passive stream of what is happening: sets, people joining and finishing by city, milestones, reactions. Uneven timing, no chat. Shipping builds compose it from real signals only.</div></div>
+  <div class="screen"><img src="img/active-objective.png" alt="Active workout with tonight's total"><div class="cap"><b>During the workout</b>The live strip gains tonight's total and one floor line, both above the moments. The mic does not move.</div></div>
+  <div class="screen"><img src="img/reward-contribution.png" alt="Reward screen with the contribution row"><div class="cap"><b>Reward</b>When the parse lands, "+9,110 LB to tonight's total" and the bar move. A nightly session completes with no XP row and no "+0".</div></div>
+  <div class="screen"><img src="img/ticket.png" alt="Session ticket"><div class="cap"><b>Ticket</b>Proof you were there: the night, its lifters and total as it stood while you were in, what you contributed. Opens from history, the lobby, and the reward screen; shareable as an image.</div></div>
+</div>
+<p class="mono" style="font-size:12px;color:var(--text-3)">Shared/RUXP/LiveSessionCatalog.swift · RUXP/Live/LiveObjective.swift · LiveActivity.swift · ObservedLiveActivity.swift · LiveWorldSimulator.swift · RUXP/GameCenter/GameCenterSessionObjective.swift · RUXP/Views/SessionTicketView.swift · Components/LiveFloorCard.swift</p>
 
 <h2 id="workout">Workout</h2>
 <div class="figure">

@@ -26,6 +26,8 @@ final class LiveRoomService: LiveRoomProviding {
     private(set) var recentReactions: [LiveRoomReactionEvent] = []
     private(set) var peakPeerCount = 0
     private(set) var eventID: String?
+    /// Every reaction seen (remote or local echo), for the floor. Assigned once in RUXPApp.init.
+    var onReaction: ((LiveRoomReactionEvent) -> Void)?
 
     private let gameCenter: GameCenterService
     private var match: GKMatch?
@@ -145,8 +147,10 @@ final class LiveRoomService: LiveRoomProviding {
 
     private func note(_ reaction: LiveReaction, from name: String) {
         reactionCounts[reaction, default: 0] += 1
-        recentReactions.append(LiveRoomReactionEvent(reaction: reaction, senderName: name, receivedAt: Date()))
+        let event = LiveRoomReactionEvent(reaction: reaction, senderName: name, receivedAt: Date())
+        recentReactions.append(event)
         if recentReactions.count > 12 { recentReactions.removeFirst(recentReactions.count - 12) }
+        onReaction?(event)
     }
 
     // MARK: Delegate entry points (already on the main actor)

@@ -114,11 +114,15 @@ final class ProgressionService {
 
             summary.awards.append(XPAward(reason: .workoutComplete, amount: ProgressionRules.workoutCompleteXP))
 
-            for event in events where !event.isSeasonWide && event.xpReward > 0 {
+            // Every timed session the workout overlapped counts as completed once. Only rituals
+            // pay XP; a nightly session records the occurrence with no award row.
+            for event in events where !event.isSeasonWide {
                 guard progress.eventsJoined[event.id] == nil else { continue }
                 progress.eventsJoined[event.id] = now
-                summary.awards.append(XPAward(reason: .eventBonus, label: event.title, amount: event.xpReward, eventID: event.id))
+                summary.completedSessionIDs = (summary.completedSessionIDs ?? []) + [event.id]
                 if summary.eventTitle == nil { summary.eventTitle = event.title }
+                guard event.xpReward > 0 else { continue }
+                summary.awards.append(XPAward(reason: .eventBonus, label: event.title, amount: event.xpReward, eventID: event.id))
             }
 
             let weekKey = calendar.weekKey(for: session.startedAt)

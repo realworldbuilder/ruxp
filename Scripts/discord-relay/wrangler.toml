@@ -1,0 +1,12 @@
+name = "ruxp-discord-relay"
+main = "worker.js"
+compatibility_date = "2026-09-01"
+
+# Idempotency + rate limit. Create with: wrangler kv namespace create MOMENTS
+[[kv_namespaces]]
+binding = "MOMENTS"
+id = "REPLACE_WITH_NAMESPACE_ID"
+
+# Optional: post "starting soon" / "live now" without a phone. Implement `scheduled` first.
+# [triggers]
+# crons = ["55 16 * * 5", "0 17 * * 5", "0 0 * * 0"]

@@ -40,6 +40,12 @@ final class WorkoutProcessor {
     private(set) var isNetworkAvailable = true
     /// Fired on the offline → online edge after the workout queue drains. Assigned once in RUXPApp.init.
     var onNetworkRestored: (() async -> Void)?
+    /// Fired after a parse lands and PRs are paid, with the saved session (sets known from here on).
+    /// Re-parses fire it again; receivers replace per workout, never add. Assigned once in RUXPApp.init.
+    var onWorkoutParsed: ((WorkoutSession) -> Void)?
+    /// Fired with the improved records the moment PR XP is paid: the only place the numbers
+    /// (exercise, weight, reps) exist together with the session. Assigned once in RUXPApp.init.
+    var onPersonalRecords: (([PRRecord], WorkoutSession) -> Void)?
     private let maxRetries = 3
 
     private static var pendingQueueURL: URL {
@@ -116,7 +122,9 @@ final class WorkoutProcessor {
                 let newPRs = insightsStore?.ingest(updatedSession) ?? []
                 if !newPRs.isEmpty {
                     progression?.rewardPersonalRecords(workoutID: updatedSession.id, count: newPRs.count)
+                    onPersonalRecords?(newPRs, updatedSession)
                 }
+                onWorkoutParsed?(updatedSession)
                 // InsightsEngine stories render nowhere in RUXP; not generated (saves the bundled key).
                 return nil
 

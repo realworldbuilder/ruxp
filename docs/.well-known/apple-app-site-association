@@ -1,0 +1,17 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["R2C4T4N7US.com.whussey.ruxp"],
+        "components": [
+          { "/": "/join/*" },
+          { "/": "/event/*" },
+          { "/": "/squad/*" },
+          { "/": "/player/*" },
+          { "/": "/challenge/*" },
+          { "/": "/discord/callback" }
+        ]
+      }
+    ]
+  }
+}

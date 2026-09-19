@@ -10,6 +10,7 @@ struct WorkoutCompletionSheet: View {
     @Environment(\.liveEvents) private var events
     @Environment(\.livePresence) private var presence
     @Environment(CrewService.self) private var crew
+    @Environment(GameCenterService.self) private var gameCenter
     @AppStorage("weightUnit") private var weightUnit: String = WeightUnit.lbs.rawValue
 
     let workoutID: UUID
@@ -23,6 +24,7 @@ struct WorkoutCompletionSheet: View {
     @State private var displayedSeasonXP: Int?
     @State private var showLevelUp = false
     @State private var revealTask: Task<Void, Never>?
+    @State private var ticket: LiveSessionParticipation?
 
     private var reward: WorkoutRewardSummary? {
         guard let last = progression.lastReward, last.workoutID == workoutID else { return nil }
@@ -37,6 +39,7 @@ struct WorkoutCompletionSheet: View {
                 VStack(spacing: 22) {
                     completionHeader
                     rewardSection
+                    contributionSection
                     PrimaryButton(title: "CONTINUE") {
                         revealTask?.cancel()
                         workoutManager.completedWorkoutID = nil
@@ -71,6 +74,7 @@ struct WorkoutCompletionSheet: View {
             if processor.state == .completed { loadSession() }
         }
         .onChange(of: workoutManager.healthDataVersion) { loadSession() }
+        .sheet(item: $ticket) { record in SessionTicketView(participation: record, duration: session?.duration) }
         .sheet(isPresented: $showShareSheet) {
             if let shareImage {
                 WorkoutShareSheet(items: [shareImage])
@@ -82,19 +86,24 @@ struct WorkoutCompletionSheet: View {
 
     /// The event bonus paid with this workout, if any (a completed Live Session).
     private var eventAward: XPAward? { reward?.eventAwards.first }
+    /// The Live Session this workout completed, paid or not (nightly sessions pay 0 XP).
+    private var sessionParticipation: LiveSessionParticipation? {
+        liveSessions.participations.first { $0.associatedWorkoutID == workoutID }
+    }
+    private var sessionTitle: String? { sessionParticipation?.title ?? eventAward?.label }
 
     private var completionHeader: some View {
         VStack(alignment: .leading, spacing: 6) {
-            if let eventAward {
+            if let sessionTitle {
                 HStack(spacing: 8) {
                     LiveDot(label: nil, size: 7)
-                    Text("RUXP LIVE · \(eventAward.label)").eyebrow().foregroundStyle(Theme.live)
+                    Text("RUXP LIVE · \(sessionTitle)").eyebrow().foregroundStyle(Theme.live)
                 }
             }
-            Text(eventAward.map { "\($0.label.capitalized) complete" } ?? "Workout complete")
+            Text(sessionTitle.map { "\($0.capitalized) complete" } ?? "Workout complete")
                 .font(.system(size: 28, weight: .bold))
                 .foregroundStyle(Theme.textPrimary)
-            if eventAward != nil {
+            if sessionTitle != nil {
                 Text("You showed up.")
                     .font(Theme.Fonts.title(17))
                     .foregroundStyle(Theme.accent)
@@ -152,6 +161,69 @@ struct WorkoutCompletionSheet: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .themeCard(cornerRadius: Theme.radiusLarge)
+        }
+    }
+
+    // MARK: - Shared objective
+
+    /// "My normal workout counted toward something bigger." The contribution lands when the
+    /// parse does; until then the row says it is counting, and an empty log says so honestly.
+    @ViewBuilder
+    private var contributionSection: some View {
+        if let participation = sessionParticipation,
+           let event = events.events(overlapping: participation.joinedAt, end: participation.completedAt ?? participation.joinedAt)
+                .first(where: { $0.id == participation.sessionID }) {
+            let contribution = participation.volumeContributedLB
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(spacing: 10) {
+                    Image(systemName: "arrow.up.right")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(Theme.violet)
+                        .frame(width: 30, height: 30)
+                        .background(Theme.violetSubtle, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+                    VStack(alignment: .leading, spacing: 2) {
+                        if let contribution, contribution > 0 {
+                            Text("+\(VolumeFormat.text(contribution, unit: weightUnit))")
+                                .font(Theme.Fonts.mono(18, weight: .heavy))
+                                .foregroundStyle(Theme.textPrimary)
+                                .contentTransition(.numericText())
+                            Text("to tonight's total")
+                                .font(Theme.Fonts.ui(.caption))
+                                .foregroundStyle(Theme.textSecondary)
+                        } else if processor.state.isProcessing || processor.state == .queued {
+                            Text("Counting your sets…")
+                                .font(Theme.Fonts.title(16))
+                                .foregroundStyle(Theme.textPrimary)
+                            Text("Your volume joins tonight's total when the parse lands.")
+                                .font(Theme.Fonts.ui(.caption))
+                                .foregroundStyle(Theme.textSecondary)
+                        } else {
+                            Text("No sets logged")
+                                .font(Theme.Fonts.title(16))
+                                .foregroundStyle(Theme.textPrimary)
+                            Text("Say your sets next time and they count toward the objective.")
+                                .font(Theme.Fonts.ui(.caption))
+                                .foregroundStyle(Theme.textSecondary)
+                        }
+                    }
+                    Spacer()
+                }
+                SessionObjectiveBar(event: event, unavailableMessage: gameCenter.presenceUnavailableMessage)
+                if participation.completed {
+                    Button { ticket = participation } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "ticket.fill")
+                            Text("View ticket")
+                        }
+                        .font(Theme.Fonts.label)
+                        .foregroundStyle(Theme.accent)
+                    }
+                }
+            }
+            .padding(20)
+            .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.radiusLarge, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: Theme.radiusLarge, style: .continuous).stroke(Theme.border, lineWidth: 1))
+            .animation(Theme.Motion.reveal, value: contribution)
         }
     }
 
@@ -286,12 +358,11 @@ struct WorkoutCompletionSheet: View {
             if let line = crew.completionLine(paid: paid) { return line }
         }
 
-        if let award = eventAward {
-            let participation = liveSessions.participations.first { $0.associatedWorkoutID == reward.workoutID }
-            if let peers = participation?.roomPeerCount, peers > 0 {
+        if let participation = sessionParticipation {
+            if let peers = participation.roomPeerCount, peers > 0 {
                 return peers == 1 ? "1 player trained with you in your room." : "\(peers) players trained with you in your room."
             }
-            if let event = events.activeEvent(at: ScheduledEventService.now()), event.id == award.eventID {
+            if let event = events.activeEvent(at: ScheduledEventService.now()), event.id == participation.sessionID {
                 let joined = liveSessions.participantCount(for: event)
                 if joined > 1 { return "\(joined.grouped) players joined \(event.title.capitalized) with you." }
             }

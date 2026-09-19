@@ -194,9 +194,11 @@ struct ActiveWorkoutView: View {
                     Text(event.title)
                         .font(WatchTheme.Fonts.tagline(11))
                         .foregroundStyle(WatchTheme.accent)
-                    Text("+\(event.xpReward) XP")
-                        .font(WatchTheme.Fonts.mono(10))
-                        .foregroundStyle(WatchTheme.xp)
+                    if event.xpReward > 0 {
+                        Text("+\(event.xpReward) XP")
+                            .font(WatchTheme.Fonts.mono(10))
+                            .foregroundStyle(WatchTheme.xp)
+                    }
                 }
             }
 

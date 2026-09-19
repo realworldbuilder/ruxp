@@ -66,14 +66,14 @@ RUXP is designed as a **world, not a tool**. A tool waits for the user. A world 
 
 **How to respond to a product idea.** First check the core utility is good. Then analyze through: CORE LOOP · RIGHT NOW · WHILE YOU WERE GONE · RITUALS · SEASONS · LIVE MECHANICS · IDENTITY · PROGRESSION · COMMUNITY · "YOU HAD TO BE THERE" · WORLD BUILDING · CUT THE BULLSHIT. End with a prioritized recommendation: the 1–3 mechanics that transform the product, smallest version first. Never propose 30 features.
 
-**Where RUXP stands (Sep 2026).** Right now: real lifting-now count, a crew member lifting right now, featured ritual card, LIVE dot, the Home clock line. While you were gone: `WorldSnapshotService` return ledger, including who in your crew showed up. Rituals: FRIDAY NIGHT (Fri 5 PM–midnight, +500), SUNDAY RESET (all Sunday, +500; the ISO week starts Monday, so Sunday is last call for the weekly bonus and for CREW WEEK). Seasons: S00 → S01 with a recap ceremony, frozen `SeasonRecord`s, permanent cosmetics. Live mechanics: `LiveOps` rules editable in `docs/live.json`: PR WEEKEND and CONTINUE? close S00; NIGHT SHIFT (+250 after 8 PM, all season) and FINAL BOSS (Halloween weekend, ×2 PR) define S01; CONTINUE? is every season's last call. Generic arcade vocabulary only, no game named. Community: CREW (Game Center friends who lift) with a shared weekly stake. Identity: Game Center alias, Season Pass title/color/badge, "SINCE SEP 2026", season history. Open opportunities: named crews with sides (S01 candidate), gym-hosted events, letting players create events.
+**Where RUXP stands (Sep 2026).** Right now: real lifting-now count, a crew member lifting right now, featured ritual card, LIVE dot, the Home clock line. While you were gone: `WorldSnapshotService` return ledger, including who in your crew showed up. Rituals: FRIDAY NIGHT (Fri 5 PM–midnight, +500), SUNDAY RESET (all Sunday, +500; the ISO week starts Monday, so Sunday is last call for the weekly bonus and for CREW WEEK). Tonight's session: every other evening (5 PM–midnight) is a themed nightly session from `LiveSessionCatalog` (CHEST DAY WORLDWIDE, LEG DAY AFTER DARK, MIDWEEK PULL, THURSDAY THROWDOWN, SATURDAY NIGHT), 0 XP, same join/lobby/history. Every session carries the shared objective (MOVE 1,000,000 LB TOGETHER: each player's parsed volume goes to the `session_volume` board and the client sums the entries), THE FLOOR (a passive stream of real signals: presence deltas, crew, board entries by alias, milestones, room reactions), and a TICKET (the participation, with the night's lifters and total and your contribution). Home features a nightly session only within 3 hours of its start; otherwise the next ritual. Seasons: S00 → S01 with a recap ceremony, frozen `SeasonRecord`s, permanent cosmetics. Live mechanics: `LiveOps` rules editable in `docs/live.json`: PR WEEKEND and CONTINUE? close S00; NIGHT SHIFT (+250 after 8 PM, all season) and FINAL BOSS (Halloween weekend, ×2 PR) define S01; CONTINUE? is every season's last call. Generic arcade vocabulary only, no game named. Community: CREW (Game Center friends who lift) with a shared weekly stake. Identity: Game Center alias, Season Pass title/color/badge, "SINCE SEP 2026", season history. Open opportunities: named crews with sides (S01 candidate), gym-hosted events, letting players create events.
 
 
 ---
 
 ## Hard rules (each with its why)
 
-- **Counts are real.** Every presence number is Game Center players who actually pinged a board. Never inflate, never simulate, never hide a zero: "Nobody's on right now. Be first." is the honest state.
+- **Counts are real.** Every presence number is Game Center players who actually pinged a board. Never inflate, never simulate, never hide a zero: "Nobody's on right now. Be first." is the honest state. The one simulator (`LiveWorldSimulator`, `-RUXPLiveDemo`) is `#if DEBUG`, labels every screen it feeds SIMULATED, and must never become the release source for presence, the objective, or the floor.
 - **New persisted fields are Optional.** `PlayerProgress`, `WorkoutRewardSummary`, `WorldSnapshot`, `LiveSessionParticipation` use synthesized `Decodable`. A non-optional addition blanks every existing player's file. Write `var x: T? = nil`. `ProgressionService.save()` stamps `schemaVersion`; do not remove that.
 - **Time goes through `ScheduledEventService.now()`** in the product layer so `-RUXPEventClock` works. Seasons go through `SeasonCatalog.current` so `-RUXPSeason` works. Live Ops rules go through `LiveOpsCatalog.current`.
 - **Views never import GameKit.** GameKit lives in `RUXP/GameCenter/` behind services and `-Providing` protocols exposed through EnvironmentKeys (`\.liveEvents`, `\.livePresence`, `\.liveRoom`). Single-closure hooks (`onSnapshotChanged`, `onAuthenticated`, `onPresenceSubmitted`) are assigned once in `RUXPApp.init`; chain there, never elsewhere.
@@ -82,9 +82,10 @@ RUXP is designed as a **world, not a tool**. A tool waits for the user. A world 
 - **Copy: short, honest, no manufactured urgency.** Uppercase eyebrows, sentence-case body, no exclamation marks. Zeros are shown as zeros.
 - **Several Claude sessions may edit this tree at once.** Re-read a file right before editing, keep edits surgical, never full-file Write on a view.
 - **Secrets never touch the repo or the chat.** The OpenAI key lives in gitignored `Config/Secrets.xcconfig`; `.githooks/pre-commit` blocks `sk-` literals. The user creates and pastes keys themselves.
-- **Every season needs its Game Center boards before it starts:** `season_xp_sNN` and `season_goal_sNN` in App Store Connect (`Scripts/gamecenter_setup.py --all-seasons`), plus a Season Pass ladder in `SeasonPassCatalog`.
+- **Every season needs its Game Center boards before it starts:** `season_xp_sNN` and `season_goal_sNN` in App Store Connect (`Scripts/gamecenter_setup.py --all-seasons`), plus a Season Pass ladder in `SeasonPassCatalog`. The nightly sessions need `session_day` (joins) and `session_volume` (objective), both daily recurring from 06:00 ET; until they exist the per-board flush fails quietly and the objective shows as unavailable.
 - **Live Ops rules change how XP is earned for a window; they never gate core function** and are capped by `LiveOpsCalendar.validationErrors()`.
 - **Crew shows who is in, never who is out.** No shame lists, no crew streaks, no nudges. A quiet friend drops out of the crew silently after two weeks and rejoins by training. Accountability is positive presence ("MARCUS is lifting right now") and a shared stake (CREW WEEK), never guilt.
+- **Discord is the community layer, Game Center is the scorekeeper.** RUXP keeps only the social features a live workout needs; conversation lives on Discord and Discord is never the login. Player moments (join, PR, level-up) leave the phone only with Settings › Community on and carry the Game Center alias; aggregate moments (lifter and volume milestones) carry no identity; sets, body weight, and health data have no field to leave in (`MomentPolicy`). The phone never holds a Discord token or webhook: `Scripts/discord-relay/` does. Event → channel mapping is `docs/community.json` (`CommunityService`, same rules as Live Ops); with no channel there is no card and no post.
 - **Commit and push only when asked.** The GitHub remote is `realworldbuilder/ruxp` (public; `docs/` is the live Pages site). Don't add feature detail to the public site without asking; it is an ARG-style teaser on purpose.
 
 ---
@@ -99,32 +100,40 @@ Shared/                         both targets, Foundation only
     ProgressionService.swift    XP rules, streaks, season rollover + recap, Live Ops awards
     LevelCurve.swift            level 1–100 from season XP (1000 + 150·(L−1) per level)
     Season.swift                SeasonCatalog (S00, S01), -RUXPSeason override
-    LiveEvents.swift            LiveEvent, LiveEventProviding, ScheduledEventService (rituals)
+    LiveEvents.swift            LiveEvent, LiveEventProviding, ScheduledEventService (rituals + nightly sessions)
+    LiveSessionCatalog.swift    nightly session themes by weekday, objective target
     LiveOps.swift               LiveRule, LiveModifier, LiveOpsCalendar, LiveOpsCatalog (bundled + current)
     LivePresence.swift          LiveSnapshot, LivePresenceProviding
     GameCenterCatalog.swift     leaderboard/achievement IDs, App Store Connect window config
+    AppRoute.swift              ruxp:// and https://ruxp.app link parser, AppLinks (the links handed out)
+    Community.swift             DiscordChannelRef, EventCommunity, CommunityDirectory (event → channel), CommunityCatalog.current
+    CommunityMoment.swift       CommunityMoment, SharePolicy, MomentPolicy (what may leave the phone)
 RUXP/                           iOS
   RUXPApp.swift                 builds the service graph, debug launch args, scenePhase
   WorkoutManager.swift          start/end, awards completion XP (+ Live Ops), presence pings
   AIProcessingPipeline.swift    voice notes → structured log → PRs → PR XP
-  GameCenter/                   GameCenterService (auth, scores, friends, standing), GameCenterLivePresence, LiveRoomService
-  Live/                         LiveSessionService (participations), LiveRoom protocol
+  GameCenter/                   GameCenterService (auth, scores, friends, standing), GameCenterLivePresence, GameCenterSessionObjective, LiveRoomService
+  Live/                         LiveSessionService (participations, contributions), LiveRoom / LiveObjective / LiveActivity protocols + env keys,
+                                ObservedLiveActivity (the floor from real hooks), LiveWorldSimulator (DEBUG, -RUXPLiveDemo)
   LiveOps/LiveOpsService.swift  cached remote docs/live.json, validation, -RUXPLiveOps
+  Community/                    CommunityService (docs/community.json), CommunityMomentComposer (hooks → moments), CommunityPublisher (relay), DiscordLinks
+  Navigation/AppRouter.swift    one pending AppRoute from onOpenURL / -RUXPOpenURL; MainTabView switches tabs, HomeView consumes
   World/                        WorldSnapshot + ReturnLedger (pure diff), WorldSnapshotService
   Crew/                         CrewModels (CrewMember, CrewSnapshot, CrewState), CrewService (friends who lift, CREW WEEK)
   SeasonPass/SeasonPassCatalog  per-season ladders, permanence, loadout
   Views/                        MainTabView (workout cover + season recap cover), HomeView (lobby), TrainView,
                                 ProfileView, ActiveWorkoutTab, WorkoutCompletionSheet, SeasonRecapView,
-                                SeasonPassView, LiveSessionView, LiveRoomPanel, LiveHistoryView, SettingsView,
-                                Theme.swift, Components/ (RUXPComponents, ReturnLedgerCard)
+                                SeasonPassView, LiveSessionView, LiveRoomPanel, LiveHistoryView, SessionTicketView, SettingsView,
+                                Theme.swift, Components/ (RUXPComponents, ReturnLedgerCard, LiveFloorCard + SessionObjectiveBar + SimulatedTag, CommunityCard)
 RUXP Watch App/                 training only: WatchWorkoutManager, WatchGameCenter, Views/
-docs/                           GitHub Pages site (index/privacy/support, config.js, live.json), ARCHITECTURE.md, PHILOSOPHY.md, APP-STORE-SUBMISSION.md
+docs/                           GitHub Pages site (index/privacy/support, config.js, live.json, community.json, 404.html join bridge,
+                                .well-known/apple-app-site-association; CNAME ruxp.app is added only once DNS points here), ARCHITECTURE.md, PHILOSOPHY.md, APP-STORE-SUBMISSION.md
 docs/kb/                        Knowledge base site (static HTML + kb.css/kb.js, screenshots in img/); not linked from the signal page
 
-Scripts/                        ship.sh (archive + upload), asc.py, gamecenter_setup.py
+Scripts/                        ship.sh (archive + upload), asc.py, gamecenter_setup.py, discord-relay/ (Cloudflare Worker: the only place a Discord token lives)
 ```
 
-A backend would replace, one protocol at a time: `LiveEventProviding` (gym/brand events), `LivePresenceProviding` (counts), `LiveOpsCatalog.current` (rules), `LiveRoomProviding` (rooms). None of that is speculatively wired.
+A backend would replace, one protocol at a time: `LiveEventProviding` (gym/brand events), `LivePresenceProviding` (counts), `SessionObjectiveProviding` (tonight's total), `LiveActivityProviding` (the floor), `LiveOpsCatalog.current` (rules), `CommunityCatalog.current` (event → Discord channel), `CommunityPublishing` (moments out), `LiveRoomProviding` (rooms). None of that is speculatively wired. The three live providers are chosen once in `RUXPApp.init` (Game Center readers, or the simulator under `-RUXPLiveDemo`); their hooks are chained there.
 
 ---
 
@@ -147,15 +156,18 @@ Xcode 16 synchronized folders: a new `.swift` file under `Shared/`, `RUXP/`, or 
 | `-RUXPSkipHealthKit` | bypass HealthKit (simulators) |
 | `-RUXPSkipGameCenter` | no sign-in, scores, or live counts |
 | `-RUXPLoadSamples` | seed 7 sample workouts on an empty install |
-| `-RUXPEventClock friday\|sunday\|tuesday` | freeze the event clock at that day (frozen instant; countdowns don't tick) |
+| `-RUXPEventClock friday\|sunday\|tuesday\|saturday\|weeknight` | freeze the event clock at that day (frozen instant; countdowns don't tick). `saturday` = Sat 7 PM, `weeknight` = Tue 7 PM (a nightly session live) |
 | `-RUXPTab train\|profile` | open on that tab (tab-bar taps are unreliable when driving the simulator) |
-| `-RUXPLiveScene lobby\|active\|complete` | open the Live lobby, a joined workout, or the reward screen |
+| `-RUXPLiveScene lobby\|active\|complete\|contributed` | open the Live lobby, a joined workout, the reward screen, or the reward screen with a sample log attached (contribution row + ticket, no OpenAI) |
 | `-RUXPSeason S00\|S01\|S02` | pretend that season is current (rollover + recap + ladders + boards) |
 | `-RUXPLastSeen 3d\|18h\|45m` | pretend the last visit was that long ago (return ledger) |
 | `-RUXPWorldDemo` | with Game Center off, seed friends/rank so every ledger line renders |
 | `-RUXPLiveOps off\|<path.json>` | no rules, or a local calendar instead of the remote one |
-| `-RUXPScreen seasonpass\|settings\|livehistory\|archivedpass` | open that sheet at launch (pair `settings`/`livehistory`/`archivedpass` with `-RUXPTab profile`) |
+| `-RUXPScreen seasonpass\|settings\|livehistory\|archivedpass\|ticket` | open that sheet at launch (pair `settings`/`livehistory`/`archivedpass`/`ticket` with `-RUXPTab profile`; `ticket` opens the newest ticket) |
 | `-RUXPCrewDemo room\|last\|final\|complete\|empty` | with Game Center off, seed a crew in that state (`final` + `-RUXPLiveScene complete` shows the CREW WEEK row) |
+| `-RUXPLiveDemo [seed]` | one seeded simulator behind presence, the shared objective, and the floor; every screen it feeds says SIMULATED. Also a Settings › Developer toggle (relaunch to apply). Never the release source |
+| `-RUXPOpenURL <url>` | feed the router at launch: `ruxp://join/live`, `ruxp://join/fridayNight-2026-09-18`, `https://ruxp.app/join/live` (warm path: `xcrun simctl openurl <UDID> "ruxp://join/live"`) |
+| `-RUXPCommunity off\|<path.json>` | no community directory, or a local one (channel ids, relayURL, linkOrigin) instead of the remote one; the lobby shows the COMMUNITY card only when the directory names a channel |
 
 
 Typical: `-RUXPSkipGameCenter -RUXPSkipHealthKit -RUXPLoadSamples -RUXPSkipMinimum -RUXPLiveScene complete`.
@@ -175,11 +187,12 @@ Typical: `-RUXPSkipGameCenter -RUXPSkipHealthKit -RUXPLoadSamples -RUXPSkipMinim
 |---|---|
 | `Documents/workouts/index.json`, `workouts/<id>/session.json`, `workouts/<id>/audio/*.wav` | workouts and voice notes |
 | `Documents/player_progress.json` | `PlayerProgress` (XP, streaks, ledgers, cosmetics, season history, schemaVersion) |
-| `Documents/live_sessions.json` | Live Session participations |
+| `Documents/live_sessions.json` | Live Session participations (Optional per-workout volume, night totals, lifters, duration; the ticket) |
 | `Documents/world_snapshot.json` | last-seen world state for the return ledger |
 | `Documents/live_ops.json` | cached remote Live Ops calendar |
+| `Documents/community.json` | cached remote community directory (event → Discord channel, relay URL) |
 | `Documents/insights_store.json`, `planned_workout.json`, `pending_ai_queue.json` | stats/PRs, trainer plan, offline parse queue |
-| UserDefaults | `weightUnit`, `gameCenterSyncEnabled`, `gameCenter.cache`, `com.whussey.ruxp.activeWorkoutID`, `world.dismissedLedgerAt`, `ruxp.debugSeasonOverride`, `trainer_soul`, watch caches |
+| UserDefaults | `weightUnit`, `gameCenterSyncEnabled`, `gameCenter.cache`, `com.whussey.ruxp.activeWorkoutID`, `world.dismissedLedgerAt`, `ruxp.debugSeasonOverride`, `trainer_soul`, `community.shareMoments`, watch caches |
 
 ---
 
@@ -193,6 +206,15 @@ Typical: `-RUXPSkipGameCenter -RUXPSkipHealthKit -RUXPLoadSamples -RUXPSkipMinim
 6. A rule that needs a participant count needs a Game Center recurring board (see `GameCenterCatalog` header). Rules are client-side XP only; achievements and season goals are unaffected.
 
 ---
+
+## Community runbook (Discord)
+
+1. Create the Discord server and channels (one per ritual is enough: `#friday-night`, `#sunday-reset`, a `#lobby` home). Copy guild and channel ids (Developer Mode → Copy ID).
+2. Deploy `Scripts/discord-relay/` (README there: KV namespace, bot token or webhook secret, `wrangler deploy`).
+3. Edit `docs/community.json`: `relayURL`, `home`, `byKind` (`fridayNight`, `sundayReset`, `nightly`), `byEventID` for a hosted one-off with `host.name`. Bump `version`. Ids must be 15–22 digit snowflakes; invites https on discord.gg or discord.com; ≤ 64 entries, or the file is rejected wholesale and the cached one stays.
+4. Push. The app fetches at most hourly on foreground; Settings › Developer shows source, relay host, link origin, and moment counts, with "Send test moment" for the whole path.
+5. Links: `linkOrigin` is the Pages site until ruxp.app is live. Going live: point ruxp.app DNS at GitHub Pages first, then add `docs/CNAME` containing `ruxp.app` (adding it before DNS resolves redirects the whole site, live.json and community.json included, into the void), Enforce HTTPS, then check `curl -sI https://ruxp.app/.well-known/apple-app-site-association` (200, no redirect) and `curl -s https://app-site-association.cdn-apple.com/a/v1/ruxp.app`; if Apple's CDN rejects the Pages content type, serve `/.well-known/*` from the Worker. Then set `linkOrigin` to `https://ruxp.app` (or drop it). The App ID needs the Associated Domains capability for device builds.
+6. Discord's in-app browser loads a tapped link as an initial page, so JOIN WORKOUT usually lands on `docs/404.html`, whose OPEN IN RUXP button is the `ruxp://` form; Universal Links take over when the link is opened in Safari.
 
 ## Watching (not wired, check each Apple beta cycle)
 
@@ -208,6 +230,9 @@ Typical: `-RUXPSkipGameCenter -RUXPSkipHealthKit -RUXPLoadSamples -RUXPSkipMinim
 - ~2,400 lines of unreachable Momentary code compile with no entry point: `ChatView`, `ChatBlockView`, `InsightsTab`, `InsightStoryView`, `StoryCarouselView`, `HomeIntelligenceEngine`, `InsightsIntelligenceEngine`, `StoryReadTracker`. `ChatEngine`/`ConversationStore` are constructed with no consumer. `InsightsEngine.generateInsights()` is intentionally not called (it spent the bundled key). Delete as a separate task.
 - `InsightsStore.ingestedWorkoutIDs` is in-memory only; `prRewardsByWorkout` on `PlayerProgress` is the persisted backstop for XP.
 - `ProgressionService.rebuild(from:)` credits all historical XP to the current season (only `seasonWorkoutCount` is season-gated); it matters more once S01 exists.
-- Profile's PR tile is `max(prCount, personalRecords.count)`; `live_sessions` board submits `eventsJoined.count` while Profile shows `LiveSessionService.completedCount`.
+- Profile's PR tile is `max(prCount, personalRecords.count)`. `eventsJoined` now records nightly sessions too, so the `live_sessions` board and `LiveSessionService.completedCount` agree going forward; `live_first_session` can be earned on a weeknight.
+- Volume is summed five ways without kg→lb conversion (`WorkoutSessionIndex`, `InsightsStore`, two `computeVolume`s, `InsightsIntelligenceEngine`); only `WorkoutSession.volumeInPounds` (the objective) converts. Unify as a separate task; it changes career stats.
+- The objective reader sums at most 200 `session_volume` entries per poll; past that the total is a floor, which is where a backend comes in.
+- Sets are only known after the post-workout parse, so "+N LB to tonight's total" lands on the reward screen, not mid-workout. A live per-set number needs per-moment parsing.
 - Season Pass tier 20 ≈ 44,650 XP ≈ both rituals every week all season. Intentional: the pass is finished by showing up, not grinding.
 - Training Room needs two devices and two Apple IDs; untested in the simulator. Friend/rank ledger lines need a real device with Game Center friends.

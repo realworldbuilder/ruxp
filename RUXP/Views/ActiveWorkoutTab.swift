@@ -20,6 +20,7 @@ struct ActiveWorkoutTab: View {
             VStack(spacing: 0) {
                 timerBlock
                 liveStrip
+                LiveFloorCard(compact: true)
                 if let event = events.activeEvent(at: ScheduledEventService.now()), liveSessions.isJoined(event) {
                     LiveRoomPanel(event: event, compact: true)
                 }
@@ -184,7 +185,8 @@ struct ActiveWorkoutTab: View {
     private var liveStrip: some View {
         let live = presence?.snapshot ?? .unavailable
         let event = events.activeEvent(at: ScheduledEventService.now())
-        return HStack(spacing: 10) {
+        return VStack(alignment: .leading, spacing: 8) {
+          HStack(spacing: 10) {
             if live.isAvailable {
                 LiveDot(label: nil, size: 7)
                 Text(live.liftingNow <= 1 ? "You're the only one on right now" : "\(live.liftingNow.grouped) still lifting")
@@ -201,11 +203,18 @@ struct ActiveWorkoutTab: View {
                     if joined {
                         Text("· LIVE").eyebrow().foregroundStyle(Theme.live)
                     }
-                    Text("+\(event.xpReward) XP").eyebrow().foregroundStyle(Theme.xp)
+                    if event.xpReward > 0 {
+                        Text("+\(event.xpReward) XP").eyebrow().foregroundStyle(Theme.xp)
+                    }
                 }
                 .padding(.horizontal, 10).padding(.vertical, 5)
                 .background(Theme.accentSubtle, in: Capsule())
             }
+          }
+          // Tonight's total, ticking while you train.
+          if let event, !event.isSeasonWide, event.objective != nil, liveSessions.isJoined(event) {
+              SessionObjectiveBar(event: event, compact: true)
+          }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)

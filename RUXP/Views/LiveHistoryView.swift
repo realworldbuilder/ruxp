@@ -8,6 +8,7 @@ struct LiveHistoryView: View {
     @Environment(GameCenterService.self) private var gameCenter
 
     @State private var durations: [UUID: TimeInterval] = [:]
+    @State private var ticket: LiveSessionParticipation?
 
     var body: some View {
         ScrollView(showsIndicators: false) {
@@ -16,9 +17,13 @@ struct LiveHistoryView: View {
                 if liveSessions.history.isEmpty {
                     emptyState
                 } else {
-                    VStack(spacing: 10) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("PAST SESSIONS").eyebrow().foregroundStyle(Theme.textSecondary)
                         ForEach(liveSessions.history) { participation in
-                            LiveHistoryRow(participation: participation, duration: duration(for: participation))
+                            Button { ticket = participation } label: {
+                                LiveHistoryRow(participation: participation, duration: duration(for: participation))
+                            }
+                            .buttonStyle(PressableButtonStyle())
                         }
                     }
                 }
@@ -29,7 +34,18 @@ struct LiveHistoryView: View {
         }
         .statusBarBackdrop()
         .background(HUDBackground())
-        .onAppear(perform: loadDurations)
+        .sheet(item: $ticket) { record in
+            SessionTicketView(participation: record, duration: duration(for: record))
+        }
+        .onAppear {
+            loadDurations()
+            #if DEBUG
+            // -RUXPScreen ticket: open the newest ticket (pair with -RUXPTab profile).
+            if DebugScreen.requested == .ticket, let newest = liveSessions.history.first {
+                Task { try? await Task.sleep(for: .milliseconds(600)); ticket = newest }
+            }
+            #endif
+        }
     }
 
     private var header: some View {
@@ -81,11 +97,11 @@ struct LiveHistoryView: View {
     }
 
     private func duration(for participation: LiveSessionParticipation) -> TimeInterval? {
-        participation.associatedWorkoutID.flatMap { durations[$0] }
+        participation.durationSeconds ?? participation.associatedWorkoutID.flatMap { durations[$0] }
     }
 
     private func loadDurations() {
-        for participation in liveSessions.history {
+        for participation in liveSessions.history where participation.durationSeconds == nil {
             guard let id = participation.associatedWorkoutID, durations[id] == nil,
                   let session = workoutManager.workoutStore.loadSession(id: id),
                   let duration = session.duration else { continue }
@@ -96,6 +112,7 @@ struct LiveHistoryView: View {
 
 /// One completed session. Shared by the lobby's history and the full list.
 struct LiveHistoryRow: View {
+    @AppStorage("weightUnit") private var weightUnit: String = WeightUnit.lbs.rawValue
     let participation: LiveSessionParticipation
     var duration: TimeInterval?
 
@@ -115,9 +132,15 @@ struct LiveHistoryRow: View {
                     .foregroundStyle(Theme.textSecondary)
             }
             Spacer()
-            Text("+\(participation.xpEarned.grouped) XP")
-                .font(Theme.Fonts.mono(14, weight: .heavy))
-                .foregroundStyle(Theme.xp)
+            if participation.xpEarned > 0 {
+                Text("+\(participation.xpEarned.grouped) XP")
+                    .font(Theme.Fonts.mono(14, weight: .heavy))
+                    .foregroundStyle(Theme.xp)
+            } else if let volume = participation.volumeContributedLB, volume > 0 {
+                Text(VolumeFormat.compact(volume, unit: weightUnit))
+                    .font(Theme.Fonts.mono(14, weight: .heavy))
+                    .foregroundStyle(Theme.textPrimary)
+            }
         }
         .padding(14)
         .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.radiusMedium, style: .continuous))
@@ -128,9 +151,12 @@ struct LiveHistoryRow: View {
         let date = (participation.occurrenceDate ?? participation.completedAt ?? participation.joinedAt)
             .formatted(.dateTime.month(.abbreviated).day().year())
         var parts = [date, "Completed"]
-        if let duration {
+        if let duration = participation.durationSeconds ?? duration {
             let minutes = Int(duration / 60)
             parts.append(minutes >= 60 ? "\(minutes / 60)h \(minutes % 60)m" : "\(minutes) min")
+        }
+        if participation.xpEarned > 0, let volume = participation.volumeContributedLB, volume > 0 {
+            parts.append(VolumeFormat.compact(volume, unit: weightUnit).lowercased())
         }
         if let peers = participation.roomPeerCount, peers > 0 {
             parts.append(peers == 1 ? "1 player with you" : "\(peers) players with you")

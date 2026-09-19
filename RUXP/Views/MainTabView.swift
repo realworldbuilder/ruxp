@@ -11,10 +11,10 @@ enum AppTab: Hashable {
 }
 
 #if DEBUG
-/// `-RUXPScreen seasonpass|settings|livehistory|archivedpass`: open a sheet or cover at launch so
-/// every screen can be screenshotted from the command line. Read by HomeView and ProfileView.
+/// `-RUXPScreen seasonpass|settings|livehistory|archivedpass|ticket`: open a sheet or cover at launch so
+/// every screen can be screenshotted from the command line. Read by HomeView, ProfileView, LiveHistoryView.
 enum DebugScreen: String {
-    case seasonPass = "seasonpass", settings, liveHistory = "livehistory", archivedPass = "archivedpass"
+    case seasonPass = "seasonpass", settings, liveHistory = "livehistory", archivedPass = "archivedpass", ticket
 
     static var requested: DebugScreen? {
         let args = ProcessInfo.processInfo.arguments
@@ -30,6 +30,7 @@ enum DebugScreen: String {
 struct MainTabView: View {
     @Environment(WorkoutManager.self) private var workoutManager
     @Environment(ProgressionService.self) private var progression
+    @Environment(AppRouter.self) private var router
     @State private var selectedTab: AppTab = Self.initialTab
 
     /// DEBUG: `-RUXPTab train|profile` opens on that tab for screenshots.
@@ -124,6 +125,11 @@ struct MainTabView: View {
             if let idx = notification.userInfo?["tabIndex"] as? Int {
                 selectedTab = idx == 1 ? .train : idx == 2 ? .profile : .home
             }
+        }
+        // A link (Discord, share sheet, -RUXPOpenURL) lands on the tab that owns it; the owning
+        // view consumes the route. `initial` covers a route parsed before this view existed.
+        .onChange(of: router.pendingRoute, initial: true) { _, route in
+            if let route { selectedTab = router.tab(for: route) }
         }
     }
 }

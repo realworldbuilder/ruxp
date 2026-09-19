@@ -21,6 +21,12 @@ import Foundation
 ///   trained_today       24 h,   restarts daily,        start 00:00
 ///   event_friday_night  18 h,   restarts weekly,       start Friday 12:00
 ///   event_sunday_reset  30 h,   restarts weekly,       start Sunday 00:00
+///   session_day         24 h,   restarts daily,        start 06:00 (joins to tonight's session)
+///
+/// Set "Objective" (Recurring; the score is this player's volume in lb for the window, best kept.
+/// Readers sum every entry: that sum is the shared objective, `totalPlayerCount` the contributors):
+///   session_volume      24 h,   restarts daily,        start 06:00
+///   06:00 ET puts every US evening session, and all of Sunday, inside one window.
 ///
 /// Set "Crew" (Recurring; the score is this player's rewarded workouts in the ISO week, best kept):
 ///   crew_week           7 days, restarts weekly,       start Monday 00:00
@@ -72,6 +78,13 @@ enum GameCenterCatalog {
     static let trainedToday = "trained_today"
     static let eventFridayNight = "event_friday_night"
     static let eventSundayReset = "event_sunday_reset"
+    /// Joins to any nightly session (rituals keep their own boards).
+    static let sessionDay = "session_day"
+
+    // MARK: Shared objective
+
+    /// Each player's session volume in lb; the sum of all entries is tonight's total.
+    static let sessionVolume = "session_volume"
 
     /// Two staggered 30-minute windows. The heartbeat pings both; readers take the max so the
     /// count never dips to zero at an occurrence boundary.
@@ -81,13 +94,14 @@ enum GameCenterCatalog {
         switch event.kind {
         case .fridayNight: return eventFridayNight
         case .sundayReset: return eventSundayReset
+        case .nightly: return sessionDay
         case .season: return nil
         }
     }
 
     /// Boards the presence poller reads. The season ranking board doubles as "players this season".
     static func presenceBoards(season: Season) -> [String] {
-        [activeA, activeB, trainedToday, eventFridayNight, eventSundayReset, seasonXP(season)]
+        [activeA, activeB, trainedToday, eventFridayNight, eventSundayReset, sessionDay, seasonXP(season)]
     }
 
     // MARK: Scores

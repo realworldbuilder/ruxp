@@ -46,6 +46,27 @@ struct WorkoutSession: Codable, Identifiable {
         guard let endedAt else { return nil }
         return endedAt.timeIntervalSince(startedAt)
     }
+
+    /// Σ weight × reps across every parsed set, in pounds (kg sets converted). Nil until the
+    /// AI parse lands. The shared objective counts this; the older raw sums elsewhere do not
+    /// convert units and are left alone so career stats stay stable.
+    var volumeInPounds: Double? {
+        structuredLog?.volumeInPounds
+    }
+}
+
+extension StructuredLog {
+    static let poundsPerKilogram = 2.20462
+
+    var volumeInPounds: Double {
+        exercises.reduce(0.0) { total, group in
+            total + group.sets.reduce(0.0) { sum, set in
+                guard let weight = set.weight, let reps = set.reps, weight > 0, reps > 0 else { return sum }
+                let pounds = set.weightUnit == .kg ? weight * Self.poundsPerKilogram : weight
+                return sum + pounds * Double(reps)
+            }
+        }
+    }
 }
 
 // MARK: - Moment

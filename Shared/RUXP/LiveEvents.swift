@@ -6,6 +6,13 @@ enum LiveEventKind: String, Codable {
     case fridayNight
     case sundayReset
     case season
+    /// A themed evening from `LiveSessionCatalog`. No XP; the objective and the floor are the draw.
+    case nightly
+}
+
+/// The shared objective for one session: move this much together, in pounds.
+struct SessionObjective: Equatable {
+    let targetLB: Double
 }
 
 struct LiveEvent: Identifiable, Equatable {
@@ -17,6 +24,11 @@ struct LiveEvent: Identifiable, Equatable {
     let end: Date
     let xpReward: Int
     let isSeasonWide: Bool
+    /// Nil for the season theme; every timed session has one.
+    var objective: SessionObjective? = nil
+
+    /// FRIDAY NIGHT and SUNDAY RESET: the sessions that pay XP and get a ledger line.
+    var isRitual: Bool { !isSeasonWide && kind != .nightly }
 
     /// Stable per occurrence: "fridayNight-2026-09-11".
     var id: String {
@@ -61,7 +73,9 @@ struct LiveEvent: Identifiable, Equatable {
 
     /// Share-sheet copy for INVITE A FRIEND.
     var shareText: String {
-        "Join me for \(title) on RUXP. Complete any strength workout and earn +\(xpReward) XP."
+        xpReward > 0
+            ? "Join me for \(title) on RUXP. Complete any strength workout and earn +\(xpReward) XP."
+            : "Join me for \(title) on RUXP. We're moving \(Int(objective?.targetLB ?? 0).grouped) LB together tonight."
     }
 
     /// "FRI 5PM", "TODAY 5PM", "SUN"
@@ -92,12 +106,44 @@ protocol LiveEventProviding {
     func activeModifiers(at date: Date) -> [LiveModifier]
     func nextModifier(at date: Date) -> LiveModifier?
     func modifiers(overlapping start: Date, end: Date) -> [LiveModifier]
+    /// The Discord channel (and host) for an event. Defaults read `CommunityCatalog.current`.
+    func community(for event: LiveEvent) -> EventCommunity?
 }
 
 extension LiveEventProviding {
-    /// What the Home screen should show: live first, then the next timed event, then the season theme.
+    /// What the Home screen should show: live first, then what is coming, then the season theme.
     func featuredEvent(at date: Date = Date()) -> LiveEvent {
-        activeEvent(at: date) ?? nextEvent(at: date) ?? seasonEvent()
+        activeEvent(at: date) ?? upcomingEvent(at: date) ?? seasonEvent()
+    }
+
+    /// The next thing worth pointing at. A ritual any time; a nightly session only once it is
+    /// close, so Home talks about FRIDAY NIGHT on a Tuesday morning, not tonight's session.
+    func upcomingEvent(at date: Date, horizon: TimeInterval = 3 * 3600) -> LiveEvent? {
+        if let next = nextEvent(at: date), next.isRitual || next.start.timeIntervalSince(date) <= horizon {
+            return next
+        }
+        return nextRitual(at: date)
+    }
+
+    /// The next FRIDAY NIGHT or SUNDAY RESET.
+    func nextRitual(at date: Date) -> LiveEvent? {
+        events(overlapping: date, end: date.addingTimeInterval(8 * 86400))
+            .filter { $0.isRitual && $0.isUpcoming(at: date) }
+            .min { $0.start < $1.start }
+    }
+
+    /// Resolve a link id ("fridayNight-2026-09-18"). Ids are minted in local time, so a link
+    /// from another timezone lands on the receiver's own occurrence of that date, which is what
+    /// a ritual means. Nil outside the schedule window; callers fall back to `featuredEvent`.
+    func event(id: String) -> LiveEvent? {
+        guard let dash = id.firstIndex(of: "-") else { return nil }
+        let f = DateFormatter()
+        f.calendar = Calendar(identifier: .gregorian)
+        f.dateFormat = "yyyy-MM-dd"
+        guard let day = f.date(from: String(id[id.index(after: dash)...])) else { return nil }
+        let noon = day.addingTimeInterval(12 * 3600)
+        return events(overlapping: noon.addingTimeInterval(-86400), end: noon.addingTimeInterval(86400))
+            .first { $0.id == id }
     }
 
     func activeModifiers(at date: Date) -> [LiveModifier] {
@@ -172,7 +218,7 @@ struct ScheduledEventService: LiveEventProviding {
 
     // MARK: - Schedule
 
-    /// Friday Night and Sunday Reset occurrences for the previous, current, and following ISO week.
+    /// Rituals first, then the nightly sessions, for the previous, current, and following ISO week.
     private func timedEvents(around date: Date) -> [LiveEvent] {
 
         var events: [LiveEvent] = []
@@ -181,8 +227,35 @@ struct ScheduledEventService: LiveEventProviding {
             guard let base = calendar.date(byAdding: .day, value: 7 * weekOffset, to: weekStart) else { continue }
             if let friday = fridayNight(weekStarting: base) { events.append(friday) }
             if let sunday = sundayReset(weekStarting: base) { events.append(sunday) }
+            for theme in LiveSessionCatalog.nightly {
+                if let night = nightly(theme, weekStarting: base) { events.append(night) }
+            }
         }
         return events.sorted { $0.start < $1.start }
+    }
+
+    private func nightly(_ theme: LiveSessionTheme, weekStarting monday: Date) -> LiveEvent? {
+        guard let day = calendar.date(byAdding: .day, value: theme.dayOffset, to: monday) else { return nil }
+        let dayStart = calendar.startOfDay(for: day)
+        guard let start = calendar.date(bySettingHour: theme.startHour, minute: 0, second: 0, of: dayStart) else { return nil }
+        let end: Date?
+        if theme.endHour >= 24 {
+            end = calendar.date(byAdding: .day, value: 1, to: dayStart)
+        } else {
+            end = calendar.date(bySettingHour: theme.endHour, minute: 0, second: 0, of: dayStart)
+        }
+        guard let end else { return nil }
+        return LiveEvent(
+            kind: .nightly,
+            title: theme.title,
+            subtitle: theme.subtitle,
+            description: theme.description,
+            start: start,
+            end: end,
+            xpReward: 0,
+            isSeasonWide: false,
+            objective: SessionObjective(targetLB: LiveSessionCatalog.objectiveTargetLB)
+        )
     }
 
     private func fridayNight(weekStarting monday: Date) -> LiveEvent? {
@@ -198,7 +271,8 @@ struct ScheduledEventService: LiveEventProviding {
             start: start,
             end: end,
             xpReward: 500,
-            isSeasonWide: false
+            isSeasonWide: false,
+            objective: SessionObjective(targetLB: LiveSessionCatalog.objectiveTargetLB)
         )
     }
 
@@ -214,7 +288,8 @@ struct ScheduledEventService: LiveEventProviding {
             start: start,
             end: end,
             xpReward: 500,
-            isSeasonWide: false
+            isSeasonWide: false,
+            objective: SessionObjective(targetLB: LiveSessionCatalog.objectiveTargetLB)
         )
     }
 }

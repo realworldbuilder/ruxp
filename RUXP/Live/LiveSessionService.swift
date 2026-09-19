@@ -21,6 +21,10 @@ final class LiveSessionService {
     var roomPeerCountProvider: () -> Int? = { nil }
     /// Fired on a first-time join so the player can be counted in the event's presence window.
     var onJoined: ((LiveEvent) -> Void)?
+    /// The player's cumulative lb for this session; the objective provider submits it.
+    var objectiveSubmit: ((Double, LiveEvent) -> Void)?
+    /// Fired after a parse credits a workout's volume to a session (floor line, reward row).
+    var onContributionRecorded: ((LiveSessionParticipation, Double) -> Void)?
 
     private let fileURL: URL
 
@@ -90,36 +94,81 @@ final class LiveSessionService {
     func recordCompletion(session: WorkoutSession, reward: WorkoutRewardSummary, events overlapping: [LiveEvent]) {
         let completedAt = session.endedAt ?? ScheduledEventService.now()
         var changed = false
-        for award in reward.eventAwards {
-            let event = overlapping.first { $0.id == award.eventID } ?? overlapping.first { $0.title == award.label }
-            let sessionID = award.eventID ?? event?.id
-            guard let sessionID else { continue }
+        // Nightly sessions complete with no award; older rewards only carry the awards.
+        let sessionIDs = reward.completedSessionIDs ?? reward.eventAwards.compactMap(\.eventID)
+        for sessionID in sessionIDs {
+            let award = reward.eventAwards.first { $0.eventID == sessionID }
+            let event = overlapping.first { $0.id == sessionID }
+            let amount = award?.amount ?? 0
 
             if let index = participations.firstIndex(where: { $0.sessionID == sessionID }) {
                 guard !participations[index].completed else { continue }
                 participations[index].completedAt = completedAt
                 participations[index].associatedWorkoutID = session.id
-                participations[index].xpEarned = award.amount
+                participations[index].xpEarned = amount
                 participations[index].roomPeerCount = roomPeerCountProvider()
+                participations[index].durationSeconds = session.duration
+                participations[index].objectiveTargetLB = event?.objective?.targetLB
                 if participations[index].gameCenterPlayerID == nil {
                     participations[index].gameCenterPlayerID = playerIDProvider()
                 }
             } else {
-                participations.append(LiveSessionParticipation(
+                var record = LiveSessionParticipation(
                     sessionID: sessionID,
-                    title: event?.title ?? award.label,
+                    title: event?.title ?? award?.label ?? sessionID,
                     gameCenterPlayerID: playerIDProvider(),
                     joinedAt: session.startedAt,
                     completedAt: completedAt,
                     associatedWorkoutID: session.id,
-                    xpEarned: award.amount,
+                    xpEarned: amount,
                     roomPeerCount: roomPeerCountProvider()
-                ))
+                )
+                record.durationSeconds = session.duration
+                record.objectiveTargetLB = event?.objective?.targetLB
+                participations.append(record)
             }
             changed = true
-            Self.logger.info("Completed \(sessionID) with workout \(session.id): +\(award.amount) XP")
+            Self.logger.info("Completed \(sessionID) with workout \(session.id): +\(amount) XP")
         }
         if changed { save() }
+    }
+
+    // MARK: - Shared objective
+
+    /// A parse landed: credit the workout's volume to the session it overlapped. Replace, never
+    /// add, so a re-parse cannot double count. Records locally even with Game Center off.
+    func recordContribution(session: WorkoutSession) {
+        let end = session.endedAt ?? ScheduledEventService.now()
+        let overlapping = events.events(overlapping: session.startedAt, end: end).filter { !$0.isSeasonWide }
+        guard let event = overlapping.first(where: { participation(for: $0) != nil }),
+              let index = participations.firstIndex(where: { $0.sessionID == event.id }) else { return }
+        let volume = session.volumeInPounds ?? 0
+        var byWorkout = participations[index].volumeByWorkout ?? [:]
+        byWorkout[session.id.uuidString] = volume
+        participations[index].volumeByWorkout = byWorkout
+        participations[index].durationSeconds = session.duration ?? participations[index].durationSeconds
+        participations[index].objectiveTargetLB = event.objective?.targetLB
+        if participations[index].associatedWorkoutID == nil { participations[index].associatedWorkoutID = session.id }
+        save()
+        let total = byWorkout.values.reduce(0, +)
+        Self.logger.info("Contribution for \(event.id): \(Int(volume)) lb (session total \(Int(total)) lb)")
+        if total > 0 { objectiveSubmit?(total, event) }
+        onContributionRecorded?(participations[index], volume)
+    }
+
+    /// The objective moved while a session is live: remember it on the participation so the
+    /// ticket shows the night as it ended, not as it was when the player left.
+    func noteObjectiveUpdated(totalLB: Double, contributors: Int, liftingNow: Int, now: Date = ScheduledEventService.now()) {
+        guard let event = currentSession(at: now), !event.isSeasonWide,
+              let index = participations.firstIndex(where: { $0.sessionID == event.id }) else { return }
+        var record = participations[index]
+        record.sessionTotalLB = totalLB
+        record.sessionContributors = contributors
+        record.sessionLifters = max(record.sessionLifters ?? 0, liftingNow)
+        record.objectiveTargetLB = event.objective?.targetLB
+        guard record != participations[index] else { return }
+        participations[index] = record
+        save()
     }
 
     /// Game Center signed in after some participations were recorded: attach the identity.

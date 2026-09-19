@@ -156,8 +156,10 @@ enum ReturnLedger {
         return Array(items.sorted { $0.kind < $1.kind }.prefix(maxItems))
     }
 
+    /// Rituals only. A nightly session runs every evening; reporting it would make every
+    /// absence read the same.
     private static func eventsLine(_ events: [LiveEvent], previous: WorldSnapshot) -> String? {
-        let timed = events.filter { !$0.isSeasonWide }
+        let timed = events.filter(\.isRitual)
         guard !timed.isEmpty else { return nil }
         let byKind = Dictionary(grouping: timed, by: \.kind)
         if byKind.count == 1, let (_, occurrences) = byKind.first {

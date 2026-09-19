@@ -8,11 +8,14 @@ struct SettingsView: View {
     @Environment(\.liveEvents) private var events
     @Environment(GameCenterService.self) private var gameCenter
     @Environment(\.livePresence) private var presence
+    @Environment(\.liveObjective) private var objective
     @Environment(LiveSessionService.self) private var liveSessions
     @Environment(\.liveRoom) private var liveRoom
     @Environment(LiveOpsService.self) private var liveOps
     @Environment(WorldSnapshotService.self) private var world
     @Environment(CrewService.self) private var crew
+    @Environment(CommunityService.self) private var community
+    @Environment(CommunityMomentComposer.self) private var communityMoments
 
     @AppStorage("weightUnit") private var weightUnit: String = WeightUnit.lbs.rawValue
     @AppStorage(GameCenterService.syncEnabledKey) private var gameCenterSync = true
@@ -39,9 +42,13 @@ struct SettingsView: View {
     @State private var eventClock: EventClock = .now
     @State private var skipMinimumDuration = ProgressionRules.minimumWorkoutDuration == 0
     @State private var seasonOverride = UserDefaults.standard.string(forKey: "ruxp.debugSeasonOverride") ?? ""
+    #if DEBUG
+    @AppStorage(LiveWorldSimulator.defaultsKey) private var liveDemo = false
+    #endif
 
     private enum EventClock: String, CaseIterable, Identifiable {
         case now = "Now", fridayNight = "Friday 7 PM", sunday = "Sunday noon", tuesday = "Tuesday 10 AM"
+        case saturday = "Saturday 7 PM", weeknight = "Tuesday 7 PM"
         var id: String { rawValue }
         var date: Date? {
             let cal = Calendar.current
@@ -58,6 +65,8 @@ struct SettingsView: View {
             case .fridayNight: return next(weekday: 6, hour: 19)
             case .sunday: return next(weekday: 1, hour: 12)
             case .tuesday: return next(weekday: 3, hour: 10)
+            case .saturday: return next(weekday: 7, hour: 19)
+            case .weeknight: return next(weekday: 3, hour: 19)
             }
         }
     }
@@ -100,6 +109,17 @@ struct SettingsView: View {
                 Text("Game Center")
             } footer: {
                 Text("Leaderboards, achievements, and the live lifting counts run on Game Center. Only your XP totals, week streak, milestones, and an \"I'm training\" ping leave the device.")
+            }
+
+            // MARK: - Community
+            Section {
+                @Bindable var community = community
+                Toggle("Share my moments to Discord", isOn: $community.shareMoments)
+                LabeledContent("Channels", value: community.statusLine)
+            } header: {
+                Text("Community")
+            } footer: {
+                Text("Off by default. When on, your PRs, level-ups, and session joins go to the event's Discord channel as your Game Center alias. Sets, body weight, and health data never leave the device. Session totals and lifter counts post without names.")
             }
 
             // MARK: - Data
@@ -279,6 +299,27 @@ struct SettingsView: View {
                         LabeledContent("Last closed season", value: "\(record.seasonID) · LVL \(record.finalLevel)")
                     }
 
+                    Toggle("Simulated live world", isOn: $liveDemo)
+                    if liveDemo != (presence as? LiveWorldSimulator != nil) {
+                        Text("Relaunch to apply. Debug builds only: presence, the shared objective, and the floor come from a local simulator and every screen says SIMULATED.")
+                            .font(Theme.Fonts.ui(.caption))
+                            .foregroundStyle(Theme.warning)
+                    }
+                    if let simulator = presence as? LiveWorldSimulator {
+                        LabeledContent("Live world", value: "SIMULATED · seed \(simulator.seed)")
+                    }
+                    if let objective {
+                        LabeledContent("Objective", value: objective.state.isAvailable
+                                       ? "\(Int(objective.state.totalLB).grouped) / \(Int(objective.state.targetLB).grouped) lb · \(objective.state.contributors) in"
+                                       : "unavailable")
+                        if let real = objective as? GameCenterSessionObjective {
+                            if let error = real.lastError {
+                                Text(error).font(.caption).foregroundStyle(Theme.error)
+                            }
+                            Button("Refresh objective") { real.refreshNow() }
+                        }
+                    }
+
 
                     LabeledContent("Game Center", value: gameCenter.statusLine)
                     LabeledContent("Last submission", value: gameCenter.lastSubmissionResult)
@@ -306,6 +347,19 @@ struct SettingsView: View {
                     }
                     Button("Refresh live ops") { liveOps.refresh(force: true) }
                     LabeledContent("Bundled round trip", value: LiveOpsService.bundledRoundTripReport())
+
+                    LabeledContent("Community", value: community.sourceLabel)
+                    LabeledContent("Relay", value: community.relayURL?.host ?? "none")
+                    LabeledContent("Links", value: AppLinks.origin)
+                    LabeledContent("Moments", value: "\(communityMoments.publishedCount) sent · \(communityMoments.suppressedCount) kept")
+                    if let last = communityMoments.recent.last {
+                        Text("\(last.kind.rawValue) · \(last.eventTitle ?? "no event") · \(last.audience.rawValue)").font(.caption).foregroundStyle(Theme.textSecondary)
+                    }
+                    if let error = community.lastError {
+                        Text(error).font(.caption).foregroundStyle(Theme.error)
+                    }
+                    Button("Refresh community") { community.refresh(force: true) }
+                    Button("Send test moment") { communityMoments.sendTestMoment() }
 
                     LabeledContent("World snapshot", value: world.debugDescription)
                     Button("Reset return ledger") { world.debugResetSnapshot() }

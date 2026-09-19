@@ -28,6 +28,9 @@ final class WorkoutManager {
     var crew: CrewService?
     /// Fired once a workout has been rewarded and cleared (used to close the Training Room).
     var onWorkoutEnded: (() -> Void)?
+    /// Fired with every reward creation or amendment, after the watch has it. `ProgressionService`
+    /// has one slot and this manager owns it; chain here, never reassign there.
+    var onRewardChanged: ((WorkoutRewardSummary) -> Void)?
     private var heartbeatTask: Task<Void, Never>?
     private static let heartbeatInterval: Duration = .seconds(5 * 60)
     /// The workout ID currently being finalized (AI processing). Publicly readable so the UI can present a completion sheet.
@@ -66,6 +69,7 @@ final class WorkoutManager {
             guard let self else { return }
             self.connectivity.progressionContext = self.progression.context.toDictionary()
             self.connectivity.sendWorkoutReward(reward)
+            self.onRewardChanged?(reward)
         }
         setupConnectivityCallbacks()
         workoutStore.migrateFromLegacyTranscriptions()

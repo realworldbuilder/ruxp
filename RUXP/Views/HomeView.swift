@@ -12,6 +12,7 @@ struct HomeView: View {
     @Environment(\.liveEvents) private var events
     @Environment(WorldSnapshotService.self) private var world
     @Environment(CrewService.self) private var crew
+    @Environment(AppRouter.self) private var router
 
     @State private var now = ScheduledEventService.now()
     @State private var showSeasonPass = false
@@ -19,7 +20,22 @@ struct HomeView: View {
     /// so the workout cover (owned by MainTabView) never stacks on this one.
     @State private var lobbyEvent: LiveEvent?
     @State private var startAfterLobby = false
+    /// True 500 ms after the first appearance: a cover requested during the very first
+    /// appearance is dropped, so a route that arrives cold waits one beat.
+    @State private var settled = false
     private let clock = Timer.publish(every: 20, on: .main, in: .common).autoconnect()
+
+    /// The route task re-runs when the route changes or when a blocker (recap, workout) clears.
+    private struct RouteGate: Hashable {
+        let route: AppRoute?
+        let recapPending: Bool
+        let workoutPresented: Bool
+    }
+    private var routeGate: RouteGate {
+        RouteGate(route: router.pendingRoute,
+                  recapPending: progression.pendingSeasonRecap != nil,
+                  workoutPresented: workoutManager.activeSession != nil || workoutManager.completedWorkoutID != nil)
+    }
 
     private var live: LiveSnapshot { presence?.snapshot ?? .unavailable }
     private var featured: LiveEvent { events.featuredEvent(at: now) }
@@ -66,6 +82,13 @@ struct HomeView: View {
             }
         }
         .onReceive(clock) { _ in now = ScheduledEventService.now() }
+        .task { try? await Task.sleep(for: .milliseconds(500)); settled = true }
+        .task(id: routeGate) {
+            guard let route = router.pendingRoute else { return }
+            if !settled { try? await Task.sleep(for: .milliseconds(500)) }
+            guard !Task.isCancelled else { return }
+            await consume(route)
+        }
         .onAppear {
             now = ScheduledEventService.now()
             #if DEBUG
@@ -85,6 +108,36 @@ struct HomeView: View {
             }
             #endif
         }
+    }
+
+    // MARK: - Links
+
+    /// A link from Discord or the share sheet: resolve the occurrence, join it if it is live,
+    /// open its lobby. Anything the app cannot honor lands on Home quietly.
+    private func consume(_ route: AppRoute) async {
+        guard case .join(let target) = route else { router.consume(route); return }
+        // The workout cover is up: never stack a lobby on it. Starting already counted as joining.
+        if workoutManager.activeSession != nil || workoutManager.completedWorkoutID != nil { router.consume(route); return }
+        // The season recap owns the screen; the gate re-runs once it is acknowledged.
+        if progression.pendingSeasonRecap != nil { return }
+
+        now = ScheduledEventService.now()
+        var event = featured
+        if case .event(let id) = target, let found = events.event(id: id), found.end > now { event = found }
+        guard !event.isSeasonWide, event.end > now else { router.consume(route); return }
+        // Joining posts to the event board, so only a live occurrence is joined here; an
+        // upcoming one opens its lobby and START WORKOUT joins when it actually starts.
+        if event.isActive(at: now) { liveSessions.join(event, now: now) }
+
+        if lobbyEvent?.id == event.id { router.consume(route); return }
+        if showSeasonPass || lobbyEvent != nil {
+            showSeasonPass = false
+            lobbyEvent = nil
+            try? await Task.sleep(for: .milliseconds(450))
+            guard !Task.isCancelled else { return }
+        }
+        lobbyEvent = event
+        router.consume(route)
     }
 
     // MARK: - Header
@@ -113,7 +166,7 @@ struct HomeView: View {
         var parts = ["\(day) \(time)"]
         if let liveEvent = events.activeEvent(at: now), !liveEvent.isSeasonWide {
             parts.append("\(liveEvent.title) LIVE · \(liveEvent.endsInLabel(now: now).uppercased())")
-        } else if let next = events.nextEvent(at: now) {
+        } else if let next = events.upcomingEvent(at: now) {
             parts.append("\(next.title) IN \(countdown(to: next.start))")
         }
         if let modifier = featuredModifier {
@@ -145,9 +198,12 @@ struct HomeView: View {
                         .offset(y: -18)
                 }
             }
-            Text("LIFTING NOW")
-                .eyebrow()
-                .foregroundStyle(Theme.textSecondary)
+            HStack(spacing: 8) {
+                Text("LIFTING NOW")
+                    .eyebrow()
+                    .foregroundStyle(Theme.textSecondary)
+                SimulatedTag()
+            }
             Text(live.isAvailable ? presenceLine : gameCenter.presenceUnavailableMessage)
                 .font(Theme.Fonts.body)
                 .foregroundStyle(Theme.textTertiary)
@@ -186,6 +242,9 @@ struct HomeView: View {
                 Spacer()
                 if featured.xpReward > 0 { XPChip(amount: featured.xpReward, prominent: isLive) }
             }
+            if featured.kind == .nightly {
+                Text(featured.subtitle).eyebrow().foregroundStyle(Theme.textSecondary)
+            }
 
             Text(featured.title.capitalized)
                 .font(.system(size: 28, weight: .bold))
@@ -222,7 +281,9 @@ struct HomeView: View {
                         .foregroundStyle(Theme.textPrimary)
                 }
                 if completed {
-                    Text("\(featured.title.capitalized) complete. +\(featured.xpReward.grouped) XP earned. You showed up.")
+                    Text(featured.xpReward > 0
+                         ? "\(featured.title.capitalized) complete. +\(featured.xpReward.grouped) XP earned. You showed up."
+                         : "\(featured.title.capitalized) complete. You showed up.")
                         .font(Theme.Fonts.body)
                         .foregroundStyle(Theme.xp)
                 } else {
@@ -230,6 +291,12 @@ struct HomeView: View {
                         .font(Theme.Fonts.body)
                         .foregroundStyle(Theme.textSecondary)
                 }
+            }
+
+            // The shared objective rides on the live session card. One bar, real numbers.
+            if isSession, featured.objective != nil {
+                SessionObjectiveBar(event: featured, unavailableMessage: gameCenter.presenceUnavailableMessage)
+                    .padding(.top, 2)
             }
 
             if completed {

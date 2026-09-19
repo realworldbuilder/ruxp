@@ -53,6 +53,8 @@ struct WorkoutRewardSummary: Codable, Equatable {
     var seasonXPAfter: Int
     var eventTitle: String?
     let awardedAt: Date
+    /// Live Session occurrences this workout completed, paid or not (nightly sessions pay 0).
+    var completedSessionIDs: [String]? = nil
 
     var totalXP: Int { awards.reduce(0) { $0 + $1.amount } }
     var didLevelUp: Bool { levelAfter > levelBefore }

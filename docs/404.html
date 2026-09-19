@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>RUXP</title>
+  <meta name="robots" content="noindex">
+  <meta property="og:title" content="RUXP">
+  <meta property="og:description" content="You're not lifting alone.">
+  <meta property="og:image" content="/assets/logo.jpg">
+  <meta name="theme-color" content="#000000">
+  <link rel="icon" href="/assets/favicon.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script>
+    // Project site or custom domain: assets and config live next to the site root either way.
+    (function () {
+      var base = location.pathname.indexOf("/ruxp/") === 0 ? "/ruxp/" : "/";
+      document.write('<link rel="stylesheet" href="' + base + 'style.css">');
+      document.write('<script src="' + base + 'config.js"><\/script>');
+      window.RUXP_BASE = base;
+    })();
+  </script>
+  <style>
+    .join { min-height: 100svh; display: grid; place-items: center; padding: 24px; text-align: center; }
+    .join-inner { width: min(420px, 100%); display: grid; gap: 18px; justify-items: center; }
+    .join-term { font: 500 12px/1.4 var(--mono); letter-spacing: .14em; color: var(--text-2); text-transform: uppercase; }
+    .join-term .live { color: var(--live); }
+    .join-title { font: 700 clamp(28px, 8vw, 40px)/1.05 var(--ui); letter-spacing: -.02em; margin: 0; }
+    .join-line { color: var(--text-2); margin: 0; }
+    .join .btn { width: 100%; max-width: 320px; }
+    .join-foot { font-size: 13px; color: var(--text-3); display: flex; gap: 18px; }
+    .join-foot a { color: var(--text-2); }
+    .join-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--live); box-shadow: 0 0 0 0 rgba(255,59,92,.5); animation: pulse 1.6s ease-out infinite; }
+    @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255,59,92,.5); } 100% { box-shadow: 0 0 0 14px rgba(255,59,92,0); } }
+  </style>
+</head>
+<body>
+<main class="join">
+  <div class="join-inner" id="join" hidden>
+    <div class="join-dot" aria-hidden="true"></div>
+    <div class="join-term"><span data-season-code>S00</span> // <span class="live" id="what">LIVE</span></div>
+    <h1 class="join-title">You're not lifting alone.</h1>
+    <p class="join-line" id="line">Open RUXP to join the session.</p>
+    <a class="btn btn-primary" id="open" href="#">Open in RUXP</a>
+    <a class="btn btn-ghost" id="get" href="#" hidden>Get RUXP</a>
+    <div class="join-foot"><a data-discord href="#" hidden>Discord</a><a id="home" href="/">ruxp</a></div>
+  </div>
+  <div class="join-inner" id="lost" hidden>
+    <div class="join-term">SIGNAL LOST // 404</div>
+    <p class="join-line">Nothing here.</p>
+    <a class="btn btn-ghost" id="home2" href="/">Back</a>
+  </div>
+</main>
+<script>
+(function () {
+  var base = window.RUXP_BASE || "/", c = window.RUXP || {};
+  var path = location.pathname.replace(/^\/ruxp(?=\/)/, "");
+  var m = /^\/(join|event)\/([A-Za-z]+-\d{4}-\d{2}-\d{2}|live)\/?$/.exec(path);
+  document.getElementById("home").href = base; document.getElementById("home2").href = base;
+  if (!m) { document.getElementById("lost").hidden = false; return; }
+  var id = m[2], deep = "ruxp://join/" + encodeURIComponent(id);
+  var names = { fridayNight: "FRIDAY NIGHT", sundayReset: "SUNDAY RESET", nightly: "TONIGHT'S SESSION" };
+  var kind = id.split("-")[0];
+  document.getElementById("what").textContent = id === "live" ? "LIVE NOW" : (names[kind] || "LIVE");
+  document.getElementById("open").href = deep;
+  var get = document.getElementById("get"), fallback = c.APP_STORE_URL || c.TESTFLIGHT_URL;
+  if (fallback) { get.href = fallback; get.hidden = false; }
+  else { document.getElementById("line").textContent = "Open RUXP to join the session. Access is by request during Season 00."; }
+  document.getElementById("join").hidden = false;
+  // One automatic attempt; the button is the real path (a tap opens custom schemes from any browser).
+  setTimeout(function () { location.href = deep; }, 300);
+})();
+</script>
+</body>
+</html>

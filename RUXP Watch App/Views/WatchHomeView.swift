@@ -46,9 +46,11 @@ struct WatchHomeView: View {
                             .font(WatchTheme.Fonts.tagline(11))
                             .foregroundStyle(WatchTheme.accent)
                         Spacer(minLength: 0)
-                        Text("+\(event.xpReward) XP")
-                            .font(WatchTheme.Fonts.mono(10))
-                            .foregroundStyle(WatchTheme.xp)
+                        if event.xpReward > 0 {
+                            Text("+\(event.xpReward) XP")
+                                .font(WatchTheme.Fonts.mono(10))
+                                .foregroundStyle(WatchTheme.xp)
+                        }
                     }
                     .padding(.horizontal, 10).padding(.vertical, 6)
                     .background(WatchTheme.accent.opacity(0.14), in: RoundedRectangle(cornerRadius: 10))

@@ -4,6 +4,8 @@ window.RUXP = {
   APP_STORE_URL: "",                        // paste the App Store link after approval
   CONTACT_EMAIL: "admin@ruxp.app",
   GITHUB_URL: "https://github.com/realworldbuilder/ruxp",
+  DISCORD_INVITE_URL: "",                   // paste the permanent invite when the server exists
+  SITE_ORIGIN: "https://ruxp.app",          // where /join/<event> links point once the domain is live
   // Every season the site knows about. `SEASON` below resolves to the one active today, so the
   // pages flip on their own at each player's local midnight. Mirrors SeasonCatalog in the app.
   SEASONS: [
@@ -50,6 +52,9 @@ document.addEventListener("DOMContentLoaded", function () {
   document.querySelectorAll("[data-season-label]").forEach(function (el) { el.textContent = c.SEASON.code + " \u00b7 " + c.SEASON.name; });
   document.querySelectorAll("[data-window-closes]").forEach(function (el) { el.textContent = "WINDOW CLOSES " + closes; });
   if (document.body.classList.contains("sig-body")) document.title = c.SEASON.code;
+  document.querySelectorAll("[data-discord]").forEach(function (a) {
+    if (c.DISCORD_INVITE_URL) { a.href = c.DISCORD_INVITE_URL; a.hidden = false; } else { a.hidden = true; }
+  });
   document.querySelectorAll("[data-appstore]").forEach(function (a) {
     if (c.APP_STORE_URL) { a.href = c.APP_STORE_URL; a.hidden = false; } else { a.hidden = true; }
   });

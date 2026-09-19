@@ -55,7 +55,7 @@ struct ProfileView: View {
                     try? await Task.sleep(for: .milliseconds(500))
                     switch screen {
                     case .settings: showSettings = true
-                    case .liveHistory: showLiveHistory = true
+                    case .liveHistory, .ticket: showLiveHistory = true
                     case .archivedPass: archivedSeason = (p.seasonHistory ?? []).last.flatMap { SeasonCatalog.season(id: $0.seasonID) }
                     default: break
                     }
@@ -232,7 +232,7 @@ struct ProfileView: View {
 
     private var liveSessionsSubtitle: String {
         switch liveSessions.completedCount {
-        case 0: return "Sunday Reset, Friday Night. Show up."
+        case 0: return "Something every night. Show up."
         case 1: return "1 completed"
         default: return "\(liveSessions.completedCount) completed"
         }
