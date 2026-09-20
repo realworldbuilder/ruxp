@@ -272,6 +272,7 @@ struct WorkoutCompletionSheet: View {
         case .personalRecord: return "trophy.fill"
         case .modifier: return "sparkles"
         case .crewWeek: return "person.2.fill"
+        case .quest: return "flag.fill"
         }
 
     }

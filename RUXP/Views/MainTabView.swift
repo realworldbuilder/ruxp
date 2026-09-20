@@ -11,10 +11,11 @@ enum AppTab: Hashable {
 }
 
 #if DEBUG
-/// `-RUXPScreen seasonpass|settings|livehistory|archivedpass|ticket`: open a sheet or cover at launch so
+/// `-RUXPScreen seasonpass|settings|livehistory|archivedpass|ticket|questlog`: open a sheet or cover at launch so
 /// every screen can be screenshotted from the command line. Read by HomeView, ProfileView, LiveHistoryView.
 enum DebugScreen: String {
     case seasonPass = "seasonpass", settings, liveHistory = "livehistory", archivedPass = "archivedpass", ticket
+    case questLog = "questlog"
 
     static var requested: DebugScreen? {
         let args = ProcessInfo.processInfo.arguments

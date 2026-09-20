@@ -16,6 +16,7 @@ struct SettingsView: View {
     @Environment(CrewService.self) private var crew
     @Environment(CommunityService.self) private var community
     @Environment(CommunityMomentComposer.self) private var communityMoments
+    @Environment(QuestService.self) private var quests
 
     @AppStorage("weightUnit") private var weightUnit: String = WeightUnit.lbs.rawValue
     @AppStorage(GameCenterService.syncEnabledKey) private var gameCenterSync = true
@@ -363,6 +364,12 @@ struct SettingsView: View {
 
                     LabeledContent("World snapshot", value: world.debugDescription)
                     Button("Reset return ledger") { world.debugResetSnapshot() }
+
+                    LabeledContent("Quests", value: quests.debugDescription)
+                    Button("Reset quests") {
+                        quests.debugReset(hasAnyWorkout: !workoutManager.workoutStore.index.isEmpty,
+                                          hasVoiceMoment: workoutManager.workoutStore.index.contains { $0.momentCount > 0 })
+                    }
 
                     LabeledContent("Crew", value: crew.isEmpty ? "none" : "\(crew.inCount)/\(crew.size) in · \(crew.liftingNow.count) lifting · met \(crew.goalMet)")
                     LabeledContent("Crew read", value: crew.snapshot?.fetchedAt.formatted(date: .omitted, time: .standard) ?? (crew.lastError ?? "never"))

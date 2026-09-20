@@ -22,6 +22,7 @@ struct RUXPApp: App {
     @State private var crew: CrewService
     @State private var community: CommunityService
     @State private var communityMoments: CommunityMomentComposer
+    @State private var quests: QuestService
     @State private var router = AppRouter()
     private let eventService = ScheduledEventService()
 
@@ -100,6 +101,8 @@ struct RUXPApp: App {
         let composer = CommunityMomentComposer(events: events, publisher: relay)
         composer.sharingProvider = { [weak communityService] in communityService?.sharing ?? CommunitySharing() }
         composer.aliasProvider = { [weak gameCenterService] in gameCenterService?.alias }
+        // Quests: NEW GAME and STAGE 2, cleared from the hooks below. State is on PlayerProgress.
+        let questService = QuestService(progression: progressionService)
         // Joining counts you in the event's window right away ("84 players joined" is joins, not finishes).
         liveSessionService.onJoined = { [weak gameCenterService, weak observed, weak composer, weak presence] event in
             observed?.noteJoined(event)
@@ -119,7 +122,12 @@ struct RUXPApp: App {
             composer?.notePersonalRecords(records, workoutID: session.id,
                                           xp: paid.filter { $0.reason == .personalRecord }.map(\.amount))
         }
-        manager.onRewardChanged = { [weak composer] in composer?.noteReward($0) }
+        manager.onRewardChanged = { [weak composer, weak questService] in
+            composer?.noteReward($0)
+            questService?.noteReward($0)
+        }
+        manager.onWorkoutStarted = { [weak questService] in questService?.noteWorkoutStarted($0) }
+        manager.onMomentAdded = { [weak questService] in questService?.noteMomentAdded($0, workoutID: $1) }
         let room = LiveRoomService(gameCenter: gameCenterService)
         room.onReaction = { [weak observed] in observed?.noteReaction($0) }
         liveSessionService.roomPeerCountProvider = { [weak room] in
@@ -187,6 +195,7 @@ struct RUXPApp: App {
         _crew = State(initialValue: crewService)
         _community = State(initialValue: communityService)
         _communityMoments = State(initialValue: composer)
+        _quests = State(initialValue: questService)
 
         #if DEBUG
         // -RUXPLoadSamples: seed the seven sample workouts on an empty install (simulator screenshots).
@@ -211,6 +220,13 @@ struct RUXPApp: App {
             let sessions = store.index.compactMap { store.loadSession(id: $0.id) }
             liveSessionService.backfill(from: progressionService.progress, sessions: sessions)
         }
+        // Quests: derive what is already true (no XP), then start listening. After the rebuild
+        // above, before -RUXPLiveScene starts and ends a workout inside init.
+        questService.activate(hasAnyWorkout: !store.index.isEmpty,
+                              hasVoiceMoment: store.index.contains { $0.momentCount > 0 })
+        #if DEBUG
+        questService.applyDebugPreset()
+        #endif
 
         #if DEBUG
         // -RUXPLiveScene active|complete: drop straight into a Live Session workout or its reward
@@ -220,6 +236,14 @@ struct RUXPApp: App {
             switch ProcessInfo.processInfo.arguments[idx + 1] {
             case "active":
                 manager.startWorkout()
+            case "spoken":
+                // A joined workout with one silent moment: SAY IT OUT LOUD cleared, FINISH up next.
+                manager.startWorkout()
+                manager.debugAddSilentMoment()
+            case "spokencomplete":
+                manager.startWorkout()
+                manager.debugAddSilentMoment()
+                manager.endWorkout()
             case "complete":
                 manager.startWorkout()
                 manager.endWorkout()
@@ -250,12 +274,13 @@ struct RUXPApp: App {
     ///   -RUXPTab train|profile   open on that tab (see MainTabView)
     ///   -RUXPSkipHealthKit   bypass HealthKit (see HealthKitService.isDisabledForTesting)
     ///   -RUXPSkipGameCenter  no Game Center sign-in, scores, or live counts (see GameCenterService.isDisabledForTesting)
-    ///   -RUXPLiveScene lobby|active|complete|contributed   open the Live Session lobby, a joined workout, its reward screen, or the reward screen with a sample log attached
+    ///   -RUXPLiveScene lobby|active|spoken|complete|spokencomplete|contributed   open the Live Session lobby, a joined workout (spoken: with one silent moment), its reward screen (spokencomplete: after a moment), or the reward screen with a sample log attached
     ///   -RUXPSeason S00|S01|S02   pretend that season is current (exercise the rollover and recap)
     ///   -RUXPLastSeen 3d|18h|45m   pretend the last visit was that long ago (WHILE YOU WERE GONE)
     ///   -RUXPWorldDemo   with Game Center off, seed friends/rank so every ledger line renders
     ///   -RUXPLiveOps off|<path.json>   no Live Ops rules, or a local calendar instead of the remote one
-    ///   -RUXPScreen seasonpass|settings|livehistory|archivedpass   open that sheet at launch (see MainTabView)
+    ///   -RUXPScreen seasonpass|settings|livehistory|archivedpass|ticket|questlog   open that sheet at launch (see MainTabView)
+    ///   -RUXPQuests 0…7|<id,id,…>   exactly those quests cleared, as backfilled (no XP): 3 = NEW GAME done, STAGE 2 fresh; pressStart,finish = an existing player who never used voice
     ///   -RUXPCrewDemo [room|last|final|complete|empty]   with Game Center off, seed a crew in that state
     ///   -RUXPLiveDemo [seed]   simulated presence, shared objective, and floor (never the release source)
     ///   -RUXPOpenURL <url>   feed the router at launch (ruxp://join/live, https://ruxp.app/join/<id>)
@@ -281,6 +306,9 @@ struct RUXPApp: App {
             WorldSnapshotService.debugLastSeen = number * unit
         }
         if args.contains("-RUXPWorldDemo") { WorldSnapshotService.debugDemo = true }
+        if let idx = args.firstIndex(of: "-RUXPQuests"), idx + 1 < args.count {
+            QuestService.debugPreset = QuestService.parseDebugPreset(args[idx + 1])
+        }
         // -RUXPLiveDemo [seed]: one simulator behind presence, the objective, and the floor.
         if let idx = args.firstIndex(of: "-RUXPLiveDemo") {
             LiveWorldSimulator.isRequested = true
@@ -334,6 +362,7 @@ struct RUXPApp: App {
                 .environment(crew)
                 .environment(community)
                 .environment(communityMoments)
+                .environment(quests)
                 .environment(router)
                 // Custom-scheme URLs and Universal Links both arrive here; the root is always in
                 // the hierarchy, HomeView is not (lazy tab, covers).

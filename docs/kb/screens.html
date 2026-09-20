@@ -18,7 +18,7 @@
 <span class="eyebrow">Screen tour</span>
 <h1>Every screen, and what makes it alive</h1>
 <p class="lede">Captured from the current build on an iPhone 17 Pro simulator with Game Center turned off, which is why the presence line reads "Game Center is off in this build." On a device signed into Game Center those lines are real counts. The look is deliberately restrained: near-black, system type, one hero number per screen, mono readouts for XP. The game shows in small doses.</p>
-<div class="toc"><a href="#home">Home</a><a href="#crew">Crew</a><a href="#gone">While you were gone</a><a href="#live">Live session</a><a href="#tonight">Tonight's session</a><a href="#workout">Workout</a><a href="#reward">Reward</a><a href="#train">Train</a><a href="#profile">Profile</a><a href="#pass">Season Pass</a><a href="#recap">Season recap</a><a href="#settings">Settings</a><a href="#watch">Watch</a></div>
+<div class="toc"><a href="#home">Home</a><a href="#crew">Crew</a><a href="#gone">While you were gone</a><a href="#live">Live session</a><a href="#tonight">Tonight's session</a><a href="#workout">Workout</a><a href="#quests">Quests</a><a href="#reward">Reward</a><a href="#train">Train</a><a href="#profile">Profile</a><a href="#pass">Season Pass</a><a href="#recap">Season recap</a><a href="#settings">Settings</a><a href="#watch">Watch</a></div>
 
 <h2 id="home">Home: the lobby</h2>
 <div class="figure">
@@ -96,6 +96,15 @@
     <p class="mono" style="font-size:12px;color:var(--text-3)">RUXP/Views/ActiveWorkoutTab.swift · RUXP/WorkoutManager.swift</p>
   </div>
 </div>
+
+<h2 id="quests">Quests: the first workout, then the mechanics</h2>
+<div class="screens">
+  <div class="screen"><img src="img/quests-log.png" alt="Quest log on a fresh install"><div class="cap"><b>NEW GAME</b>Three steps that are the first workout: PRESS START, SAY IT OUT LOUD, FINISH. Clearing all three pays +250 once. STAGE 2 stays dimmed until then.</div></div>
+  <div class="screen"><img src="img/quests-workout.png" alt="Active workout with the quest line"><div class="cap"><b>It follows you in</b>One line under the live strip says which step you are on. It flips to FINISH the moment the first voice note lands.</div></div>
+  <div class="screen"><img src="img/quests-reward.png" alt="Reward screen with NEW GAME CLEARED"><div class="cap"><b>Cleared</b>NEW GAME CLEARED reveals beside WORKOUT COMPLETE. From here STAGE 2 listens: SHOW UP TONIGHT, RITUAL, BEAT YOURSELF, FOUR IN A WEEK, +250 each, once.</div></div>
+</div>
+<p>Home features the current quest under the event card and drops it when the chain is cleared; Profile keeps the log as history. Existing players are backfilled from what they already did, with no XP. Nothing repeats and nothing is daily.</p>
+<p class="mono" style="font-size:12px;color:var(--text-3)">Shared/RUXP/Quests.swift · RUXP/Quests/QuestService.swift · RUXP/Views/QuestLogView.swift · Components/QuestCard.swift</p>
 
 <h2 id="reward">Reward: the moment that matters</h2>
 <div class="screens">

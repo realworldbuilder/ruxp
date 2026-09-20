@@ -79,6 +79,7 @@ Users earn XP for healthy, useful behavior. Grinding is not rewarded.
 | Crew Week | +250 | Every active crew member trained this ISO week; once per week, to each member who did |
 | Weekly consistency | +500 | 4th workout of the ISO week |
 | Personal record | +250 | Max 2 per workout, only after AI parses your notes |
+| Quests | +250 | NEW GAME (the first workout in three steps) pays once when cleared; each STAGE 2 quest (live session, ritual, PR, four in a week) pays once. Lifetime, never repeated |
 
 Level 1–100 is derived from **season XP**; **lifetime XP** is a career total. Season 00 is EARLY ADOPTERS (Sep 1 – Sep 30, 2026): 12 workouts, finish the season. Season 01, NIGHTMARE MODE (Oct 1 – Nov 30), is the App Store launch season: 20 workouts. Season 02, PRESS START, starts Dec 1. `SeasonCatalog.current` picks the season active today. Everything lives in `ProgressionService`.
 

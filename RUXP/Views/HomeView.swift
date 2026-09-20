@@ -13,9 +13,11 @@ struct HomeView: View {
     @Environment(WorldSnapshotService.self) private var world
     @Environment(CrewService.self) private var crew
     @Environment(AppRouter.self) private var router
+    @Environment(QuestService.self) private var quests
 
     @State private var now = ScheduledEventService.now()
     @State private var showSeasonPass = false
+    @State private var showQuestLog = false
     /// The Live Session lobby. Its START WORKOUT dismisses first, then Home starts the workout,
     /// so the workout cover (owned by MainTabView) never stacks on this one.
     @State private var lobbyEvent: LiveEvent?
@@ -59,6 +61,16 @@ struct HomeView: View {
                     .transition(.move(edge: .top).combined(with: .opacity))
                 }
                 eventCard
+                if quests.isChainVisible, let featured = quests.featured {
+                    QuestCard(
+                        entry: featured,
+                        cleared: quests.count(in: featured.chain).cleared,
+                        onStart: featured.id == .pressStart && workoutManager.activeSession == nil
+                            ? { workoutManager.startWorkout() } : nil,
+                        onOpen: { showQuestLog = true }
+                    )
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                }
                 if let plan = pendingPlan { planRow(plan) }
                 youCard
                 seasonCard
@@ -70,6 +82,7 @@ struct HomeView: View {
         .statusBarBackdrop()
         .background(HUDBackground())
         .fullScreenCover(isPresented: $showSeasonPass) { SeasonPassView() }
+        .sheet(isPresented: $showQuestLog) { QuestLogView() }
         .fullScreenCover(item: $lobbyEvent, onDismiss: {
             if startAfterLobby {
                 startAfterLobby = false

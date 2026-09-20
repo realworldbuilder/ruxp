@@ -54,7 +54,7 @@ extension XPReason {
         case .personalRecord: return "PR XP"
         case .modifier: return "XP"
         case .crewWeek: return "CREW XP"
-
+        case .quest: return "QUEST XP"
         }
     }
 }

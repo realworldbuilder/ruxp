@@ -12,6 +12,8 @@ enum ProgressionRules {
     /// CREW WEEK: every active crew member trained this ISO week. Needs at least this many others.
     static let crewWeekXP = 250
     static let crewMinimumOthers = 2
+    /// Quests: NEW GAME pays this once when cleared; each STAGE 2 quest pays it once.
+    static let questXP = 250
     /// Workouts shorter than this earn nothing. Adjustable in DEBUG from Settings › Developer.
     nonisolated(unsafe) static var minimumWorkoutDuration: TimeInterval = 10 * 60
 }
@@ -83,12 +85,20 @@ final class ProgressionService {
     func rewardWorkoutCompletion(session: WorkoutSession, events: [LiveEvent], modifiers: [LiveModifier] = [], now: Date? = nil) -> WorkoutRewardSummary {
         let now = now ?? ScheduledEventService.now()
         let before = progress
+        let duration = (session.endedAt ?? now).timeIntervalSince(session.startedAt)
+        let qualifies = duration >= ProgressionRules.minimumWorkoutDuration
+        let dayCount = progress.workouts(onDayOf: session.startedAt, calendar: calendar)
+        let underDailyCap = dayCount < ProgressionRules.maxRewardedWorkoutsPerDay
+        // Quest XP paid while this workout was still running (NEW GAME cleared on its first
+        // voice note) rides along: the row shows once, here, and the XP is not applied twice.
+        let carried = qualifies && underDailyCap && lastReward?.workoutID == session.id ? (lastReward?.awards ?? []) : []
+        let carriedXP = carried.reduce(0) { $0 + $1.amount }
         var summary = WorkoutRewardSummary(
             workoutID: session.id,
             awards: [],
-            levelBefore: before.level,
+            levelBefore: LevelCurve.level(forSeasonXP: before.seasonXP - carriedXP),
             levelAfter: before.level,
-            seasonXPBefore: before.seasonXP,
+            seasonXPBefore: before.seasonXP - carriedXP,
             seasonXPAfter: before.seasonXP,
             eventTitle: nil,
             awardedAt: now
@@ -99,11 +109,6 @@ final class ProgressionService {
             summary = lastReward?.workoutID == session.id ? lastReward! : summary
             return summary
         }
-
-        let duration = (session.endedAt ?? now).timeIntervalSince(session.startedAt)
-        let qualifies = duration >= ProgressionRules.minimumWorkoutDuration
-        let dayCount = progress.workouts(onDayOf: session.startedAt, calendar: calendar)
-        let underDailyCap = dayCount < ProgressionRules.maxRewardedWorkoutsPerDay
 
         progress.rewardedWorkoutIDs.insert(session.id)
 
@@ -148,11 +153,12 @@ final class ProgressionService {
             }
 
             recomputeWeekStreak(now: now)
+            summary.awards.append(contentsOf: carried)
         } else {
             Self.logger.info("Workout \(session.id) not rewarded (qualifies=\(qualifies), underDailyCap=\(underDailyCap))")
         }
 
-        apply(xp: summary.totalXP)
+        apply(xp: summary.totalXP - carriedXP)
         summary.seasonXPAfter = progress.seasonXP
         summary.levelAfter = progress.level
         lastReward = summary
@@ -264,6 +270,122 @@ final class ProgressionService {
         return awards.first
     }
 
+    // MARK: - Quests
+
+    func questCompletion(_ id: QuestID) -> QuestCompletion? {
+        progress.questCompletions?[id.rawValue]
+    }
+
+    func isChainCleared(_ chain: QuestChain) -> Bool {
+        chain.quests.allSatisfy { questCompletion($0.id) != nil }
+    }
+
+    /// A chain listens only once the chain it requires is cleared.
+    func isChainUnlocked(_ chain: QuestChain) -> Bool {
+        guard let required = chain.requires, let parent = QuestCatalog.chain(id: required) else { return true }
+        return isChainCleared(parent)
+    }
+
+    /// Record every quest in `ids` that is not yet cleared and whose chain is unlocked, then pay
+    /// what that clears: one row per STAGE 2 quest, one row for NEW GAME when its last step lands.
+    /// Steps that pay nothing just save. Awards join the open reward summary when it belongs to
+    /// `workoutID` (the row animates onto the completion screen), else stand alone, like a late PR.
+    @discardableResult
+    func clearQuests(_ ids: [QuestID], workoutID: UUID?, now: Date? = nil) -> [XPAward] {
+        let now = now ?? ScheduledEventService.now()
+        let clearedBefore = Set(QuestCatalog.chains.filter(isChainCleared).map(\.id))
+        var ledger = progress.questCompletions ?? [:]
+        var remaining = Set(ids)
+        var fresh: [Quest] = []
+        // Recording a step can clear a chain, which unlocks the next one; a workout that is
+        // both the first finish and a live session then clears NEW GAME and SHOW UP TONIGHT in
+        // one pass. Loop until nothing new is recordable.
+        while true {
+            let batch = QuestCatalog.all.filter { quest in
+                remaining.contains(quest.id) && ledger[quest.id.rawValue] == nil
+                    && isChainUnlocked(QuestCatalog.chain(containing: quest.id))
+            }
+            guard !batch.isEmpty else { break }
+            for quest in batch {
+                ledger[quest.id.rawValue] = QuestCompletion(completedAt: now, workoutID: workoutID, backfilled: false)
+                remaining.remove(quest.id)
+            }
+            fresh.append(contentsOf: batch)
+            progress.questCompletions = ledger
+        }
+        guard !fresh.isEmpty else { return [] }
+
+        var awards: [XPAward] = []
+        for chain in QuestCatalog.chains {
+            switch chain.reward {
+            case .perQuest(let amount):
+                for quest in fresh where chain.contains(quest.id) {
+                    awards.append(XPAward(reason: .quest, label: quest.title, amount: amount))
+                }
+            case .onClear(let amount, let label):
+                if !clearedBefore.contains(chain.id), isChainCleared(chain) {
+                    awards.append(XPAward(reason: .quest, label: label, amount: amount))
+                }
+            }
+        }
+        guard !awards.isEmpty else {
+            save()
+            Self.logger.info("Quest steps recorded \(fresh.map(\.id.rawValue))")
+            return []
+        }
+
+        for modifier in LiveOpsCatalog.current.activeModifiers(at: now) {
+            guard case .multiplier(.quest, _) = modifier.rule else { continue }
+            let bonus = modifier.bonus(baseAwards: awards, workoutStart: now)
+            if bonus > 0 { awards.append(XPAward(reason: .modifier, label: modifier.title, amount: bonus)) }
+        }
+        let total = awards.reduce(0) { $0 + $1.amount }
+        let levelBefore = progress.level
+        let xpBefore = progress.seasonXP
+        apply(xp: total)
+
+        var summary: WorkoutRewardSummary
+        if var existing = lastReward, let workoutID, existing.workoutID == workoutID {
+            existing.awards.append(contentsOf: awards)
+            existing.seasonXPAfter = progress.seasonXP
+            existing.levelAfter = progress.level
+            summary = existing
+        } else {
+            summary = WorkoutRewardSummary(
+                workoutID: workoutID ?? UUID(), awards: awards,
+                levelBefore: levelBefore, levelAfter: progress.level,
+                seasonXPBefore: xpBefore, seasonXPAfter: progress.seasonXP,
+                eventTitle: nil, awardedAt: now
+            )
+        }
+        lastReward = summary
+        save()
+        onRewardChanged?(summary)
+        Self.logger.info("Quests cleared \(fresh.map(\.id.rawValue)): +\(total) XP")
+        return awards
+    }
+
+    /// First launch with quests: mark what is already true from persisted state. No XP, no
+    /// reward summary, no `onRewardChanged`. Runs once; `questsBackfilledAt` remembers it.
+    func backfillQuests(_ ids: Set<QuestID>, now: Date? = nil) {
+        let now = now ?? ScheduledEventService.now()
+        var ledger = progress.questCompletions ?? [:]
+        for id in ids where ledger[id.rawValue] == nil {
+            ledger[id.rawValue] = QuestCompletion(completedAt: now, workoutID: nil, backfilled: true)
+        }
+        progress.questCompletions = ledger.isEmpty ? nil : ledger
+        progress.questsBackfilledAt = now
+        save()
+    }
+
+    #if DEBUG
+    func debugResetQuests() {
+        progress.questCompletions = nil
+        progress.questsBackfilledAt = nil
+        save()
+    }
+    #endif
+
 
     // MARK: - Profile
 
@@ -295,7 +417,9 @@ final class ProgressionService {
         progress = PlayerProgress(displayName: progress.displayName, joinDate: joinDate, seasonID: season.id,
                                   equippedCosmetics: progress.equippedCosmetics,
                                   seasonHistory: progress.seasonHistory,
-                                  pendingSeasonRecapID: progress.pendingSeasonRecapID)
+                                  pendingSeasonRecapID: progress.pendingSeasonRecapID,
+                                  questCompletions: progress.questCompletions,
+                                  questsBackfilledAt: progress.questsBackfilledAt)
         var bestByExercise: [String: Double] = [:]
         for session in sessions.sorted(by: { $0.startedAt < $1.startedAt }) {
             guard let endedAt = session.endedAt else { continue }

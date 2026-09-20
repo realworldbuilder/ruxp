@@ -28,6 +28,10 @@ final class WorkoutManager {
     var crew: CrewService?
     /// Fired once a workout has been rewarded and cleared (used to close the Training Room).
     var onWorkoutEnded: (() -> Void)?
+    /// Fired when a workout starts, from the phone or the watch (quests: PRESS START).
+    var onWorkoutStarted: ((WorkoutSession) -> Void)?
+    /// Fired once per recorded voice moment, phone or watch, with its workout id (quests: SAY IT OUT LOUD).
+    var onMomentAdded: ((Moment, UUID) -> Void)?
     /// Fired with every reward creation or amendment, after the watch has it. `ProgressionService`
     /// has one slot and this manager owns it; chain here, never reassign there.
     var onRewardChanged: ((WorkoutRewardSummary) -> Void)?
@@ -68,7 +72,11 @@ final class WorkoutManager {
         progression.onRewardChanged = { [weak self] reward in
             guard let self else { return }
             self.connectivity.progressionContext = self.progression.context.toDictionary()
-            self.connectivity.sendWorkoutReward(reward)
+            // A quest paid while its workout is still running (NEW GAME cleared on the first
+            // voice note) is carried into the completion summary; the watch hears about it then.
+            if self.activeSession?.id != reward.workoutID {
+                self.connectivity.sendWorkoutReward(reward)
+            }
             self.onRewardChanged?(reward)
         }
         setupConnectivityCallbacks()
@@ -144,6 +152,7 @@ final class WorkoutManager {
         Task { await healthKit.startWorkout(at: session.startedAt) }
         startPresenceHeartbeat()
         liveSessions?.noteWorkoutStarted()
+        onWorkoutStarted?(session)
 
         Self.logger.info("Started workout \(session.id)")
     }
@@ -356,6 +365,19 @@ final class WorkoutManager {
 
     // MARK: - Moment Management
 
+    #if DEBUG
+    /// -RUXPLiveScene spoken: one silent moment on the active workout, no audio and no Whisper,
+    /// so SAY IT OUT LOUD can be exercised headlessly. Same append and hook as a real recording.
+    func debugAddSilentMoment() {
+        guard var session = activeSession else { return }
+        let moment = Moment(id: UUID(), timestamp: Date(), transcript: Moment.noSpeechTranscript, source: .phone)
+        session.moments.append(moment)
+        workoutStore.saveSession(session)
+        activeSession = session
+        onMomentAdded?(moment, session.id)
+    }
+    #endif
+
     func addMoment(audioURL: URL, source: MomentSource, momentID: UUID? = nil, forWorkoutID: UUID? = nil) async {
         let workoutID: UUID
         if let explicit = forWorkoutID {
@@ -402,6 +424,7 @@ final class WorkoutManager {
         workoutStore.saveSession(session)
         if activeSession?.id == workoutID { activeSession = session }
         connectivity.updateMomentCount(session.moments.count, workoutID: workoutID)
+        onMomentAdded?(moment, workoutID)
 
         // Plainly offline: don't sit on a 60 s timeout. The retry path picks it up when the network returns.
         if canRetry, processor?.isNetworkAvailable == false {
@@ -575,6 +598,7 @@ final class WorkoutManager {
                     self.connectivity.updateWorkoutContext(workoutID: message.workoutID, isActive: true, startedAt: message.timestamp)
                     self.startPresenceHeartbeat()
                     self.liveSessions?.noteWorkoutStarted(at: message.timestamp)
+                    self.onWorkoutStarted?(session)
                 }
             case .stop:
                 if self.activeSession?.id == message.workoutID {
@@ -601,6 +625,7 @@ final class WorkoutManager {
                 self.workoutStore.saveSession(session)
                 self.startPresenceHeartbeat()
                 self.liveSessions?.noteWorkoutStarted(at: session.startedAt)
+                self.onWorkoutStarted?(session)
             } else if !isActive, let activeID = self.activeSession?.id, activeID == workoutID {
                 self.handleRemoteStop(workoutID: activeID)
             }

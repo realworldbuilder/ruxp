@@ -11,6 +11,9 @@ enum XPReason: String, Codable, CaseIterable {
     case modifier
     /// Everyone in your crew trained this week. Paid once per week to each member who did.
     case crewWeek
+    /// A quest cleared (NEW GAME as a whole, or one STAGE 2 quest). Label is the chain's clear
+    /// line or the quest title.
+    case quest
 
     var title: String {
         switch self {
@@ -20,6 +23,7 @@ enum XPReason: String, Codable, CaseIterable {
         case .personalRecord: return "NEW PR"
         case .modifier: return "LIVE MODIFIER"
         case .crewWeek: return "CREW WEEK"
+        case .quest: return "QUEST COMPLETE"
         }
     }
 }
@@ -105,6 +109,10 @@ struct PlayerProgress: Codable, Equatable {
     var schemaVersion: Int? = nil
     /// ISO week keys for which the CREW WEEK bonus was paid.
     var crewWeekBonusWeeks: Set<String>? = nil
+    /// Quests cleared, keyed by `QuestID.rawValue`. Lifetime; a season rollover leaves it alone.
+    var questCompletions: [String: QuestCompletion]? = nil
+    /// When the quest ledger was first derived from existing state (no XP paid). Nil = never run.
+    var questsBackfilledAt: Date? = nil
 
 
     /// Live Sessions completed. An event bonus is paid once per occurrence and only for a

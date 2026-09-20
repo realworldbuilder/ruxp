@@ -6,8 +6,10 @@ struct ProfileView: View {
     @Environment(InsightsStore.self) private var insightsStore
     @Environment(GameCenterService.self) private var gameCenter
     @Environment(LiveSessionService.self) private var liveSessions
+    @Environment(QuestService.self) private var quests
 
     @State private var showLiveHistory = false
+    @State private var showQuestLog = false
     @State private var showNameEditor = false
     @State private var nameDraft = ""
     @State private var showPRs = false
@@ -24,6 +26,16 @@ struct ProfileView: View {
             return "Tier \(tier) of \(SeasonPassCatalog.tierCount) · next: \(next.name.capitalized)"
         }
         return "All \(SeasonPassCatalog.tierCount) tiers unlocked"
+    }
+    private var questsSubtitle: String {
+        if quests.isAllClear { return "All clear" }
+        guard let newGame = QuestCatalog.chain(id: QuestCatalog.newGameID) else { return "" }
+        let first = quests.count(in: newGame)
+        if first.cleared == 0 { return "Three steps. Start with one workout." }
+        if first.cleared < first.total { return "\(newGame.name) \(first.cleared) of \(first.total)" }
+        guard let stage2 = QuestCatalog.chain(id: QuestCatalog.stage2ID) else { return "\(newGame.name) cleared" }
+        let second = quests.count(in: stage2)
+        return "\(newGame.name) cleared · \(stage2.name) \(second.cleared) of \(second.total)"
     }
 
     var body: some View {
@@ -55,6 +67,7 @@ struct ProfileView: View {
                     try? await Task.sleep(for: .milliseconds(500))
                     switch screen {
                     case .settings: showSettings = true
+                    case .questLog: showQuestLog = true
                     case .liveHistory, .ticket: showLiveHistory = true
                     case .archivedPass: archivedSeason = (p.seasonHistory ?? []).last.flatMap { SeasonCatalog.season(id: $0.seasonID) }
                     default: break
@@ -90,6 +103,7 @@ struct ProfileView: View {
         .sheet(isPresented: $showSettings) {
             SettingsView()
         }
+        .sheet(isPresented: $showQuestLog) { QuestLogView() }
     }
 
     // MARK: - Identity
@@ -203,6 +217,9 @@ struct ProfileView: View {
         VStack(spacing: 10) {
             linkRow(title: "Season Pass", subtitle: seasonPassSubtitle, icon: "ticket.fill") {
                 showSeasonPass = true
+            }
+            linkRow(title: "Quests", subtitle: questsSubtitle, icon: "flag.fill") {
+                showQuestLog = true
             }
             linkRow(title: "Live sessions", subtitle: liveSessionsSubtitle, icon: "dot.radiowaves.left.and.right") {
                 showLiveHistory = true

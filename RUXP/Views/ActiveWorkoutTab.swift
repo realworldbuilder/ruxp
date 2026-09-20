@@ -8,6 +8,7 @@ struct ActiveWorkoutTab: View {
     @Environment(\.livePresence) private var presence
     @Environment(\.liveEvents) private var events
     @Environment(LiveSessionService.self) private var liveSessions
+    @Environment(QuestService.self) private var quests
     @StateObject private var recorder = PhoneAudioRecorderService()
     @State private var showMicPermissionDenied = false
     @State private var showEndConfirmation = false
@@ -20,6 +21,10 @@ struct ActiveWorkoutTab: View {
             VStack(spacing: 0) {
                 timerBlock
                 liveStrip
+                // NEW GAME follows you into the workout: the step you are on, one line.
+                if quests.isChainVisible, let featured = quests.featured, featured.chain.id == QuestCatalog.newGameID {
+                    QuestCard(entry: featured, cleared: quests.count(in: featured.chain).cleared, compact: true)
+                }
                 LiveFloorCard(compact: true)
                 if let event = events.activeEvent(at: ScheduledEventService.now()), liveSessions.isJoined(event) {
                     LiveRoomPanel(event: event, compact: true)
