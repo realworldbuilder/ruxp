@@ -50,17 +50,7 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: 18) {
                 header
                 presenceBlock
-                CrewCard(now: now)
-                if world.isLedgerVisible, let ledger = world.ledger {
-
-                    ReturnLedgerCard(
-                        items: ledger.items,
-                        awayLabel: ReturnLedger.awayLabel(from: ledger.baselineAt, to: now),
-                        onDismiss: { withAnimation(Theme.Motion.snappy) { world.dismissLedger() } }
-                    )
-                    .transition(.move(edge: .top).combined(with: .opacity))
-                }
-                eventCard
+                // Quests sit front and center: what to do next, before who is around.
                 if quests.isChainVisible, let featured = quests.featured {
                     QuestCard(
                         entry: featured,
@@ -71,6 +61,17 @@ struct HomeView: View {
                     )
                     .transition(.move(edge: .top).combined(with: .opacity))
                 }
+                if world.isLedgerVisible, let ledger = world.ledger {
+
+                    ReturnLedgerCard(
+                        items: ledger.items,
+                        awayLabel: ReturnLedger.awayLabel(from: ledger.baselineAt, to: now),
+                        onDismiss: { withAnimation(Theme.Motion.snappy) { world.dismissLedger() } }
+                    )
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                }
+                eventCard
+                CrewCard(now: now)
                 if let plan = pendingPlan { planRow(plan) }
                 youCard
                 seasonCard
